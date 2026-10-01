@@ -110,3 +110,23 @@ test('resolveOutDir refuses the repo root or its parents', () => {
   assert.throws(() => resolveOutDir(root, '..'), /must be inside/);
   assert.equal(resolveOutDir(root, '_site'), path.join(root, '_site'));
 });
+
+test('resolveOutDir only accepts an underscore folder', () => {
+  const root = makeTree({});
+  for (const bad of ['apps', '.git', 'scripts', 'docs/out']) {
+    assert.throws(() => resolveOutDir(root, bad), /must be inside/, bad);
+  }
+  assert.equal(resolveOutDir(root, '_preview/site'), path.join(root, '_preview', 'site'));
+});
+
+test('app.json with a UTF-8 BOM is accepted', () => {
+  const dir = makeTree({ 'a/index.html': '', 'a/app.json': '﻿' + okJson });
+  assert.deepEqual(collectApps(dir).errors, []);
+});
+
+test('app.json that is not an object is reported', () => {
+  const dir = makeTree({ 'a/index.html': '', 'a/app.json': 'null', 'b/index.html': '', 'b/app.json': '[]' });
+  const { errors } = collectApps(dir);
+  assert.match(errors.join('\n'), /apps\/a: app\.json must be a JSON object/);
+  assert.match(errors.join('\n'), /apps\/b: app\.json must be a JSON object/);
+});

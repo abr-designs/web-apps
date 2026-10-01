@@ -38,11 +38,14 @@ export function collectApps(appsDir) {
     if (!fs.existsSync(metaPath)) {
       fail('missing app.json');
     } else {
+      let parsed;
       try {
-        meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8').replace(/^\uFEFF/, ''));
       } catch {
         fail('app.json is not valid JSON');
       }
+      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) meta = parsed;
+      else if (parsed !== undefined) fail('app.json must be a JSON object');
     }
 
     if (meta) {
@@ -109,8 +112,8 @@ export function assembleSite(rootDir, outDir, entries) {
 export function resolveOutDir(rootDir, outDir) {
   const resolved = path.resolve(rootDir, outDir);
   const rel = path.relative(rootDir, resolved);
-  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw new Error(`--out must be inside the repo, got ${outDir}`);
+  if (rel === '' || path.isAbsolute(rel) || !rel.startsWith('_')) {
+    throw new Error(`--out must be inside the repo in a folder starting with _, got ${outDir}`);
   }
   return resolved;
 }
