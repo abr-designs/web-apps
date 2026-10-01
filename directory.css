@@ -1,0 +1,125 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-09-30 */
+/* Tokens adapted from ~/.claude/templates/html-page/base.css (warm pastel palette). */
+
+:root {
+  --bg-app: #F1EEE7;
+  --surface: #FFFFFF;
+  --text-primary: #1B1F1C;
+  --text-muted: #6B6F6C;
+  --border: rgba(27, 31, 28, 0.08);
+  --hover: rgba(27, 31, 28, 0.04);
+  --focus: #8FBE7A;
+
+  --tile-teal-bg: #D9EBD0;   --tile-teal-fg: #2F4A24;
+  --tile-purple-bg: #D9D6E8; --tile-purple-fg: #3A3560;
+  --tile-coral-bg: #F2D4D0;  --tile-coral-fg: #6A2E26;
+  --tile-pink-bg: #F3D6E3;   --tile-pink-fg: #6A2747;
+  --tile-amber-bg: #EFE5A8;  --tile-amber-fg: #5A4A0E;
+  --tile-blue-bg: #D6E2EE;   --tile-blue-fg: #24405C;
+  --tile-gray-bg: #E4E1D9;   --tile-gray-fg: #3D403E;
+
+  --font-sans: "Inter", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-app: #161917;
+    --surface: #1F2320;
+    --text-primary: #E8E6DF;
+    --text-muted: #9A9E9B;
+    --border: rgba(232, 230, 223, 0.10);
+    --hover: rgba(232, 230, 223, 0.05);
+
+    --tile-teal-bg: #2F4A24;   --tile-teal-fg: #D9EBD0;
+    --tile-purple-bg: #3A3560; --tile-purple-fg: #D9D6E8;
+    --tile-coral-bg: #6A2E26;  --tile-coral-fg: #F2D4D0;
+    --tile-pink-bg: #6A2747;   --tile-pink-fg: #F3D6E3;
+    --tile-amber-bg: #5A4A0E;  --tile-amber-fg: #EFE5A8;
+    --tile-blue-bg: #24405C;   --tile-blue-fg: #D6E2EE;
+    --tile-gray-bg: #3D403E;   --tile-gray-fg: #E4E1D9;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+}
+
+h1 { font-size: 22px; font-weight: 500; margin: 0; }
+.count { font-size: 13px; color: var(--text-muted); margin: 2px 0 16px; min-height: 1.5em; }
+.status { color: var(--text-muted); font-size: 14px; }
+
+.app-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.app-list li + li { border-top: 1px solid var(--border); }
+
+.app-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-row:hover { background: var(--hover); }
+.app-row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+.tile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 17px;
+}
+
+.tile-teal { background: var(--tile-teal-bg); color: var(--tile-teal-fg); }
+.tile-purple { background: var(--tile-purple-bg); color: var(--tile-purple-fg); }
+.tile-coral { background: var(--tile-coral-bg); color: var(--tile-coral-fg); }
+.tile-pink { background: var(--tile-pink-bg); color: var(--tile-pink-fg); }
+.tile-amber { background: var(--tile-amber-bg); color: var(--tile-amber-fg); }
+.tile-blue { background: var(--tile-blue-bg); color: var(--tile-blue-fg); }
+.tile-gray { background: var(--tile-gray-bg); color: var(--tile-gray-fg); }
+
+.tile-icon, .chevron {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tile-icon { width: 22px; height: 22px; }
+.chevron { flex: none; width: 18px; height: 18px; color: var(--text-muted); }
+
+.app-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.app-name { font-size: 15px; font-weight: 500; }
+.app-desc, .app-date { font-size: 13px; color: var(--text-muted); }
+.app-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-date { font-size: 12px; }
