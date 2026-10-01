@@ -1,0 +1,69 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-09-28 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kanban</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Connect screen: shown until a data folder (or memory mode) is chosen. -->
+  <section id="connect" class="connect" hidden>
+    <div class="connect-box">
+      <h1>Kanban</h1>
+      <label class="field">
+        <span class="field-label">Your name (used on comments, remembered by this browser)</span>
+        <input id="author-input" placeholder="Alex">
+      </label>
+      <p>Open a project folder, for example <code>.kanban</code> in a repo or the <code>example</code> folder next to <code>index.html</code>. An empty folder becomes a new board.</p>
+      <div id="recent-block" hidden>
+        <span class="field-label">Recent</span>
+        <div id="recent-list" class="connect-actions"></div>
+      </div>
+      <div class="connect-actions">
+        <button id="btn-open-folder">Open folder</button>
+        <button id="btn-memory">Work in memory</button>
+      </div>
+      <p id="connect-note" class="muted small"></p>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+    <header class="topbar">
+      <strong class="brand">Kanban</strong>
+      <select id="project-select" title="Recent projects"></select>
+      <button id="btn-settings">Project settings</button>
+      <button id="btn-new-task" class="primary">New task</button>
+      <input id="search" type="search" placeholder="Search tasks...">
+      <select id="priority-filter" title="Priority filter">
+        <option value="">All priorities</option>
+      </select>
+      <select id="sprint-filter" title="Sprint filter"></select>
+      <select id="assignee-filter" title="Assignee filter"></select>
+      <select id="reviewer-filter" title="Reviewer filter"></select>
+      <span class="spacer"></span>
+      <button id="btn-export">Export</button>
+      <button id="btn-import">Import</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+      <button id="btn-reload">Reload</button>
+      <button id="btn-folder">Open folder</button>
+      <button id="btn-author" title="Your name on comments">You: <span id="author-name"></span></button>
+      <span id="folder-name" class="muted small"></span>
+    </header>
+    <div id="bulk-bar" class="bulk-bar" hidden></div>
+    <div id="warnings" class="warnings" hidden></div>
+    <main id="board" class="board"></main>
+  </div>
+
+  <script src="js/util.js"></script>
+  <script src="js/markdown.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/task-editor.js"></script>
+  <script src="js/project-settings.js"></script>
+  <script src="js/import-export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

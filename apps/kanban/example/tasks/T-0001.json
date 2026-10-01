@@ -1,0 +1,24 @@
+{
+  "id": "T-0001",
+  "title": "Set up the project folder",
+  "description": "Create the data folder and open it from the board.",
+  "lane": "done",
+  "priority": "medium",
+  "labels": [
+    "setup"
+  ],
+  "due": "",
+  "sprint": "sprint-1",
+  "order": 10,
+  "created": "2026-09-28T09:00:00.000Z",
+  "updated": "2026-09-28T09:30:00.000Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T09:30:00.000Z",
+      "text": "Folder created and connected."
+    }
+  ]
+}

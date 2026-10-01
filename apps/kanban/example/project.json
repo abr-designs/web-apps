@@ -1,0 +1,17 @@
+{
+  "name": "Example Project",
+  "description": "A small sample showing the task format.",
+  "lanes": [
+    { "id": "backlog", "name": "Backlog" },
+    { "id": "todo", "name": "To Do" },
+    { "id": "in-progress", "name": "In Progress" },
+    { "id": "review", "name": "Review" },
+    { "id": "done", "name": "Done" }
+  ],
+  "sprints": [
+    { "id": "sprint-1", "name": "Sprint 1", "start": "2026-09-28", "end": "2026-10-09", "status": "active" },
+    { "id": "v1-release", "name": "v1 release", "start": "", "end": "2026-10-31", "status": "planned" }
+  ],
+  "labels": { "bug": "red", "docs": "teal" },
+  "created": "2026-09-28T09:00:00.000Z"
+}

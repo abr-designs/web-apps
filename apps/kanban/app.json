@@ -1,0 +1,6 @@
+{
+  "name": "Kanban",
+  "description": "Local Trello-like board with a command-line companion.",
+  "icon": "layout-kanban",
+  "color": "purple"
+}
