@@ -1,0 +1,6 @@
+{
+  "name": "EPUB Generator",
+  "description": "Convert Word and text files into EPUB books in the browser.",
+  "icon": "book",
+  "color": "amber"
+}

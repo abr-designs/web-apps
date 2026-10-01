@@ -1,0 +1,259 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-09-23 */
+
+:root {
+  --bg: #faf7f2;
+  --fg: #2b2a28;
+  --muted: #6f6a62;
+  --accent: #c9b8e8;
+  --border: #d9d2c5;
+  --danger: #b0413e;
+  --warn-bg: #fcf1dc;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 system-ui, sans-serif;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+#drop-zone {
+  display: block;
+  padding: 48px 16px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+#drop-zone.over {
+  border-color: var(--accent);
+  background: #f3eefb;
+}
+
+#drop-zone input,
+.folder-pick input,
+.cover-pick input {
+  display: none;
+}
+
+.folder-pick {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.settings {
+  margin-top: 16px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.settings summary {
+  cursor: pointer;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.settings input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: 0.85rem/1.4 ui-monospace, Consolas, monospace;
+  color: var(--fg);
+  background: #fff;
+}
+
+.hint {
+  margin: 4px 0 0;
+}
+
+.field-error {
+  margin: 4px 0 0;
+  color: var(--danger);
+}
+
+.cover {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.cover-preview {
+  width: 60px;
+  height: 90px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.cover-pick,
+.cover-clear,
+.remove {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+fieldset:disabled .cover-pick {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.kepub-all {
+  font-size: 0.9rem;
+}
+
+.toolbar .download {
+  margin-top: 0;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#status {
+  min-height: 1.5em;
+  color: var(--muted);
+}
+
+.book {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.book header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.book h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.book h3 {
+  margin: 16px 0 8px;
+  font-size: 1rem;
+}
+
+.status {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.status[data-status="failed"] {
+  color: var(--danger);
+}
+
+.book fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.meta-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.book input,
+.book select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  color: var(--fg);
+  background: #fff;
+}
+
+.chapters {
+  margin: 0;
+  padding-left: 2em;
+}
+
+.chapters li {
+  margin: 4px 0;
+}
+
+.chapters input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.warnings {
+  margin: 12px 0 0;
+  padding: 8px 8px 8px 2em;
+  border-radius: 6px;
+  background: var(--warn-bg);
+  font-size: 0.9rem;
+}
+
+.download {
+  margin-top: 16px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.download:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
