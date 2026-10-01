@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { collectApps } from './build-directory.mjs';
+import { collectApps, buildIndex, assembleSite, resolveOutDir } from './build-directory.mjs';
 
 function makeTree(files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-'));
@@ -72,4 +72,41 @@ test('files in apps are ignored', () => {
 test('all errors are collected', () => {
   const dir = makeTree({ 'a/index.html': '', 'b/app.json': okJson });
   assert.equal(collectApps(dir).errors.length, 2);
+});
+
+const meta = (slug) => ({ slug, name: slug, description: 'd', icon: null, color: 'gray' });
+
+test('buildIndex sorts newest first, null last', () => {
+  const updates = { a: '2026-09-01T00:00:00Z', b: null, c: '2026-09-20T00:00:00Z' };
+  const entries = buildIndex([meta('a'), meta('b'), meta('c')], (slug) => updates[slug]);
+  assert.deepEqual(entries.map((e) => e.slug), ['c', 'a', 'b']);
+  assert.equal(entries[0].url, 'c/');
+  assert.equal(entries[2].updated, null);
+});
+
+test('assembleSite copies shell and apps', () => {
+  const root = makeTree({
+    'index.html': '', 'directory.css': '', 'directory.js': '',
+    'apps/x/index.html': '', 'apps/x/js/app.js': '', 'apps/x/js/docs/keep.txt': '',
+    'apps/x/docs/a.md': '', 'apps/x/tests/t.js': '', 'apps/x/tools/t.mjs': '',
+    'apps/x/.claude/s.md': '', 'apps/x/.kanban/b.json': '',
+  });
+  const out = path.join(root, '_site');
+  const entry = { ...meta('x'), updated: null, url: 'x/' };
+  assembleSite(root, out, [entry]);
+  for (const rel of ['index.html', 'directory.css', 'directory.js', 'apps.json', '.nojekyll',
+    'x/index.html', 'x/js/app.js', 'x/js/docs/keep.txt']) {
+    assert.ok(fs.existsSync(path.join(out, rel)), `expected ${rel}`);
+  }
+  for (const rel of ['x/docs', 'x/tests', 'x/tools', 'x/.claude', 'x/.kanban']) {
+    assert.ok(!fs.existsSync(path.join(out, rel)), `unexpected ${rel}`);
+  }
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'apps.json'), 'utf8')), [entry]);
+});
+
+test('resolveOutDir refuses the repo root or its parents', () => {
+  const root = makeTree({});
+  assert.throws(() => resolveOutDir(root, '.'), /must be inside/);
+  assert.throws(() => resolveOutDir(root, '..'), /must be inside/);
+  assert.equal(resolveOutDir(root, '_site'), path.join(root, '_site'));
 });
