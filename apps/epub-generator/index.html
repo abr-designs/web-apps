@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EPUB Generator</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <main>
+    <h1>EPUB Generator</h1>
+    <label id="drop-zone">
+      <span>Drop Markdown, text or Word (.docx) files (plus any images) here, or click to choose</span>
+      <input id="file-input" type="file" accept=".md,.markdown,.txt,.docx,image/*" multiple>
+    </label>
+    <label class="folder-pick">
+      Or choose a folder (keeps image paths like <code>img/fig1.png</code> intact)
+      <input id="folder-input" type="file" webkitdirectory>
+    </label>
+    <details class="settings">
+      <summary>Chapter detection for text and Word files</summary>
+      <label>Chapter heading pattern (regular expression, case-insensitive, tested on each paragraph's first line)
+        <input id="chapter-regex" spellcheck="false" autocomplete="off">
+      </label>
+      <p class="hint">Word files use this only when they have no heading styles. In text files, short single-line paragraphs in ALL CAPS also become chapter headings. Clear the field to restore the default.</p>
+      <p id="regex-error" class="field-error" hidden></p>
+    </details>
+    <div class="toolbar">
+      <label class="kepub-all"><input id="kepub-all" type="checkbox"> Make Kobo books (KEPUB) by default</label>
+      <button type="button" id="download-all" class="download" hidden>Download all</button>
+    </div>
+    <p id="status" role="status"></p>
+    <section id="book-list"></section>
+  </main>
+
+  <template id="book-row">
+    <article class="book">
+      <header>
+        <h2 class="source"></h2>
+        <div class="row-actions">
+          <span class="status" role="status"></span>
+          <button type="button" class="remove">Remove</button>
+        </div>
+      </header>
+      <fieldset>
+        <div class="meta-grid">
+          <label>Title <input name="title"></label>
+          <label>Author <input name="author"></label>
+          <label>Language <input name="lang" placeholder="en"></label>
+          <label>Series <input name="series"></label>
+          <label>Series # <input name="seriesIndex" type="number" min="0" step="any"></label>
+          <label>Format
+            <select name="format">
+              <option value="">Default</option>
+              <option value="epub">EPUB</option>
+              <option value="kepub">KEPUB (Kobo)</option>
+            </select>
+          </label>
+          <label>Split chapters at
+            <select name="splitLevel">
+              <option value="auto">Auto</option>
+              <option value="1">H1</option>
+              <option value="2">H2</option>
+              <option value="3">H3</option>
+              <option value="none">Don't split</option>
+            </select>
+          </label>
+          <label>Tables
+            <select name="tables">
+              <option value="stack">Stack rows</option>
+              <option value="grid">Keep grid</option>
+            </select>
+          </label>
+        </div>
+        <h3>Cover</h3>
+        <div class="cover">
+          <img class="cover-preview" alt="Uploaded cover" hidden>
+          <span class="cover-note">Generated from the title and author.</span>
+          <label class="cover-pick">Upload JPEG/PNG <input name="cover" type="file" accept="image/jpeg,image/png"></label>
+          <button type="button" class="cover-clear" hidden>Use generated cover</button>
+        </div>
+        <h3>Chapters <span class="chapter-count"></span></h3>
+        <ol class="chapters"></ol>
+        <ul class="warnings" hidden></ul>
+        <button type="button" class="download">Download EPUB</button>
+      </fieldset>
+    </article>
+  </template>
+
+  <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/marked.umd.js"></script>
+  <script src="vendor/marked-footnote.umd.js"></script>
+  <script src="vendor/mammoth.browser.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
