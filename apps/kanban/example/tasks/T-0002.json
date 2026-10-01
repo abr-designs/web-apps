@@ -1,0 +1,60 @@
+{
+  "id": "T-0002",
+  "title": "Sketch the board layout",
+  "description": "Lanes scroll **horizontally**. Cards show id, priority, title, labels, due date and counts.\n\n## Acceptance\n- [x] Fixed lane width\n- [ ] Cards wrap long titles\n\n```css\n.lane { flex: 0 0 var(--lane-width); } /* one column per lane */\n```",
+  "lane": "in-progress",
+  "priority": "high",
+  "labels": [
+    "design",
+    "ui"
+  ],
+  "due": "2026-10-03",
+  "sprint": "sprint-1",
+  "assignee": "agent:general-purpose",
+  "reviewer": "claude",
+  "screenshot": true,
+  "order": 10,
+  "created": "2026-09-28T09:05:00.000Z",
+  "updated": "2026-09-28T10:00:00.000Z",
+  "links": [
+    {
+      "title": "MDN: HTML Drag and Drop API",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API"
+    }
+  ],
+  "attachments": [
+    {
+      "name": "layout.svg",
+      "path": "media/T-0002-layout.svg",
+      "type": "image/svg+xml"
+    }
+  ],
+  "comments": [
+    {
+      "author": "Alex",
+      "date": "2026-09-28T09:40:00.000Z",
+      "text": "Keep the lanes a fixed width."
+    },
+    {
+      "author": "Claude",
+      "date": "2026-09-28T10:00:00.000Z",
+      "text": "Added a layout sketch in media/. Lane width is the `--lane-width` variable in `style.css`."
+    }
+  ],
+  "commits": [
+    {
+      "sha": "7c1df7d",
+      "subject": "Initial Kanban board app",
+      "date": ""
+    }
+  ],
+  "work": [
+    {
+      "by": "agent:general-purpose",
+      "date": "2026-09-28T10:00:00.000Z",
+      "minutes": 18,
+      "tokens": 52000,
+      "note": "Layout sketch"
+    }
+  ]
+}

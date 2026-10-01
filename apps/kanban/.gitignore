@@ -1,0 +1,9 @@
+# Created by Claude (claude-opus-5-5)
+# Date: 2026-09-28
+
+# Generated from this machine's agent definitions
+example/agents.json
+
+# Machine-specific Claude Code settings
+.claude/settings.local.json
+.claude/launch.json
