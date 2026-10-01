@@ -1,0 +1,921 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-09-30 -->
+<title>Paint Rack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: a single-column hobby-desk tool with a bottom tab bar; primer-grey ground, brass accent. */
+:root {
+  --bg: #e9eae6;
+  --surface: #f6f6f3;
+  --raised: #ffffff;
+  --line: #d3d5cf;
+  --fg: #1d1f1c;
+  --muted: #62665e;
+  --accent: #9a6b1c;
+  --accent-ink: #ffffff;
+  --owned: #2f7a4a;
+  --wish: #a8456b;
+  --font-display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141614; --surface: #1c1f1c; --raised: #242824; --line: #333833;
+    --fg: #e8e9e4; --muted: #9ba094; --accent: #d9a54a; --accent-ink: #1b1508;
+    --owned: #5cc084; --wish: #e07fa4; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141614; --surface: #1c1f1c; --raised: #242824; --line: #333833;
+  --fg: #e8e9e4; --muted: #9ba094; --accent: #d9a54a; --accent-ink: #1b1508;
+  --owned: #5cc084; --wish: #e07fa4; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--font-body); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 12px 96px; display: flex; flex-direction: column; gap: 14px; }
+header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h1 { font: 700 1.9rem/1 var(--font-display); letter-spacing: .02em; margin: 0; text-transform: uppercase; }
+h2 { font: 700 1.25rem/1.1 var(--font-display); letter-spacing: .03em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.sync { font-size: .75rem; color: var(--muted); }
+.label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+
+.field { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); }
+select.field { padding-right: 28px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row > .grow { flex: 1 1 160px; min-width: 0; }
+
+.chips { display: flex; gap: 6px; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; padding-bottom: 6px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.chips { touch-action: pan-x pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.chips.dragging { cursor: grabbing; }
+.chips.dragging .chip { pointer-events: none; }
+.chips::-webkit-scrollbar { height: 4px; }
+.chips::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 11px; font-size: .82rem; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.chip .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.btn { border: 1px solid var(--line); background: var(--raised); border-radius: var(--r); padding: 9px 14px; font-weight: 600; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.small { padding: 5px 10px; font-size: .82rem; }
+.btn.danger { color: #b3261e; }
+
+.count { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Paint rows */
+.list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.paint { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.paint:last-child { border-bottom: 0; }
+.paint .info { min-width: 0; cursor: pointer; }
+.paint .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paint .meta { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paint .acts { display: flex; gap: 4px; }
+.icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--raised); display: grid; place-items: center; padding: 0; }
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn.on-owned { background: var(--owned); border-color: var(--owned); color: #fff; }
+.icon-btn.on-wish { background: var(--wish); border-color: var(--wish); color: #fff; }
+
+.pot { width: 40px; height: 40px; border-radius: 50%; position: relative; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); cursor: pointer; flex: none; }
+.pot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.35), rgba(255,255,255,0) 45%); }
+.pot.metal::after { background: linear-gradient(135deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,.25) 70%, rgba(255,255,255,.25) 100%); }
+.pot.lg { width: 72px; height: 72px; }
+.tag { font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; vertical-align: 1px; }
+.hex { font-family: var(--font-mono); font-size: .78rem; }
+
+.empty { padding: 24px 16px; text-align: center; color: var(--muted); }
+.more { padding: 10px; text-align: center; }
+
+/* Match results */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.source { display: flex; gap: 14px; align-items: center; }
+.source > div { min-width: 0; }
+.de { font-family: var(--font-mono); font-size: .75rem; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.q-great { background: color-mix(in srgb, var(--owned) 22%, transparent); }
+.q-close { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.q-rough { background: color-mix(in srgb, var(--muted) 22%, transparent); }
+.compare { display: flex; height: 26px; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.compare span { flex: 1; }
+
+/* Picker */
+.picker { position: relative; }
+.suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5; max-height: 300px; overflow-y: auto; background: var(--raised); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.suggest button { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; }
+.suggest button:hover, .suggest button:focus { background: var(--surface); }
+.suggest .pot { width: 24px; height: 24px; }
+
+/* Harmony */
+.scheme { display: flex; flex-direction: column; gap: 8px; }
+.target { display: grid; grid-template-columns: 72px 1fr; gap: 10px; align-items: start; }
+.pair { display: flex; width: 72px; height: 52px; border-radius: 8px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.pair span { flex: 1; }
+.steps { display: flex; height: 24px; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.steps button { flex: 1; border: 0; padding: 0; min-width: 0; }
+.picked { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.price { font-variant-numeric: tabular-nums; }
+.price-row { display: grid; grid-template-columns: 1fr 110px; gap: 8px; align-items: center; }
+.target .note { font-size: .75rem; color: var(--muted); }
+.mini { display: flex; flex-wrap: wrap; gap: 6px; }
+.mini button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--raised); border-radius: 999px; padding: 3px 10px 3px 3px; font-size: .8rem; max-width: 100%; }
+.mini button span.t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini .pot { width: 22px; height: 22px; }
+.brand-badge { flex: none; display: inline-grid; place-items: center; min-width: 30px; height: 18px; padding: 0 5px; border-radius: 4px; background: var(--bb); color: #fff; font: 700 .64rem/1 var(--font-body); letter-spacing: .06em; }
+img.brand-badge { min-width: 0; width: auto; max-width: 48px; height: 20px; padding: 1px; background: #fff; object-fit: contain; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.mini .own { color: var(--owned); font-weight: 700; }
+
+/* Projects */
+.project { display: flex; flex-direction: column; gap: 8px; }
+.project-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+/* Tabs */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+nav.tabs .inner { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+nav.tabs button { border: 0; background: none; padding: 8px 2px 9px; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 600 .72rem var(--font-body); color: var(--muted); }
+nav.tabs button svg { width: 22px; height: 22px; }
+nav.tabs button[aria-selected="true"] { color: var(--accent); }
+
+/* Sheet */
+dialog.sheet { border: 0; padding: 0; margin: auto; width: calc(100% - 32px); max-width: 560px; max-height: 85vh; overflow-y: auto; border-radius: 16px; background: var(--surface); color: var(--fg); box-shadow: 0 16px 48px rgba(0,0,0,.35); }
+dialog.sheet::backdrop { background: rgba(0,0,0,.45); }
+.sheet-body { position: relative; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.sheet-close { position: absolute; right: 12px; top: 12px; }
+.sheet-body > .source { padding-right: 64px; }
+.check { display: flex; gap: 10px; align-items: center; padding: 6px 0; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mono); font-size: .8rem; }
+.note-text { font-size: .82rem; color: var(--muted); max-width: 65ch; }
+.toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: .85rem; z-index: 20; }
+@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>Paint Rack</h1>
+    <span class="sync" id="sync">Saved on this device</span>
+  </header>
+
+  <!-- PAINTS -->
+  <section id="tab-paints" data-tab>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input id="q" class="field" type="search" placeholder="Search paints, e.g. Mephiston or 72.010" autocomplete="off">
+      <div class="chips" id="brandChips"></div>
+      <div class="chips" id="catChips"></div>
+      <div class="row">
+        <select id="rangeSel" class="field grow" aria-label="Range"></select>
+        <select id="showSel" class="field grow" aria-label="Show">
+          <option value="all">All paints</option>
+          <option value="owned">Owned</option>
+          <option value="notowned">Not owned</option>
+          <option value="wish">On a wishlist</option>
+        </select>
+        <select id="sortSel" class="field grow" aria-label="Sort">
+          <option value="range">Sort by range</option>
+          <option value="name">Sort by name</option>
+          <option value="hue">Sort by hue</option>
+          <option value="light">Sort light to dark</option>
+        </select>
+      </div>
+      <div class="count" id="count"></div>
+      <div class="list" id="paintList"></div>
+    </div>
+  </section>
+
+  <!-- MATCH -->
+  <section id="tab-match" data-tab hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h2>Find an equivalent</h2>
+      <div class="picker" id="matchPicker"></div>
+      <div class="row">
+        <span class="label">or a colour</span>
+        <input id="matchColor" type="color" value="#9a1115" aria-label="Pick a colour" style="width:48px;height:36px;border:0;background:none;padding:0">
+        <input id="matchHex" class="field grow" placeholder="#9A1115" style="font-family:var(--font-mono)">
+      </div>
+      <div class="row">
+        <select id="matchBrand" class="field grow" aria-label="Brand to search"></select>
+        <select id="matchOwned" class="field grow" aria-label="Owned filter">
+          <option value="all">Any paint</option>
+          <option value="owned">Only paints I own</option>
+        </select>
+      </div>
+      <div id="matchOut"></div>
+    </div>
+  </section>
+
+  <!-- HARMONY -->
+  <section id="tab-harmony" data-tab hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h2>Colour schemes</h2>
+      <div class="picker" id="harmPicker"></div>
+      <div class="row">
+        <select id="harmBrand" class="field grow" aria-label="Brand"></select>
+        <select id="harmOwned" class="field grow" aria-label="Owned filter">
+          <option value="all">Any paint</option>
+          <option value="owned">Only paints I own</option>
+        </select>
+      </div>
+      <div id="harmOut"></div>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section id="tab-projects" data-tab hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h2>Project wishlists</h2>
+      <form id="newProject" class="row">
+        <input id="newProjectName" class="field grow" placeholder="New project, e.g. Blood Angels Intercessors" maxlength="60">
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      <div id="projectsOut" style="display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+  </section>
+
+  <!-- COLLECTIONS -->
+  <section id="tab-more" data-tab hidden>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <h2>Collections</h2>
+      <div class="card" id="brandToggles"></div>
+      <div class="card" id="priceList"></div>
+
+      <div class="card">
+        <span class="label">Add a collection or paints</span>
+        <p class="note-text" style="margin:0">One paint per line: <span class="hex">Name, #hex</span>. Add <span class="hex">, metal</span> for metallics and an optional code first as <span class="hex">72.010 Bloody Red, #B8141B</span>. Paints with a brand and range that already exist are added to that range.</p>
+        <div class="row">
+          <input id="colBrand" class="field grow" placeholder="Brand, e.g. Army Painter">
+          <input id="colRange" class="field grow" placeholder="Range, e.g. Speedpaint">
+        </div>
+        <textarea id="colLines" class="field" placeholder="Holy White, #F2F0E8&#10;Zealot Yellow, #F2B21E&#10;Shiny Gold, #C9A24A, metal"></textarea>
+        <div class="row"><button class="btn primary" id="colAdd">Add paints</button><span class="count" id="colMsg"></span></div>
+      </div>
+
+      <div class="card" id="customList"></div>
+
+      <div class="card">
+        <span class="label">Backup</span>
+        <p class="note-text" style="margin:0">Your owned paints, wishlists and custom paints sync to your Claude account when you are signed in, and are also kept in this browser. Copy a backup to move them anywhere else.</p>
+        <textarea id="backup" class="field" placeholder="Paste a backup here to restore it"></textarea>
+        <div class="row">
+          <button class="btn" id="backupCopy">Copy backup</button>
+          <button class="btn" id="backupRestore">Restore pasted backup</button>
+          <span class="count" id="backupMsg"></span>
+        </div>
+      </div>
+      <p class="note-text">Swatch colours are approximations of each paint on a white basecoat. Screens vary, so check a real pot before committing a whole army.</p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="inner" role="tablist">
+    <button role="tab" data-go="paints"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="7" width="12" height="14" rx="2"/><path d="M8 3h8v4H8z"/></svg>Paints</button>
+    <button role="tab" data-go="match"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/></svg>Match</button>
+    <button role="tab" data-go="harmony"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>Schemes</button>
+    <button role="tab" data-go="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v17l-7-4-7 4z"/></svg>Projects</button>
+    <button role="tab" data-go="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Collections</button>
+  </div>
+</nav>
+
+<dialog class="sheet" id="sheet"><div class="sheet-body" id="sheetBody"></div></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="paints.js"></script>
+<script>
+// Created by Claude (claude-opus-5-5)
+// Date: 2026-09-30
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  // ---------- Colour maths ----------
+  /** @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function hexToRgb(hex) {
+    const h = hex.replace("#", "");
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  const toHex = rgb => "#" + rgb.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("").toUpperCase();
+
+  /** @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function rgbToLab([r, g, b]) {
+    const lin = c => { c /= 255; return c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92; };
+    const R = lin(r), G = lin(g), B = lin(b);
+    const x = (R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047;
+    const y = (R * 0.2126 + G * 0.7152 + B * 0.0722);
+    const z = (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883;
+    const f = t => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+    const fx = f(x), fy = f(y), fz = f(z);
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+  }
+
+  /** @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function labToRgb([L, a, b]) {
+    const fy = (L + 16) / 116, fx = fy + a / 500, fz = fy - b / 200;
+    const finv = t => t ** 3 > 0.008856 ? t ** 3 : (t - 16 / 116) / 7.787;
+    const x = finv(fx) * 0.95047, y = finv(fy), z = finv(fz) * 1.08883;
+    const gam = c => { c = Math.max(0, Math.min(1, c)); return (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055) * 255; };
+    return [gam(3.2406 * x - 1.5372 * y - 0.4986 * z), gam(-0.9689 * x + 1.8758 * y + 0.0415 * z), gam(0.0557 * x - 0.204 * y + 1.057 * z)];
+  }
+
+  /** Evenly spaced Lab steps from one colour to another, both ends included. @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function blendSteps(labA, labB, n = 7) {
+    return Array.from({ length: n }, (_, i) => { const t = i / (n - 1); return toHex(labToRgb(labA.map((v, k) => v + (labB[k] - v) * t))); });
+  }
+
+  /** @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function rgbToHsl([r, g, b]) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+    let h = 0, s = 0;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h *= 60;
+    }
+    return [h, s, l];
+  }
+
+  /** @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function hslToRgb([h, s, l]) {
+    h = ((h % 360) + 360) % 360 / 360;
+    if (s === 0) return [l * 255, l * 255, l * 255];
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const t = x => { x = (x + 1) % 1; return x < 1 / 6 ? p + (q - p) * 6 * x : x < 1 / 2 ? q : x < 2 / 3 ? p + (q - p) * (2 / 3 - x) * 6 : p; };
+    return [t(h + 1 / 3) * 255, t(h) * 255, t(h - 1 / 3) * 255];
+  }
+
+  /** CIEDE2000 colour difference. @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function deltaE([L1, a1, b1], [L2, a2, b2]) {
+    const rad = Math.PI / 180, deg = 180 / Math.PI;
+    const C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2), Cb = (C1 + C2) / 2;
+    const G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7)));
+    const a1p = a1 * (1 + G), a2p = a2 * (1 + G);
+    const C1p = Math.hypot(a1p, b1), C2p = Math.hypot(a2p, b2);
+    const h = (b, a) => { if (!a && !b) return 0; const v = Math.atan2(b, a) * deg; return v < 0 ? v + 360 : v; };
+    const h1p = h(b1, a1p), h2p = h(b2, a2p);
+    const dLp = L2 - L1, dCp = C2p - C1p;
+    let dhp = 0;
+    if (C1p * C2p) { dhp = h2p - h1p; if (dhp > 180) dhp -= 360; else if (dhp < -180) dhp += 360; }
+    const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(dhp / 2 * rad);
+    const Lbp = (L1 + L2) / 2, Cbp = (C1p + C2p) / 2;
+    let hbp = h1p + h2p;
+    if (C1p * C2p) { hbp = Math.abs(h1p - h2p) > 180 ? (h1p + h2p + (h1p + h2p < 360 ? 360 : -360)) / 2 : (h1p + h2p) / 2; }
+    const T = 1 - 0.17 * Math.cos((hbp - 30) * rad) + 0.24 * Math.cos(2 * hbp * rad) + 0.32 * Math.cos((3 * hbp + 6) * rad) - 0.2 * Math.cos((4 * hbp - 63) * rad);
+    const dTh = 30 * Math.exp(-(((hbp - 275) / 25) ** 2));
+    const Rc = 2 * Math.sqrt(Cbp ** 7 / (Cbp ** 7 + 25 ** 7));
+    const Sl = 1 + 0.015 * (Lbp - 50) ** 2 / Math.sqrt(20 + (Lbp - 50) ** 2);
+    const Sc = 1 + 0.045 * Cbp, Sh = 1 + 0.015 * Cbp * T;
+    const Rt = -Math.sin(2 * dTh * rad) * Rc;
+    return Math.sqrt((dLp / Sl) ** 2 + (dCp / Sc) ** 2 + (dHp / Sh) ** 2 + Rt * (dCp / Sc) * (dHp / Sh));
+  }
+
+  const CATS = ["Red", "Orange", "Yellow", "Green", "Teal", "Blue", "Purple", "Pink", "Brown", "Bone", "Grey", "Black", "White", "Metallic"];
+  const CAT_DOT = { Red: "#b3201e", Orange: "#e0701e", Yellow: "#f2c318", Green: "#3f8a3a", Teal: "#1c8a8a", Blue: "#2d4fa0", Purple: "#6c3d8e", Pink: "#e07fa4", Brown: "#6e4428", Bone: "#d8cca3", Grey: "#8a8e8a", Black: "#1b1b1b", White: "#fafafa", Metallic: "linear-gradient(135deg,#eee,#888 60%,#ddd)" };
+
+  /** Buckets a paint into a colour family. @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function categorize(p) {
+    if (p.metal) return "Metallic";
+    const [h, s, l] = p.hsl, [L, a, b] = p.lab, chroma = Math.hypot(a, b);
+    if (chroma < 9 || s < 0.08) return L < 22 ? "Black" : L > 90 ? "White" : "Grey";
+    if (h >= 15 && h < 55 && l < 0.42) return "Brown";
+    if (h >= 25 && h < 65 && s < 0.55 && l >= 0.42 && l < 0.9) return "Bone";
+    if (h < 12 || h >= 345) return l > 0.72 ? "Pink" : "Red";
+    if (h < 42) return l > 0.78 ? "Pink" : "Orange";
+    if (h < 68) return "Yellow";
+    if (h < 160) return "Green";
+    if (h < 196) return "Teal";
+    if (h < 252) return "Blue";
+    if (h < 292) return "Purple";
+    return "Pink";
+  }
+
+  // ---------- Catalogue ----------
+  let PAINTS = [], BY_ID = new Map();
+
+  /** Parses a "code:Name|hex|m" line into a paint. @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function makePaint(brand, range, name, hex, metal, code, custom) {
+    const rgb = hexToRgb(hex);
+    const p = { id: slug(`${brand}-${range}-${code || ""}-${name}`), brand, range, name, code: code || "", hex: "#" + hex.replace("#", "").toUpperCase(), metal: !!metal, custom: !!custom, rgb };
+    p.lab = rgbToLab(rgb); p.hsl = rgbToHsl(rgb); p.cat = categorize(p);
+    return p;
+  }
+
+  function buildCatalogue() {
+    PAINTS = [];
+    for (const col of window.PAINT_COLLECTIONS || []) {
+      for (const line of col.paints.split("\n")) {
+        const t = line.trim(); if (!t) continue;
+        const [left, hex, flag] = t.split("|");
+        let code = "", name = left;
+        const ci = left.indexOf(":"); if (ci > 0) { code = left.slice(0, ci); name = left.slice(ci + 1); }
+        PAINTS.push(makePaint(col.brand, col.range, name, hex, flag === "m", code, false));
+      }
+    }
+    for (const c of state.custom) {
+      if (/^#?[0-9a-f]{6}$/i.test(c.hex)) {
+        const p = makePaint(c.brand, c.range, c.name, c.hex.replace("#", ""), c.metal, c.code, true);
+        p.id = c.id; PAINTS.push(p);
+      }
+    }
+    BY_ID = new Map(PAINTS.map(p => [p.id, p]));
+  }
+  const brands = () => [...new Set(PAINTS.map(p => p.brand))];
+  const visibleBrands = () => brands().filter(b => !state.hiddenBrands.includes(b));
+
+  // ---------- State & persistence ----------
+  const LS_KEY = "paint-rack-state-v1";
+  const blankState = () => ({ owned: [], projects: [], custom: [], hiddenBrands: [], prices: {}, updatedAt: 0 });
+  let state = blankState();
+  let db = null, uid = null, dbRef = null, saveTimer = null, saving = Promise.resolve();
+
+  function normalize(s) {
+    const b = blankState();
+    if (!s || typeof s !== "object") return b;
+    return {
+      owned: Array.isArray(s.owned) ? s.owned.filter(x => typeof x === "string") : [],
+      projects: Array.isArray(s.projects) ? s.projects.filter(p => p && p.id && p.name).map(p => ({ id: String(p.id), name: String(p.name).slice(0, 60), items: Array.isArray(p.items) ? p.items.map(String) : [] })) : [],
+      custom: Array.isArray(s.custom) ? s.custom.filter(c => c && c.name && c.hex).map(c => ({ id: String(c.id || ("custom-" + slug(c.brand + "-" + c.range + "-" + c.name))), brand: String(c.brand || "Custom"), range: String(c.range || "Custom"), name: String(c.name), code: String(c.code || ""), hex: String(c.hex), metal: !!c.metal })) : [],
+      hiddenBrands: Array.isArray(s.hiddenBrands) ? s.hiddenBrands.map(String) : [],
+      prices: s.prices && typeof s.prices === "object" ? Object.fromEntries(Object.entries(s.prices).filter(([, v]) => Number.isFinite(v) && v >= 0)) : {},
+      updatedAt: Number(s.updatedAt) || 0
+    };
+  }
+  function loadLocal() { try { const raw = localStorage.getItem(LS_KEY); if (raw) return normalize(JSON.parse(raw)); } catch (e) {} return null; }
+  function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+  function setSync(t) { $("#sync").textContent = t; }
+
+  function commit(opts = {}) {
+    state.updatedAt = Date.now();
+    saveLocal();
+    if (opts.rebuild) buildCatalogue();
+    renderAll();
+    if (dbRef) {
+      clearTimeout(saveTimer);
+      setSync("Saving…");
+      saveTimer = setTimeout(() => {
+        const body = JSON.parse(JSON.stringify(state));
+        saving = saving.then(() => dbRef.set(body)).then(() => setSync("Synced to your account"), e => setSync(e && e.code === "quota_exceeded" ? "Account storage full" : "Saved on this device only"));
+      }, 700);
+    }
+  }
+
+  async function connectDb() {
+    try {
+      if (!window.claude || !window.claude.use) return;
+      const [d, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      if (!d || !user) return;
+      uid = await user.id();
+      if (!uid) return;
+      db = d;
+      dbRef = db.doc("data/users/" + uid + "/rack");
+      const snap = await dbRef.get();
+      if (snap.exists) {
+        const remote = normalize(snap.data());
+        if (remote.updatedAt >= state.updatedAt) { state = remote; saveLocal(); buildCatalogue(); renderAll(); }
+        else commit();
+      } else if (state.updatedAt) {
+        commit();
+      }
+      setSync("Synced to your account");
+    } catch (e) {
+      dbRef = null;
+      setSync("Saved on this device");
+    }
+  }
+
+  const isOwned = id => state.owned.includes(id);
+  const wishProjects = id => state.projects.filter(p => p.items.includes(id));
+  function toggleOwned(id) {
+    if (isOwned(id)) state.owned = state.owned.filter(x => x !== id);
+    else state.owned.push(id);
+    commit();
+  }
+  function toggleWish(projectId, paintId) {
+    const p = state.projects.find(x => x.id === projectId); if (!p) return;
+    p.items = p.items.includes(paintId) ? p.items.filter(x => x !== paintId) : [...p.items, paintId];
+    commit();
+  }
+
+  // ---------- Shared UI ----------
+  const ICON_OWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l5 5 9-10"/></svg>';
+  const ICON_WISH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v17l-6-4-6 4z"/></svg>';
+  const pot = (p, cls = "") => `<span class="pot ${p.metal ? "metal" : ""} ${cls}" style="background:${p.hex}" data-open="${esc(p.id)}" aria-hidden="true"></span>`;
+  /** Brand badge: logo if configured, else short name on the brand colour. @created Claude (claude-opus-5-5) — 2026-09-30 */
+  const brokenLogos = new Set();
+  function brandBadge(brand) {
+    const cfg = (window.PAINT_BRANDS || {})[brand] || {};
+    if (cfg.logo && !brokenLogos.has(cfg.logo)) return `<img class="brand-badge" src="${esc(cfg.logo)}" alt="${esc(brand)}" title="${esc(brand)}" data-brand="${esc(brand)}">`;
+    const words = brand.trim().split(/\s+/);
+    const short = cfg.short || (words.length > 1 ? words.map(w => w[0]).join("").slice(0, 3) : brand.slice(0, 3)).toUpperCase();
+    let hash = 0; for (const c of brand) hash = (hash * 31 + c.charCodeAt(0)) % 360;
+    const color = cfg.color || toHex(hslToRgb([hash, 0.45, 0.35]));
+    return `<span class="brand-badge" style="--bb:${esc(color)}" title="${esc(brand)}">${esc(short)}</span>`;
+  }
+  const rangeTag = p => ["Shade", "Contrast", "Dry", "Technical"].includes(p.range) ? `<span class="tag">${esc(p.range)}</span>` : "";
+  const label = p => `${p.brand} ${p.range}${p.code ? " · " + p.code : ""}`;
+  function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 1800); }
+  // Similarity as a share of the black-to-white distance (CIEDE2000 puts that at roughly 100).
+  const pct = d => Math.max(0, 100 - d).toFixed(1) + "%";
+
+  // Estimated Canadian retail per pot (CAD). Editable in Collections; custom ranges start unpriced.
+  const DEFAULT_PRICES = {
+    "Citadel|Base": 7.00, "Citadel|Layer": 7.00, "Citadel|Shade": 9.00, "Citadel|Contrast": 11.00,
+    "Citadel|Dry": 7.00, "Citadel|Technical": 9.00, "Vallejo|Game Color": 5.25, "Vallejo|Model Color": 4.75
+  };
+  const rangeKey = p => `${p.brand}|${p.range}`;
+  const priceOf = p => { const k = rangeKey(p); return k in state.prices ? state.prices[k] : k in DEFAULT_PRICES ? DEFAULT_PRICES[k] : null; };
+  const money = v => "$" + v.toFixed(2);
+  const priceText = p => { const v = priceOf(p); return v == null ? "" : ` · <span class="price">${money(v)}</span>`; };
+  const sumPrices = list => { let total = 0, unpriced = 0; list.forEach(p => { const v = priceOf(p); v == null ? unpriced++ : total += v; }); return { total, unpriced }; };
+
+  function quality(d) { return d < 3 ? ["Near identical", "q-great"] : d < 6 ? ["Close", "q-great"] : d < 10 ? ["Similar", "q-close"] : ["Rough", "q-rough"]; }
+
+  function paintRow(p) {
+    const own = isOwned(p.id), wish = wishProjects(p.id).length > 0;
+    return `<div class="paint">
+      ${pot(p)}
+      <div class="info" data-open="${esc(p.id)}">
+        <div class="name">${esc(p.name)}${rangeTag(p)}</div>
+        <div class="meta">${esc(label(p))}${priceText(p)} · <span class="hex">${p.hex}</span></div>
+      </div>
+      <div class="acts">
+        <button class="icon-btn ${wish ? "on-wish" : ""}" data-wish="${esc(p.id)}" aria-label="Wishlist ${esc(p.name)}" aria-pressed="${wish}">${ICON_WISH}</button>
+        <button class="icon-btn ${own ? "on-owned" : ""}" data-own="${esc(p.id)}" aria-label="I own ${esc(p.name)}" aria-pressed="${own}">${ICON_OWN}</button>
+      </div>
+    </div>`;
+  }
+
+  function nearest(target, { brand = "", exclude = "", owned = false, limit = 5, pool = PAINTS } = {}) {
+    return pool
+      .filter(p => p.id !== exclude && (!brand || p.brand === brand) && (!owned || isOwned(p.id)) && !state.hiddenBrands.includes(p.brand))
+      .map(p => ({ p, d: deltaE(target, p.lab) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, limit);
+  }
+
+  /** Search box with a suggestion dropdown. @created Claude (claude-opus-5-5) — 2026-09-30 */
+  function makePicker(host, placeholder, onPick) {
+    host.innerHTML = `<input class="field" type="search" placeholder="${esc(placeholder)}" autocomplete="off" id="${host.id}-in"><div class="suggest" hidden></div>`;
+    const input = host.querySelector("input"), box = host.querySelector(".suggest");
+    const show = () => {
+      const q = input.value.trim().toLowerCase();
+      if (!q) { box.hidden = true; return; }
+      const hits = PAINTS.filter(p => !state.hiddenBrands.includes(p.brand) && (p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q))).slice(0, 30);
+      box.innerHTML = hits.length ? hits.map(p => `<button type="button" data-id="${esc(p.id)}">${pot(p)}${brandBadge(p.brand)}<span><strong>${esc(p.name)}</strong><br><small class="meta">${esc(label(p))}</small></span></button>`).join("") : `<div class="empty">No paint matches “${esc(input.value)}”.</div>`;
+      box.hidden = false;
+    };
+    input.addEventListener("input", show);
+    input.addEventListener("focus", show);
+    box.addEventListener("click", e => {
+      e.stopPropagation();
+      const b = e.target.closest("button[data-id]"); if (!b) return;
+      const p = BY_ID.get(b.dataset.id); input.value = p.name; box.hidden = true; onPick(p);
+    });
+    document.addEventListener("click", e => { if (!host.contains(e.target)) box.hidden = true; });
+    return { set(p) { input.value = p ? p.name : ""; } };
+  }
+
+  // ---------- Paints tab ----------
+  const ui = { brand: "", cat: "", range: "", show: "all", sort: "range", q: "", limit: 120 };
+  try { Object.assign(ui, JSON.parse(localStorage.getItem("paint-rack-ui") || "{}"), { q: "", limit: 120 }); } catch (e) {}
+  const saveUi = () => { try { localStorage.setItem("paint-rack-ui", JSON.stringify({ brand: ui.brand, cat: ui.cat, show: ui.show, sort: ui.sort })); } catch (e) {} };
+
+  function renderFilters() {
+    const bs = visibleBrands();
+    if (ui.brand && !bs.includes(ui.brand)) ui.brand = "";
+    const keep = [$("#brandChips").scrollLeft, $("#catChips").scrollLeft];
+    requestAnimationFrame(() => { $("#brandChips").scrollLeft = keep[0]; $("#catChips").scrollLeft = keep[1]; });
+    $("#brandChips").innerHTML = ["", ...bs].map(b => `<button class="chip" data-brand="${esc(b)}" aria-pressed="${ui.brand === b}">${b ? esc(b) : "All brands"}</button>`).join("");
+    $("#catChips").innerHTML = ["", ...CATS].map(c => `<button class="chip" data-cat="${c}" aria-pressed="${ui.cat === c}">${c ? `<span class="dot" style="background:${CAT_DOT[c]}"></span>${c}` : "All colours"}</button>`).join("");
+    const ranges = [...new Set(PAINTS.filter(p => (!ui.brand || p.brand === ui.brand) && bs.includes(p.brand)).map(p => `${p.brand}|${p.range}`))];
+    if (ui.range && !ranges.includes(ui.range)) ui.range = "";
+    $("#rangeSel").innerHTML = `<option value="">All ranges</option>` + ranges.map(r => `<option value="${esc(r)}" ${ui.range === r ? "selected" : ""}>${esc(r.replace("|", " "))}</option>`).join("");
+    $("#showSel").value = ui.show; $("#sortSel").value = ui.sort;
+  }
+
+  function filteredPaints() {
+    const q = ui.q.toLowerCase(), bs = visibleBrands();
+    let list = PAINTS.filter(p => bs.includes(p.brand)
+      && (!ui.brand || p.brand === ui.brand)
+      && (!ui.range || `${p.brand}|${p.range}` === ui.range)
+      && (!ui.cat || p.cat === ui.cat)
+      && (ui.show === "all" || (ui.show === "owned" ? isOwned(p.id) : ui.show === "notowned" ? !isOwned(p.id) : wishProjects(p.id).length))
+      && (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.range.toLowerCase().includes(q)));
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    if (ui.sort === "name") list.sort(byName);
+    else if (ui.sort === "hue") list.sort((a, b) => CATS.indexOf(a.cat) - CATS.indexOf(b.cat) || a.hsl[0] - b.hsl[0] || b.lab[0] - a.lab[0]);
+    else if (ui.sort === "light") list.sort((a, b) => b.lab[0] - a.lab[0]);
+    return list;
+  }
+
+  function renderPaints() {
+    const list = filteredPaints();
+    const ownedCount = list.filter(p => isOwned(p.id)).length;
+    $("#count").textContent = `${list.length} paints · ${ownedCount} owned`;
+    const shown = list.slice(0, ui.limit);
+    $("#paintList").innerHTML = shown.length
+      ? shown.map(paintRow).join("") + (list.length > ui.limit ? `<div class="more"><button class="btn small" id="showMore">Show ${Math.min(120, list.length - ui.limit)} more</button></div>` : "")
+      : `<div class="empty">${ui.show === "owned" ? "No owned paints here yet. Tap the tick on any paint to add it to your rack." : "No paints match these filters."}</div>`;
+  }
+
+  // ---------- Detail sheet ----------
+  let sheetPaint = null;
+  function openSheet(id) {
+    const p = BY_ID.get(id); if (!p) return;
+    sheetPaint = p;
+    renderSheet();
+    const d = $("#sheet"); if (!d.open) d.showModal();
+  }
+  function renderSheet() {
+    const p = sheetPaint; if (!p) return;
+    const own = isOwned(p.id);
+    const others = visibleBrands().map(b => ({ b, hits: nearest(p.lab, { brand: b, exclude: p.id, limit: 3 }) })).filter(x => x.hits.length);
+    $("#sheetBody").innerHTML = `
+      <button class="btn small sheet-close" data-close>Close</button>
+      <div class="source">${pot(p, "lg")}<div><h2>${esc(p.name)}</h2><div class="meta">${esc(label(p))}${priceText(p)}</div><div class="hex">${p.hex} · ${p.cat}</div></div></div>
+      <div class="row">
+        <button class="btn ${own ? "primary" : ""}" data-own="${esc(p.id)}">${own ? "In my rack" : "Add to my rack"}</button>
+        <button class="btn" data-harm="${esc(p.id)}">Colour schemes</button>
+        ${p.custom ? `<button class="btn danger" data-delcustom="${esc(p.id)}">Delete custom paint</button>` : ""}
+      </div>
+      <div><span class="label">Wishlists</span>
+        ${state.projects.length ? state.projects.map(pr => `<label class="check"><input type="checkbox" data-wishp="${esc(pr.id)}" ${pr.items.includes(p.id) ? "checked" : ""}> ${esc(pr.name)}</label>`).join("") : `<p class="note-text">No projects yet. Create one in Projects to start a wishlist.</p>`}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px"><span class="label">Closest paints · tap to compare in Match</span>
+        ${others.map(({ b, hits }) => `<div><div class="meta" style="margin-bottom:4px">${esc(b)}</div><div class="mini">${hits.map(({ p: h, d }) => `<button data-matchto="${esc(p.id)}|${esc(h.id)}">${pot(h).replace(/ data-open="[^"]*"/, "")}${brandBadge(h.brand)}<span class="t">${esc(h.name)} <small class="meta">${esc(h.range)}</small></span>${isOwned(h.id) ? '<span class="own">✓</span>' : ""}<span class="de ${quality(d)[1]}">${pct(d)}</span></button>`).join("")}</div></div>`).join("")}
+      </div>`;
+  }
+
+  // ---------- Match tab ----------
+  let matchSource = null, matchPicked = "";
+  const matchPicker = makePicker($("#matchPicker"), "Paint you have the name of…", p => { matchPicked = ""; matchSource = { lab: p.lab, hex: p.hex, paint: p }; $("#matchColor").value = p.hex.toLowerCase(); $("#matchHex").value = p.hex; renderMatch(); });
+  function renderMatch() {
+    const bs = visibleBrands();
+    const sel = $("#matchBrand"), cur = sel.value;
+    sel.innerHTML = `<option value="">Every brand</option>` + bs.map(b => `<option ${b === cur ? "selected" : ""}>${esc(b)}</option>`).join("");
+    if (!matchSource) {
+      const sample = BY_ID.get("citadel-base-mephiston-red") || PAINTS[0];
+      matchSource = { lab: sample.lab, hex: sample.hex, paint: sample }; matchPicker.set(sample);
+      $("#matchHex").value = sample.hex; $("#matchColor").value = sample.hex.toLowerCase();
+    }
+    const src = matchSource, brand = sel.value, owned = $("#matchOwned").value === "owned";
+    const groups = brand ? [brand] : bs.filter(b => !src.paint || b !== src.paint.brand || bs.length === 1);
+    const out = groups.map(b => {
+      const hits = nearest(src.lab, { brand: b, exclude: src.paint && src.paint.id, owned, limit: 4 });
+      if (!hits.length) return `<div class="card"><span class="label">${esc(b)}</span><div class="empty">${owned ? "You own no " + esc(b) + " paints yet." : "No paints."}</div></div>`;
+      return `<div class="card"><span class="label">${esc(b)}</span>${hits.map(({ p, d }, i) => {
+        const [ql, qc] = quality(d);
+        return `<div style="display:flex;flex-direction:column;gap:6px" class="${p.id === matchPicked ? "picked" : ""}" ${p.id === matchPicked ? 'id="pickedRow"' : ""}>
+          <div class="row" style="justify-content:space-between;flex-wrap:nowrap">
+            <div class="info" data-open="${esc(p.id)}" style="min-width:0;cursor:pointer"><div class="name" style="${i === 0 ? "font-size:1.05rem" : ""}">${esc(p.name)}${rangeTag(p)}${isOwned(p.id) ? ' <span style="color:var(--owned)">✓ owned</span>' : ""}</div><div class="meta">${esc(label(p))}${priceText(p)} · ΔE ${d.toFixed(1)}</div></div>
+            <span class="de ${qc}" style="text-align:right">${pct(d)} match<br>${ql}</span>
+          </div>
+          <div class="compare"><span style="background:${src.hex}"></span><span style="background:${p.hex}"></span></div>
+        </div>`;
+      }).join("")}</div>`;
+    }).join("");
+    $("#matchOut").innerHTML = (src.paint ? `<p class="note-text">Showing the closest paints to <strong>${esc(src.paint.name)}</strong> (${esc(label(src.paint))}). Left half of each bar is the original. Match % is 100 minus the CIEDE2000 ΔE, where black to white is about 100; above 97% is hard to tell apart on a model.</p>` : `<p class="note-text">Showing the closest paints to ${esc(src.hex)}.</p>`) + `<div style="display:flex;flex-direction:column;gap:12px">${out}</div>`;
+  }
+  function setMatchHex(v) {
+    const m = v.trim().match(/^#?([0-9a-f]{6})$/i); if (!m) return;
+    const hex = "#" + m[1].toUpperCase();
+    matchSource = { lab: rgbToLab(hexToRgb(hex)), hex, paint: null }; matchPicked = ""; matchPicker.set(null);
+    $("#matchColor").value = hex.toLowerCase(); $("#matchHex").value = hex; renderMatch();
+  }
+
+  // ---------- Harmony tab ----------
+  let harmSource = null;
+  const harmPicker = makePicker($("#harmPicker"), "Start from a paint…", p => { harmSource = p; renderHarmony(); });
+  const SCHEMES = [
+    { name: "Complementary", note: "Opposite on the wheel. Strongest spot-colour contrast.", offs: [180] },
+    { name: "Split complementary", note: "Either side of the complement. Contrast with less clash.", offs: [150, 210] },
+    { name: "Analogous", note: "Neighbours on the wheel. Calm, unified schemes.", offs: [-30, 30] },
+    { name: "Triadic", note: "Evenly spaced. Bold, balanced three-colour armies.", offs: [120, 240] },
+    { name: "Tetradic", note: "Two complementary pairs. Rich but busy; let one colour lead.", offs: [90, 180, 270] }
+  ];
+  function renderHarmony() {
+    const bs = visibleBrands(), sel = $("#harmBrand"), cur = sel.value;
+    sel.innerHTML = `<option value="">Every brand</option>` + bs.map(b => `<option ${b === cur ? "selected" : ""}>${esc(b)}</option>`).join("");
+    if (!harmSource) { harmSource = BY_ID.get("citadel-base-macragge-blue") || PAINTS[0]; harmPicker.set(harmSource); }
+    const p = harmSource, brand = sel.value, owned = $("#harmOwned").value === "owned";
+    const [h, s, l] = p.hsl;
+    const chip = (list) => list.length ? `<div class="mini">${list.map(({ p: x, d }) => `<button data-open="${esc(x.id)}">${pot(x)}${brandBadge(x.brand)}<span class="t">${esc(x.name)} <small class="meta">${esc(x.range)}</small></span>${isOwned(x.id) ? '<span class="own">✓</span>' : ""}</button>`).join("")}</div>` : `<div class="note">${owned ? "None of your paints fit this." : "No match."}</div>`;
+    const targetRow = (rgb, title, note) => {
+      const lab = rgbToLab(rgb);
+      const hits = nearest(lab, { brand, owned, exclude: p.id, limit: 3 });
+      // Blend toward the best real paint when there is one, so the steps show a mix you could actually make.
+      const end = hits.length ? hits[0].p : null;
+      const steps = blendSteps(p.lab, end ? end.lab : lab);
+      return `<div class="target"><span class="pair" title="${esc(p.name)} beside ${toHex(rgb)}"><span style="background:${p.hex}"></span><span style="background:${toHex(rgb)}"></span></span><div style="min-width:0;display:flex;flex-direction:column;gap:6px"><div class="meta"><strong>${title}</strong> · <span class="hex">${toHex(rgb)}</span>${note ? ` · ${note}` : ""}</div>${chip(hits)}
+        <div class="steps" aria-label="Blend steps">${steps.map(hx => `<button style="background:${hx}" data-matchhex="${hx}" title="${hx} · find paints for this step"></button>`).join("")}</div>
+        <div class="note">Blend ${esc(p.name)} → ${esc(end ? end.name : toHex(rgb))}. Tap a step to find its paint.</div></div></div>`;
+    };
+    const sat = Math.max(s, 0.35);
+    // Value ladder for shading and highlighting in the same hue family.
+    const ladder = [
+      [h, s, Math.max(0.08, l - 0.3), "Deep shade"], [h, s, Math.max(0.05, l - 0.15), "Shade"],
+      [h, s, Math.min(0.95, l + 0.15), "Highlight"], [h, Math.max(0.1, s - 0.15), Math.min(0.97, l + 0.3), "Edge highlight"]
+    ];
+    $("#harmOut").innerHTML = `
+      <div class="card"><div class="source">${pot(p, "lg")}<div><h2>${esc(p.name)}</h2><div class="meta">${esc(label(p))} · ${p.cat}</div></div></div>
+        <p class="note-text" style="margin:0">Each target colour is calculated from this paint, then matched to the nearest real paints${brand ? " from " + esc(brand) : ""}${owned ? " you own" : ""}.</p></div>
+      <div class="card scheme"><span class="label">Shade & highlight</span>${ladder.map(([hh, ss, ll, t]) => targetRow(hslToRgb([hh, ss, ll]), t, "")).join("")}</div>
+      ${SCHEMES.map(sc => `<div class="card scheme"><span class="label">${sc.name}</span><p class="note-text" style="margin:0">${sc.note}</p>${sc.offs.map(o => targetRow(hslToRgb([h + o, sat, Math.min(Math.max(l, 0.3), 0.7)]), (o > 0 ? "+" : "") + o + "°", "")).join("")}</div>`).join("")}`;
+  }
+
+  // ---------- Projects tab ----------
+  let confirmDelete = null;
+  function renderProjects() {
+    const out = $("#projectsOut");
+    if (!state.projects.length) { out.innerHTML = `<div class="card empty">No projects yet. Name one above, then tap the bookmark on any paint to add it to that project's wishlist.</div>`; return; }
+    out.innerHTML = state.projects.map(pr => {
+      const items = pr.items.map(id => BY_ID.get(id)).filter(Boolean);
+      const need = items.filter(p => !isOwned(p.id)), cost = sumPrices(need);
+      return `<div class="card project">
+        <div class="project-head"><h2>${esc(pr.name)}</h2>
+          ${confirmDelete === pr.id ? `<span class="row"><button class="btn small danger" data-delproj="${esc(pr.id)}">Delete project</button><button class="btn small" data-canceldel>Keep</button></span>` : `<button class="btn small" data-askdel="${esc(pr.id)}">Delete</button>`}
+        </div>
+        <div class="count">${items.length} paints · ${need.length} still to buy${need.length ? ` · about ${money(cost.total)} CAD` + (cost.unpriced ? ` + ${cost.unpriced} unpriced` : "") : ""}</div>
+        ${items.length ? `<div class="list">${items.map(p => `<div class="paint">${pot(p)}<div class="info" data-open="${esc(p.id)}"><div class="name">${esc(p.name)}${rangeTag(p)}</div><div class="meta">${esc(label(p))}${priceText(p)}</div></div><div class="acts"><button class="icon-btn" data-unwish="${esc(pr.id)}|${esc(p.id)}" aria-label="Remove from wishlist">✕</button><button class="icon-btn ${isOwned(p.id) ? "on-owned" : ""}" data-own="${esc(p.id)}" aria-label="Mark owned" aria-pressed="${isOwned(p.id)}">${ICON_OWN}</button></div></div>`).join("")}</div>` : `<p class="note-text">Empty wishlist. Open any paint and tick this project.</p>`}
+        ${need.length ? `<button class="btn small" data-copylist="${esc(pr.id)}">Copy shopping list</button>` : ""}
+      </div>`;
+    }).join("");
+  }
+
+  // ---------- Collections tab ----------
+  function renderMore() {
+    const counts = {}; PAINTS.forEach(p => counts[p.brand] = (counts[p.brand] || 0) + 1);
+    $("#brandToggles").innerHTML = `<span class="label">Brands shown</span>` + brands().map(b => `<label class="check"><input type="checkbox" data-togglebrand="${esc(b)}" ${state.hiddenBrands.includes(b) ? "" : "checked"}> ${esc(b)} <span class="count">${counts[b]} paints</span></label>`).join("");
+    const ranges = [...new Set(PAINTS.map(rangeKey))];
+    $("#priceList").innerHTML = `<span class="label">Prices per pot (CAD)</span><p class="note-text" style="margin:0">Defaults are estimated Canadian retail and drift over time. Type your local shop's price to override; clear a box to go back to the default.</p>` +
+      ranges.map(k => `<label class="price-row"><span>${esc(k.replace("|", " "))}</span><input class="field price" type="number" inputmode="decimal" min="0" step="0.01" data-price="${esc(k)}" value="${k in state.prices ? state.prices[k].toFixed(2) : ""}" placeholder="${k in DEFAULT_PRICES ? DEFAULT_PRICES[k].toFixed(2) : "unpriced"}"></label>`).join("");
+    const groups = {};
+    state.custom.forEach(c => (groups[c.brand + " " + c.range] ||= []).push(c));
+    $("#customList").innerHTML = `<span class="label">Your added paints</span>` + (state.custom.length
+      ? Object.entries(groups).map(([g, list]) => `<div><div class="row" style="justify-content:space-between"><strong>${esc(g)}</strong><span class="count">${list.length}</span></div><div class="mini" style="margin-top:6px">${list.map(c => { const p = BY_ID.get(c.id); return p ? `<button data-open="${esc(p.id)}">${pot(p)}${brandBadge(p.brand)}<span class="t">${esc(p.name)}</span></button>` : ""; }).join("")}</div></div>`).join("")
+      : `<p class="note-text" style="margin:0">Paints you add appear here and everywhere else in the app, including matching and schemes.</p>`);
+  }
+
+  function addCollection() {
+    const brand = $("#colBrand").value.trim(), range = $("#colRange").value.trim() || "Custom";
+    if (!brand) { $("#colMsg").textContent = "Give the brand a name first."; return; }
+    let added = 0; const bad = [];
+    for (const raw of $("#colLines").value.split("\n")) {
+      const line = raw.trim(); if (!line) continue;
+      const m = line.match(/^(?:(\d[\w.\-]*)\s+)?(.+?)\s*[,;\t]\s*#?([0-9a-f]{6})\s*(?:[,;\t]\s*(metal|metallic|m))?\s*$/i);
+      if (!m) { bad.push(line); continue; }
+      const [, code, name, hex, metal] = m;
+      const id = "custom-" + slug(`${brand}-${range}-${code || ""}-${name}`);
+      state.custom = state.custom.filter(c => c.id !== id);
+      state.custom.push({ id, brand, range, name, code: code || "", hex: "#" + hex.toUpperCase(), metal: !!metal });
+      added++;
+    }
+    $("#colMsg").textContent = added ? `Added ${added} paints to ${brand} ${range}.` + (bad.length ? ` Skipped ${bad.length} lines that did not read as "Name, #hex".` : "") : `No paints added. Each line needs "Name, #hex".`;
+    if (added) { $("#colLines").value = ""; state.hiddenBrands = state.hiddenBrands.filter(b => b !== brand); commit({ rebuild: true }); }
+  }
+
+  // ---------- Tabs ----------
+  const TABS = ["paints", "match", "harmony", "projects", "more"];
+  let tab = "paints";
+  try { tab = localStorage.getItem("paint-rack-tab") || tab; } catch (e) {}
+  if (TABS.includes(location.hash.slice(1))) tab = location.hash.slice(1);
+  function go(t) {
+    if (!TABS.includes(t)) t = "paints";
+    tab = t;
+    document.querySelectorAll("[data-tab]").forEach(s => s.hidden = s.id !== "tab-" + t);
+    document.querySelectorAll("[data-go]").forEach(b => b.setAttribute("aria-selected", b.dataset.go === t));
+    try { localStorage.setItem("paint-rack-tab", t); } catch (e) {}
+    renderTab();
+    window.scrollTo(0, 0);
+  }
+  function renderTab() {
+    if (tab === "paints") { renderFilters(); renderPaints(); }
+    else if (tab === "match") renderMatch();
+    else if (tab === "harmony") renderHarmony();
+    else if (tab === "projects") renderProjects();
+    else renderMore();
+  }
+  function renderAll() { renderTab(); if ($("#sheet").open) renderSheet(); }
+
+  // ---------- Events ----------
+  document.addEventListener("click", async e => {
+    const t = e.target.closest("button, [data-open]"); if (!t) return;
+    const d = t.dataset;
+    if (d.go) return go(d.go);
+    if (d.own) { toggleOwned(d.own); return toast(isOwned(d.own) ? "Added to your rack" : "Removed from your rack"); }
+    if (d.wish) {
+      if (!state.projects.length) { toast("Create a project first"); return go("projects"); }
+      if (state.projects.length === 1) { toggleWish(state.projects[0].id, d.wish); return toast(wishProjects(d.wish).length ? `Added to ${state.projects[0].name}` : `Removed from ${state.projects[0].name}`); }
+      return openSheet(d.wish);
+    }
+    if (d.matchto) {
+      const [srcId, hitId] = d.matchto.split("|"), src = BY_ID.get(srcId), hit = BY_ID.get(hitId); if (!src || !hit) return;
+      matchSource = { lab: src.lab, hex: src.hex, paint: src }; matchPicked = hit.id; matchPicker.set(src);
+      $("#matchColor").value = src.hex.toLowerCase(); $("#matchHex").value = src.hex; $("#matchOwned").value = "all";
+      $("#sheet").close(); go("match");
+      $("#matchBrand").value = hit.brand; renderMatch();
+      const row = $("#pickedRow"); if (row) row.scrollIntoView({ block: "center" });
+      return;
+    }
+    if (d.matchhex) { go("match"); return setMatchHex(d.matchhex); }
+    if (d.open) return openSheet(d.open);
+    if ("close" in d) return $("#sheet").close();
+    if (d.harm) { harmSource = BY_ID.get(d.harm); harmPicker.set(harmSource); $("#sheet").close(); return go("harmony"); }
+    if (d.brand !== undefined && t.classList.contains("chip")) { ui.brand = d.brand; ui.range = ""; ui.limit = 120; saveUi(); renderFilters(); return renderPaints(); }
+    if (d.cat !== undefined && t.classList.contains("chip")) { ui.cat = d.cat; ui.limit = 120; saveUi(); renderFilters(); return renderPaints(); }
+    if (t.id === "showMore") { ui.limit += 120; return renderPaints(); }
+    if (d.askdel) { confirmDelete = d.askdel; return renderProjects(); }
+    if ("canceldel" in d) { confirmDelete = null; return renderProjects(); }
+    if (d.delproj) { state.projects = state.projects.filter(p => p.id !== d.delproj); confirmDelete = null; commit(); return toast("Project deleted"); }
+    if (d.unwish) { const [pid, id] = d.unwish.split("|"); return toggleWish(pid, id); }
+    if (d.delcustom) { state.custom = state.custom.filter(c => c.id !== d.delcustom); state.owned = state.owned.filter(x => x !== d.delcustom); state.projects.forEach(p => p.items = p.items.filter(x => x !== d.delcustom)); $("#sheet").close(); commit({ rebuild: true }); return toast("Custom paint deleted"); }
+    if (d.copylist) {
+      const pr = state.projects.find(p => p.id === d.copylist);
+      const need = pr.items.map(id => BY_ID.get(id)).filter(p => p && !isOwned(p.id)), cost = sumPrices(need);
+      const text = pr.name + "\n" + need.map(p => { const v = priceOf(p); return `- ${p.brand} ${p.range}: ${p.name}${p.code ? " (" + p.code + ")" : ""}${v == null ? "" : " " + money(v)}`; }).join("\n") + `\nTotal about ${money(cost.total)} CAD` + (cost.unpriced ? ` plus ${cost.unpriced} unpriced` : "");
+      try { await navigator.clipboard.writeText(text); toast("Shopping list copied"); } catch (err) { $("#backup").value = text; go("more"); toast("Copy blocked; list placed in the backup box"); }
+      return;
+    }
+    if (t.id === "colAdd") return addCollection();
+    if (t.id === "backupCopy") {
+      const text = JSON.stringify(state);
+      $("#backup").value = text;
+      try { await navigator.clipboard.writeText(text); $("#backupMsg").textContent = "Backup copied."; } catch (err) { $("#backup").select(); $("#backupMsg").textContent = "Backup is in the box above; copy it from there."; }
+      return;
+    }
+    if (t.id === "backupRestore") {
+      try { const s = normalize(JSON.parse($("#backup").value)); state = s; commit({ rebuild: true }); $("#backupMsg").textContent = `Restored ${s.owned.length} owned paints and ${s.projects.length} projects.`; }
+      catch (err) { $("#backupMsg").textContent = "That text is not a Paint Rack backup. Paste the whole copied backup."; }
+    }
+  });
+  document.addEventListener("change", e => {
+    const t = e.target, d = t.dataset;
+    if (d.wishp && sheetPaint) return toggleWish(d.wishp, sheetPaint.id);
+    if (d.togglebrand) { const b = d.togglebrand; state.hiddenBrands = t.checked ? state.hiddenBrands.filter(x => x !== b) : [...state.hiddenBrands, b]; return commit(); }
+    if (d.price) {
+      const v = parseFloat(t.value);
+      if (t.value.trim() === "" || !Number.isFinite(v) || v < 0) delete state.prices[d.price];
+      else state.prices[d.price] = Math.round(v * 100) / 100;
+      return commit();
+    }
+    if (t.id === "rangeSel") { ui.range = t.value; ui.limit = 120; return renderPaints(); }
+    if (t.id === "showSel") { ui.show = t.value; ui.limit = 120; saveUi(); return renderPaints(); }
+    if (t.id === "sortSel") { ui.sort = t.value; saveUi(); return renderPaints(); }
+    if (t.id === "matchBrand" || t.id === "matchOwned") return renderMatch();
+    if (t.id === "harmBrand" || t.id === "harmOwned") return renderHarmony();
+  });
+  // A logo that fails to load (missing file, blocked host) swaps to the text badge and is not retried.
+  document.addEventListener("error", e => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.classList.contains("brand-badge")) return;
+    brokenLogos.add(img.getAttribute("src"));
+    img.outerHTML = brandBadge(img.dataset.brand);
+  }, true);
+
+  // Chip rows scroll sideways by finger swipe (native), mouse drag, or mouse wheel.
+  // A drag past a few pixels swallows the click that follows, so dragging never toggles a chip.
+  document.querySelectorAll(".chips").forEach(el => {
+    el.addEventListener("wheel", e => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      el.scrollLeft += e.deltaY; e.preventDefault();
+    }, { passive: false });
+    let drag = null;
+    el.addEventListener("pointerdown", e => {
+      if (e.pointerType === "touch" || e.button !== 0) return;
+      drag = { x: e.clientX, left: el.scrollLeft, moved: false, id: e.pointerId };
+    });
+    el.addEventListener("pointermove", e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.moved && Math.abs(dx) > 5) { drag.moved = true; el.setPointerCapture(e.pointerId); el.classList.add("dragging"); }
+      if (drag.moved) el.scrollLeft = drag.left - dx;
+    });
+    const end = () => { if (drag && drag.moved) { el.classList.remove("dragging"); el.dataset.dragged = "1"; setTimeout(() => delete el.dataset.dragged, 0); } drag = null; };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    el.addEventListener("click", e => { if (el.dataset.dragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+  });
+  $("#q").addEventListener("input", e => { ui.q = e.target.value; ui.limit = 120; renderPaints(); });
+  $("#matchColor").addEventListener("input", e => setMatchHex(e.target.value));
+  $("#matchHex").addEventListener("change", e => setMatchHex(e.target.value));
+  $("#newProject").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("#newProjectName").value.trim(); if (!name) return;
+    state.projects.push({ id: "p" + Date.now().toString(36), name, items: [] });
+    $("#newProjectName").value = ""; commit(); toast("Project added");
+  });
+  $("#sheet").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+
+  // ---------- Boot ----------
+  state = loadLocal() || blankState();
+  buildCatalogue();
+  go(tab);
+  connectDb();
+})();
+</script>
