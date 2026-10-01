@@ -1,0 +1,28 @@
+{
+  "id": "T-0005",
+  "title": "Implement hikeStore load and validation",
+  "description": "js/hikeStore.js loadHikes(): fetch data/hikes.json, validate required fields (id, name, lengthKm, timeHrs, gainM, difficulty, quality, accessibility), attach score via hikeScore.\n\nAcceptance: invalid hike throws an error naming the hike; a hike added by hand to hikes.json appears with a computed score after reload.\n\nFrom docs/plans/0001-hiker-web-app.md, section \"Components > hikeStore\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "data"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 50,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:17.095Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.091Z",
+      "text": "Done: prepareHikes validates and names the hike; hand-added Test Hike showed Score 1.5 plus weather and drive time after reload."
+    }
+  ],
+  "work": []
+}

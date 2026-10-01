@@ -1,0 +1,29 @@
+{
+  "id": "T-0004",
+  "title": "Port weatherScore and bandFor with tests",
+  "description": "js/weatherScore.js: weatherScore({highC, lowC, cloudPct, popPct, visKm}) as an exact port of CALCULATE_WEATHER_SCORE_ (Infinity when highC >= 30 or <= 5; else round((pop*2 + cloud)^2 + 2^(vis/30)) / 100). bandFor(score) maps to good / fair / poor / nogo using config.BANDS.\n\nAcceptance: tests cover the Infinity edges (5, 30), a clear day, a rainy day and each band boundary.\n\nFrom docs/plans/0001-hiker-web-app.md, sections \"Components > weatherScore\", \"Data > Weather bands\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "scoring",
+    "weather"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 40,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:18.046Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.015Z",
+      "text": "Done: tests for 5/30 edges, clear day 0.02, rainy day 625.02, band boundaries."
+    }
+  ],
+  "work": []
+}

@@ -1,0 +1,28 @@
+{
+  "id": "T-0006",
+  "title": "Implement weatherClient (Open-Meteo, cached)",
+  "description": "js/weatherClient.js getForecasts(hikes, days): single batched Open-Meteo request for all hikes with coordinates (daily temperature_2m_max, temperature_2m_min, cloud_cover_mean, precipitation_probability_max, visibility_mean, weather_code; timezone=auto). Normalize to DayForecast {date, highC, lowC, cloudPct, popPct, visKm, code}; visibility metres to km. Cache 3h.\n\nAcceptance: one network request on cold load, zero on warm reload; failure rejects without throwing uncaught.\n\nFrom docs/plans/0001-hiker-web-app.md, section \"Components > weatherClient\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "weather"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 60,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:16.014Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.164Z",
+      "text": "Done: one batched Open-Meteo request cold, zero on warm reload; failure falls back to Score-only."
+    }
+  ],
+  "work": []
+}

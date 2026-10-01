@@ -1,0 +1,28 @@
+{
+  "id": "T-0008",
+  "title": "Implement recommender filter, band, sort with tests",
+  "description": "js/recommender.js rank(hikes, forecasts, {dayIndex, filters, month}) -> Band[]. Pipeline: filter (inSeason, access exclude, country, tags any) -> band by weatherScore -> sort by hike score ascending. Hikes without a forecast go to an unknown band last. Pure.\n\nAcceptance: tests cover each filter, band ordering good > fair > poor > nogo > unknown, and score order within a band.\n\nFrom docs/plans/0001-hiker-web-app.md, section \"Components > recommender\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "scoring"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 120,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:14.270Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.310Z",
+      "text": "Done: 7 tests (band order, score order, dayIndex, inSeason, access, country, tags). Hikes without months pass the in-season filter."
+    }
+  ],
+  "work": []
+}

@@ -1,0 +1,381 @@
+{
+  "joffre-lakes": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2b/Middle_Joffre_Lake_Nicolas_May.jpg/960px-Middle_Joffre_Lake_Nicolas_May.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Middle_Joffre_Lake_Nicolas_May.jpg",
+    "title": "Middle Joffre Lake Nicolas May.jpg",
+    "credit": "Nicolas May, CC BY-SA 4.0 (Wikimedia Commons)"
+  },
+  "turtlehead": {
+    "rejected": [
+      "https://www.flickr.com/photos/158105449@N02/51468466866",
+      "https://www.flickr.com/photos/42634768@N06/16369403959"
+    ]
+  },
+  "bodega-ridge": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Bodega_Ridge_Provincial_Park_%287743625994%29.jpg/960px-Bodega_Ridge_Provincial_Park_%287743625994%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Bodega_Ridge_Provincial_Park_(7743625994).jpg",
+    "title": "Bodega Ridge Provincial Park (7743625994).jpg",
+    "credit": "David Stanley from Nanaimo, Canada, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "mount-daniel": {
+    "rejected": [
+      "https://www.flickr.com/photos/83413148@N00/35678823836",
+      "https://www.flickr.com/photos/83413148@N00/35718282775"
+    ]
+  },
+  "cool-creek-canyon": {
+    "rejected": [
+      "https://www.flickr.com/photos/95142644@N00/52517920374"
+    ]
+  },
+  "mount-erskine": {
+    "url": "https://live.staticflickr.com/1839/44098919261_412896b41a_b.jpg",
+    "page": "https://www.flickr.com/photos/54182068@N00/44098919261",
+    "credit": "iwona_kellie, CC BY-NC-SA 2.0 (flickr)",
+    "title": "trip to Salt Spring Island.. hike up Mount Erskine.."
+  },
+  "cheakamus-lake": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Cheakamus_Lake_%2838094899156%29.jpg/960px-Cheakamus_Lake_%2838094899156%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Cheakamus_Lake_(38094899156).jpg",
+    "title": "Cheakamus Lake (38094899156).jpg",
+    "credit": "Ruth Hartnup from Vancouver, Canada, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "yak-peak": {
+    "url": "https://live.staticflickr.com/6139/6010896510_636c3a5820.jpg",
+    "page": "https://www.flickr.com/photos/65723558@N00/6010896510",
+    "credit": "flinner!, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Yak Peak, British Columbia, Canada"
+  },
+  "semaphore-lakes": {
+    "url": "https://live.staticflickr.com/8165/7592297392_dfb3fef831_b.jpg",
+    "page": "https://www.flickr.com/photos/21332504@N03/7592297392",
+    "credit": "Rob Murota, CC BY-NC-ND 2.0 (flickr)",
+    "title": "Semaphore Lake"
+  },
+  "decker-tarn": {
+    "rejected": [
+      "https://commons.wikimedia.org/wiki/File:Decker_Mountain_from_Whistler_ski_area.jpg"
+    ]
+  },
+  "half-note-trail": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Panorama_from_Whistler%27s_Half_Note_Trail_%2829603040381%29.jpg/960px-Panorama_from_Whistler%27s_Half_Note_Trail_%2829603040381%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Panorama_from_Whistler%27s_Half_Note_Trail_(29603040381).jpg",
+    "title": "Panorama from Whistler's Half Note Trail (29603040381).jpg",
+    "credit": "Ruth Hartnup from Vancouver, Canada, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "jocelyn-hill": {
+    "rejected": [
+      "https://commons.wikimedia.org/wiki/File:Approaching_Jocelyn_Hill_-_Flickr_-_brewbooks.jpg",
+      "https://commons.wikimedia.org/wiki/File:Turnaround_on_Jocelyn_Hill_-_Flickr_-_brewbooks.jpg"
+    ]
+  },
+  "blue-lake": {
+    "rejected": [
+      "https://www.flickr.com/photos/76328184@N00/9654891445",
+      "https://www.flickr.com/photos/71401718@N00/10214294034"
+    ]
+  },
+  "greendrop-lake": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/Greendrop_Lake.jpg/960px-Greendrop_Lake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Greendrop_Lake.jpg",
+    "credit": "Jonhall (talk), CC BY 3.0 (Wikimedia Commons)",
+    "title": "Greendrop Lake.jpg",
+    "rejected": [
+      "https://www.flickr.com/photos/54182068@N00/192394529"
+    ]
+  },
+  "garibaldi-lake": {
+    "rejected": [
+      "https://commons.wikimedia.org/wiki/File:Mount_Garibaldi_(50997016501).jpg",
+      "https://commons.wikimedia.org/wiki/File:Pyramid_Mountain_in_Garibaldi_Provincial_Park.jpg"
+    ]
+  },
+  "zoa-peak": {
+    "url": "https://live.staticflickr.com/7734/27728514462_7550fd6b76_b.jpg",
+    "page": "https://www.flickr.com/photos/64233859@N06/27728514462",
+    "credit": "Sworldguy, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Zoa Peak Trail"
+  },
+  "the-flatiron": {
+    "rejected": [
+      "https://www.flickr.com/photos/7202153@N03/417081944",
+      "https://www.flickr.com/photos/7202153@N03/3238219558"
+    ]
+  },
+  "three-brothers-mountain": {
+    "url": "https://live.staticflickr.com/3928/15226306919_a3e68548a7_b.jpg",
+    "page": "https://www.flickr.com/photos/15545394@N00/15226306919",
+    "credit": "Lee Shoal, CC BY-SA 2.0 (flickr)",
+    "title": "Three Brothers Mountain, Manning Park",
+    "rejected": [
+      "https://www.flickr.com/photos/44124370018@N01/6278527430"
+    ]
+  },
+  "mount-galiano": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/Mount_Galiano_%287743628226%29.jpg/960px-Mount_Galiano_%287743628226%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Mount_Galiano_(7743628226).jpg",
+    "title": "Mount Galiano (7743628226).jpg",
+    "credit": "David Stanley from Nanaimo, Canada, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "flora-lake": null,
+  "frosty-mountain": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/Frosty_Mountain_Panorama_%28176318813%29.jpeg/960px-Frosty_Mountain_Panorama_%28176318813%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Frosty_Mountain_Panorama_(176318813).jpeg",
+    "title": "Frosty Mountain Panorama (176318813).jpeg",
+    "credit": "Andrew Plowright, CC BY-SA 3.0 (Wikimedia Commons)"
+  },
+  "elfin-lakes": {
+    "url": "https://live.staticflickr.com/7021/6435128505_5ba8ef1e64_b.jpg",
+    "page": "https://www.flickr.com/photos/69658016@N03/6435128505",
+    "credit": "UltraView Admin, CC BY-SA 2.0 (flickr)",
+    "title": "Elfin Lakes - British Columbia, Canada"
+  },
+  "chief-mountain": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Stawamus_Chief_Mountain_%2848772720837%29.jpg/960px-Stawamus_Chief_Mountain_%2848772720837%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Stawamus_Chief_Mountain_(48772720837).jpg",
+    "title": "Stawamus Chief Mountain (48772720837).jpg",
+    "credit": "dvs from Vermont, USA, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "cascade-pass": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Cascade_Pass_%2852313898664%29.jpg/960px-Cascade_Pass_%2852313898664%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Cascade_Pass_(52313898664).jpg",
+    "title": "Cascade Pass (52313898664).jpg",
+    "credit": "lamblukas from San Francisco, United States, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "hozomeen-lake": {
+    "rejected": [
+      "https://commons.wikimedia.org/wiki/File:Hozomeen_campground,_circa_1972_(44720819985).jpg",
+      "https://commons.wikimedia.org/wiki/File:Hozomeen_campground,_1972_(53044832987).jpg"
+    ]
+  },
+  "echo-lake": {
+    "rejected": [
+      "https://www.flickr.com/photos/92366420@N00/1178500164",
+      "https://www.flickr.com/photos/82256086@N00/15509878865"
+    ]
+  },
+  "chain-lakes": {
+    "rejected": [
+      "https://www.flickr.com/photos/39290542@N07/4914409654",
+      "https://www.flickr.com/photos/99125755@N00/5308530086"
+    ]
+  },
+  "evans-peak": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Evans_Peak_Panorama.jpg/960px-Evans_Peak_Panorama.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Evans_Peak_Panorama.jpg",
+    "title": "Evans Peak Panorama.jpg",
+    "credit": "The Cosmonaut, CC BY-SA 2.5 ca (Wikimedia Commons)"
+  },
+  "snow-camp-mountain": {
+    "url": "https://live.staticflickr.com/2266/2132104546_6339aa2d8e_b.jpg",
+    "page": "https://www.flickr.com/photos/59373321@N00/2132104546",
+    "credit": "Coastal Climber, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Snow Camp Mountain"
+  },
+  "welcome-pass": {
+    "rejected": [
+      "https://www.flickr.com/photos/96528084@N05/15053793368",
+      "https://www.flickr.com/photos/44124348109@N01/14705025979"
+    ]
+  },
+  "wedgemount-lake": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Wedgemount_Lake_at_sunset.jpg/960px-Wedgemount_Lake_at_sunset.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Wedgemount_Lake_at_sunset.jpg",
+    "title": "Wedgemount Lake at sunset.jpg",
+    "credit": "Andrew Kvalheim, CC BY-SA 4.0 (Wikimedia Commons)"
+  },
+  "cheam-peak": {
+    "url": "https://live.staticflickr.com/4489/37014523943_f5b40eb592_b.jpg",
+    "page": "https://www.flickr.com/photos/29914190@N02/37014523943",
+    "credit": "jaisril, CC BY-NC-ND 2.0 (flickr)",
+    "title": "The Cheam Range from Skyline Divide"
+  },
+  "mount-elsay": {
+    "url": "https://live.staticflickr.com/65535/52405672516_d882fae65f_b.jpg",
+    "page": "https://www.flickr.com/photos/54182068@N00/52405672516",
+    "credit": "iwona_kellie, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Mount Elsay loop hike.. lovely, hot, sunny, sometimes smokey, and a long October day.."
+  },
+  "statlu-lake": {
+    "url": "https://live.staticflickr.com/7145/6687860417_baf2ff575c_b.jpg",
+    "page": "https://www.flickr.com/photos/36543076@N00/6687860417",
+    "credit": "Dru!, CC BY-NC 2.0 (flickr)",
+    "title": "Statlu Lake"
+  },
+  "twin-sisters": {
+    "rejected": [
+      "https://www.flickr.com/photos/14922165@N00/14277423952",
+      "https://www.flickr.com/photos/14922165@N00/14092801388"
+    ]
+  },
+  "decker-mountain": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Blackcomb_Peak_and_Decker_Mountain.jpg/960px-Blackcomb_Peak_and_Decker_Mountain.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Blackcomb_Peak_and_Decker_Mountain.jpg",
+    "title": "Blackcomb Peak and Decker Mountain.jpg",
+    "credit": "Richie Diesterheft, CC BY-SA 3.0 (Wikimedia Commons)"
+  },
+  "lake-ann": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/Flickr_-_brewbooks_-_View_from_Lake_Ann_trail.jpg/960px-Flickr_-_brewbooks_-_View_from_Lake_Ann_trail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Flickr_-_brewbooks_-_View_from_Lake_Ann_trail.jpg",
+    "title": "Flickr - brewbooks - View from Lake Ann trail.jpg",
+    "credit": "brewbooks from near Seattle, USA, CC BY-SA 2.0 (Wikimedia Commons)"
+  },
+  "skywalk-north": {
+    "url": "https://live.staticflickr.com/4375/36757499990_31a747c676_b.jpg",
+    "page": "https://www.flickr.com/photos/44152183@N07/36757499990",
+    "credit": "Ian YVR, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Skywalk North unnamed lake with Weart, Wedge, Blackcomb"
+  },
+  "helm-lake": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/The_Black_Tusk_and_Helm_Lake.jpg/960px-The_Black_Tusk_and_Helm_Lake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:The_Black_Tusk_and_Helm_Lake.jpg",
+    "title": "The Black Tusk and Helm Lake.jpg",
+    "credit": "The Cosmonaut, CC BY-SA 2.5 ca (Wikimedia Commons)"
+  },
+  "tenquille-lake": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5e/Tenquille_Mountain.jpg/960px-Tenquille_Mountain.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Tenquille_Mountain.jpg",
+    "credit": "Kevin Teague, CC BY 2.0 (Wikimedia Commons)",
+    "title": "Tenquille Mountain.jpg",
+    "rejected": [
+      "https://www.flickr.com/photos/42828760@N00/14749269304"
+    ]
+  },
+  "hope-mountain": {
+    "rejected": [
+      "https://commons.wikimedia.org/wiki/File:Schkam_Lake,_Hope,_BC.jpg",
+      "https://commons.wikimedia.org/wiki/File:Hope,_BC_-_municipal_building.jpg"
+    ]
+  },
+  "skywalk-south": {
+    "url": "https://live.staticflickr.com/4344/37154751985_eb2e4787a9_b.jpg",
+    "page": "https://www.flickr.com/photos/44152183@N07/37154751985",
+    "credit": "Ian YVR, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Skywalk South Rainbow Mtn"
+  },
+  "mount-price": {
+    "url": "https://live.staticflickr.com/3534/3759875809_88cdef6e2d_b.jpg",
+    "page": "https://www.flickr.com/photos/54182068@N00/3759875809",
+    "credit": "iwona_kellie, CC BY 2.0 (flickr)",
+    "title": "Garibaldi Lake and Mount Price viewed from the Panorama Ridge.."
+  },
+  "skyline-divide": {
+    "url": "https://live.staticflickr.com/4489/37014523943_f5b40eb592_b.jpg",
+    "page": "https://www.flickr.com/photos/29914190@N02/37014523943",
+    "credit": "jaisril, CC BY-NC-ND 2.0 (flickr)",
+    "title": "The Cheam Range from Skyline Divide"
+  },
+  "golden-ears": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5e/Golden_Ears_seen_from_the_Viewpoint_Beach.jpg/960px-Golden_Ears_seen_from_the_Viewpoint_Beach.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Golden_Ears_seen_from_the_Viewpoint_Beach.jpg",
+    "title": "Golden Ears seen from the Viewpoint Beach.jpg",
+    "credit": "The Cosmonaut, CC BY-SA 2.5 ca (Wikimedia Commons)"
+  },
+  "hidden-lake-lookout": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Hidden_Lake_Peak_Fire_Lookout.JPG/960px-Hidden_Lake_Peak_Fire_Lookout.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Hidden_Lake_Peak_Fire_Lookout.JPG",
+    "title": "Hidden Lake Peak Fire Lookout.JPG",
+    "credit": "Lmm3181, CC BY-SA 3.0 (Wikimedia Commons)"
+  },
+  "crown-mountain": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Crown_Mountain_northern_peak.jpg/960px-Crown_Mountain_northern_peak.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Crown_Mountain_northern_peak.jpg",
+    "title": "Crown Mountain northern peak.jpg",
+    "credit": "Andrew Kvalheim, CC BY-SA 4.0 (Wikimedia Commons)"
+  },
+  "yellow-aster-butte": {
+    "url": "https://live.staticflickr.com/5759/22138787511_ab31874672_b.jpg",
+    "page": "https://www.flickr.com/photos/64233859@N06/22138787511",
+    "credit": "Sworldguy, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Yellow Aster Butte Trail"
+  },
+  "palmers-pond": null,
+  "marriott-basin": {
+    "url": "https://live.staticflickr.com/3337/3249365948_eba574ea5f_b.jpg",
+    "page": "https://www.flickr.com/photos/95142644@N00/3249365948",
+    "credit": "Ruth and Dave, CC BY 2.0 (flickr)",
+    "title": "Big avalanche path, Marriott Basin"
+  },
+  "watersprite-lake": {
+    "rejected": [
+      "https://www.flickr.com/photos/152883062@N02/36029923666",
+      "https://www.flickr.com/photos/152883062@N02/36029926376"
+    ]
+  },
+  "the-black-tusk": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/The_Black_Tusk_and_Helm_Lake.jpg/960px-The_Black_Tusk_and_Helm_Lake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:The_Black_Tusk_and_Helm_Lake.jpg",
+    "title": "The Black Tusk and Helm Lake.jpg",
+    "credit": "The Cosmonaut, CC BY-SA 2.5 ca (Wikimedia Commons)"
+  },
+  "gotcha-and-gott-peak": null,
+  "brandywine-mountain": {
+    "url": "https://live.staticflickr.com/7373/9434602992_729dde1a4e_b.jpg",
+    "page": "https://www.flickr.com/photos/37822405@N02/9434602992",
+    "credit": "p.sebastien, CC BY-NC 2.0 (flickr)",
+    "title": "Brandywine Mountain"
+  },
+  "twin-lakes": {
+    "rejected": [
+      "https://www.flickr.com/photos/8063323@N08/2478854357",
+      "https://www.flickr.com/photos/8063323@N08/2478945253"
+    ]
+  },
+  "mount-steele": {
+    "rejected": [
+      "https://www.flickr.com/photos/22746515@N02/40873726972",
+      "https://www.flickr.com/photos/66733752@N00/28964359048"
+    ]
+  },
+  "illal-mountain": {
+    "url": "https://live.staticflickr.com/3081/3208338309_a5b847d584_b.jpg",
+    "page": "https://www.flickr.com/photos/59373321@N00/3208338309",
+    "credit": "Coastal Climber, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Illal, Jim Kelly and Coquihalla Mts"
+  },
+  "mount-rohr": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Mount_Rohr.jpg/960px-Mount_Rohr.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Mount_Rohr.jpg",
+    "credit": "Tim Gage, CC BY-SA 2.0 (Wikimedia Commons)",
+    "title": "Mount Rohr.jpg",
+    "rejected": [
+      "https://www.flickr.com/photos/21332504@N03/7853602366"
+    ]
+  },
+  "flute-summit": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Flutes_at_Flute_Summit_%282358756944%29.jpg/960px-Flutes_at_Flute_Summit_%282358756944%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Flutes_at_Flute_Summit_(2358756944).jpg",
+    "title": "Flutes at Flute Summit (2358756944).jpg",
+    "credit": "Ruth Hartnup from Vancouver, Canada, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "anniversary-glacier": {
+    "url": "https://live.staticflickr.com/3227/2425321409_1c644f08bb_b.jpg",
+    "page": "https://www.flickr.com/photos/37912376200@N01/2425321409",
+    "credit": "mikewarren, CC BY-NC-SA 2.0 (flickr)",
+    "title": "Matier, Anniversary Glacier"
+  },
+  "rainbow-pass": {
+    "rejected": [
+      "https://www.flickr.com/photos/28495173@N00/1462731494",
+      "https://www.flickr.com/photos/43309517@N08/5469161786"
+    ]
+  },
+  "camel-pass": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/84/Camel_Pass_to_Taylor_Creek.jpg/960px-Camel_Pass_to_Taylor_Creek.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Camel_Pass_to_Taylor_Creek.jpg",
+    "title": "Camel Pass to Taylor Creek.jpg",
+    "credit": "Sébastien Launay, CC BY 2.0 (Wikimedia Commons)"
+  },
+  "the-gargoyles": {
+    "rejected": [
+      "https://commons.wikimedia.org/wiki/File:David_Young_Cameron_-_The_Gargoyles,_Stirling_Castle_-_B1994.4.783_-_Yale_Center_for_British_Art.jpg",
+      "https://commons.wikimedia.org/wiki/File:Regarding_One_of_the_Gargoyles_of_N%C3%B4tre-Dame,_Paris_MET_DP813147.jpg"
+    ]
+  },
+  "panorama-ridge": {
+    "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/Panorama_Ridge%2C_north_aspect.jpg/960px-Panorama_Ridge%2C_north_aspect.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Panorama_Ridge,_north_aspect.jpg",
+    "title": "Panorama Ridge, north aspect.jpg",
+    "credit": "Su-Laine, CC BY-SA 2.0 (Wikimedia Commons)"
+  }
+}
