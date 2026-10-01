@@ -103,7 +103,8 @@ select.field { padding-right: 28px; }
 .q-close { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .q-rough { background: color-mix(in srgb, var(--muted) 22%, transparent); }
 .compare { display: flex; height: 26px; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
-.compare span { flex: 1; }
+.compare > span { flex: 1; display: flex; align-items: center; padding-inline: 4px; }
+.compare > span:last-child { justify-content: flex-end; }
 
 /* Picker */
 .picker { position: relative; }
@@ -134,6 +135,17 @@ img.brand-badge { min-width: 0; width: auto; max-width: 48px; height: 20px; padd
 /* Projects */
 .project { display: flex; flex-direction: column; gap: 8px; }
 .project-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fold { border: 0; background: none; padding: 0; display: flex; align-items: center; gap: 8px; min-width: 0; text-align: left; }
+.fold svg { width: 18px; height: 18px; flex: none; }
+@media (prefers-reduced-motion: no-preference) { .fold svg { transition: transform .15s; } }
+.fold[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.conv { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.conv:last-child { border-bottom: 0; }
+.conv > div { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.conv .pot { width: 24px; height: 24px; }
+.conv .t { min-width: 0; font-size: .82rem; overflow: hidden; text-overflow: ellipsis; }
+.conv.kept { opacity: .6; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 /* Tabs */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -283,6 +295,7 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
 </nav>
 
 <dialog class="sheet" id="sheet"><div class="sheet-body" id="sheetBody"></div></dialog>
+<dialog class="sheet" id="tool"><div class="sheet-body" id="toolBody"></div></dialog>
 <div class="toast" id="toast" hidden></div>
 
 <script src="paints.js"></script>
@@ -519,7 +532,7 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
     const color = cfg.color || toHex(hslToRgb([hash, 0.45, 0.35]));
     return `<span class="brand-badge" style="--bb:${esc(color)}" title="${esc(brand)}">${esc(short)}</span>`;
   }
-  const rangeTag = p => ["Shade", "Contrast", "Dry", "Technical"].includes(p.range) ? `<span class="tag">${esc(p.range)}</span>` : "";
+  const rangeTag = p => ["Shade", "Contrast", "Dry", "Technical", "Game Color Wash", "Fanatic Wash", "Speedpaint 2.0"].includes(p.range) ? `<span class="tag">${esc(p.range)}</span>` : "";
   const label = p => `${p.brand} ${p.range}${p.code ? " · " + p.code : ""}`;
   function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 1800); }
   // Similarity as a share of the black-to-white distance (CIEDE2000 puts that at roughly 100).
@@ -528,7 +541,10 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
   // Estimated Canadian retail per pot (CAD). Editable in Collections; custom ranges start unpriced.
   const DEFAULT_PRICES = {
     "Citadel|Base": 7.00, "Citadel|Layer": 7.00, "Citadel|Shade": 9.00, "Citadel|Contrast": 11.00,
-    "Citadel|Dry": 7.00, "Citadel|Technical": 9.00, "Vallejo|Game Color": 5.25, "Vallejo|Model Color": 4.75
+    "Citadel|Dry": 7.00, "Citadel|Technical": 9.00, "Vallejo|Game Color": 5.25, "Vallejo|Model Color": 4.75,
+    "Vallejo|Game Color Wash": 5.25, "Army Painter|Warpaints Fanatic": 5.50, "Army Painter|Fanatic Wash": 5.50,
+    "Army Painter|Speedpaint 2.0": 7.00, "AK|3rd Gen Standard": 4.75, "AK|3rd Gen Intense": 4.75,
+    "AK|3rd Gen Metallic": 5.50, "AK|3rd Gen Pastel": 4.75, "AK|3rd Gen Ink": 4.75
   };
   const rangeKey = p => `${p.brand}|${p.range}`;
   const priceOf = p => { const k = rangeKey(p); return k in state.prices ? state.prices[k] : k in DEFAULT_PRICES ? DEFAULT_PRICES[k] : null; };
@@ -678,7 +694,7 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
             <div class="info" data-open="${esc(p.id)}" style="min-width:0;cursor:pointer"><div class="name" style="${i === 0 ? "font-size:1.05rem" : ""}">${esc(p.name)}${rangeTag(p)}${isOwned(p.id) ? ' <span style="color:var(--owned)">✓ owned</span>' : ""}</div><div class="meta">${esc(label(p))}${priceText(p)} · ΔE ${d.toFixed(1)}</div></div>
             <span class="de ${qc}" style="text-align:right">${pct(d)} match<br>${ql}</span>
           </div>
-          <div class="compare"><span style="background:${src.hex}"></span><span style="background:${p.hex}"></span></div>
+          <div class="compare"><span style="background:${src.hex}">${src.paint ? brandBadge(src.paint.brand) : ""}</span><span style="background:${p.hex}">${brandBadge(p.brand)}</span></div>
         </div>`;
       }).join("")}</div>`;
     }).join("");
@@ -739,15 +755,149 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
     out.innerHTML = state.projects.map(pr => {
       const items = pr.items.map(id => BY_ID.get(id)).filter(Boolean);
       const need = items.filter(p => !isOwned(p.id)), cost = sumPrices(need);
+      const open = !folded.includes(pr.id);
       return `<div class="card project">
-        <div class="project-head"><h2>${esc(pr.name)}</h2>
+        <div class="project-head"><button class="fold" data-fold="${esc(pr.id)}" aria-expanded="${open}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg><h2>${esc(pr.name)}</h2></button>
           ${confirmDelete === pr.id ? `<span class="row"><button class="btn small danger" data-delproj="${esc(pr.id)}">Delete project</button><button class="btn small" data-canceldel>Keep</button></span>` : `<button class="btn small" data-askdel="${esc(pr.id)}">Delete</button>`}
         </div>
         <div class="count">${items.length} paints · ${need.length} still to buy${need.length ? ` · about ${money(cost.total)} CAD` + (cost.unpriced ? ` + ${cost.unpriced} unpriced` : "") : ""}</div>
-        ${items.length ? `<div class="list">${items.map(p => `<div class="paint">${pot(p)}<div class="info" data-open="${esc(p.id)}"><div class="name">${esc(p.name)}${rangeTag(p)}</div><div class="meta">${esc(label(p))}${priceText(p)}</div></div><div class="acts"><button class="icon-btn" data-unwish="${esc(pr.id)}|${esc(p.id)}" aria-label="Remove from wishlist">✕</button><button class="icon-btn ${isOwned(p.id) ? "on-owned" : ""}" data-own="${esc(p.id)}" aria-label="Mark owned" aria-pressed="${isOwned(p.id)}">${ICON_OWN}</button></div></div>`).join("")}</div>` : `<p class="note-text">Empty wishlist. Open any paint and tick this project.</p>`}
-        ${need.length ? `<button class="btn small" data-copylist="${esc(pr.id)}">Copy shopping list</button>` : ""}
+        ${!open ? "" : `<div class="row"><button class="btn small" data-import="${esc(pr.id)}">Paste a list</button>${items.length ? `<button class="btn small" data-convert="${esc(pr.id)}">Convert brand</button>` : ""}</div>
+        ${items.length ?`<div class="list">${items.map(p => `<div class="paint">${pot(p)}<div class="info" data-open="${esc(p.id)}"><div class="name">${esc(p.name)}${rangeTag(p)}</div><div class="meta">${esc(label(p))}${priceText(p)}</div></div><div class="acts"><button class="icon-btn" data-unwish="${esc(pr.id)}|${esc(p.id)}" aria-label="Remove from wishlist">✕</button><button class="icon-btn ${isOwned(p.id) ? "on-owned" : ""}" data-own="${esc(p.id)}" aria-label="Mark owned" aria-pressed="${isOwned(p.id)}">${ICON_OWN}</button></div></div>`).join("")}</div>` : `<p class="note-text">Empty wishlist. Open any paint and tick this project.</p>`}
+        ${need.length ? `<button class="btn small" data-copylist="${esc(pr.id)}">Copy shopping list</button>` : ""}`}
       </div>`;
     }).join("");
+  }
+
+  // Folded project ids are a per-device view preference, kept out of the synced state.
+  let folded = [];
+  try { folded = JSON.parse(localStorage.getItem("paint-rack-folded") || "[]"); } catch (e) {}
+  function toggleFold(id) {
+    folded = folded.includes(id) ? folded.filter(x => x !== id) : [...folded, id];
+    try { localStorage.setItem("paint-rack-folded", JSON.stringify(folded)); } catch (e) {}
+    renderProjects();
+  }
+
+  // ---------- Project tools (paste a list, convert brand) ----------
+  let toolProject = null, importHits = [], convertPlan = [];
+  const norm = s => s.toLowerCase().replace(/colour/g, "color").replace(/['’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const BRAND_ALIASES = { Citadel: ["games workshop", "gw"], "Army Painter": ["the army painter", "ap"], AK: ["ak interactive"] };
+  const brandWords = b => new Set([b, ...(BRAND_ALIASES[b] || [])].flatMap(w => norm(w).split(" ")));
+  const singular = w => w.replace(/s$/, "");
+
+  /** Levenshtein distance, used to catch small typos in pasted names. @created Claude (claude-opus-5-5) — 2026-10-01 */
+  function editDistance(a, b) {
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  /**
+   * Reads a pasted paint list into catalogue matches. Headings ("Base:", ": Layers", "# ...") steer
+   * ties toward that range; bullets and trailing links are dropped; words before the paint name must be
+   * its brand or range (e.g. "AK 3rd Gen French Blue"). Lines with no exact hit fall back to a close spelling.
+   * @created Claude (claude-opus-5-5) — 2026-10-01
+   */
+  function parsePaintList(text) {
+    const pool = PAINTS.map(p => ({ p, n: norm(p.name), words: new Set([...brandWords(p.brand), ...norm(p.range).split(" ")]) }));
+    const out = [];
+    let hint = [], lastBrand = "";
+    for (const raw of text.split(/\r?\n/)) {
+      let line = raw.trim(); if (!line) continue;
+      if (/^[:#]/.test(line) || /:$/.test(line)) { hint = norm(line.replace(/^[:#]+|:$/g, "")).split(" ").map(singular); continue; }
+      line = line.replace(/^(?:[-*•·]|\d+[.)])\s+/, "").replace(/\s*[:\-–]?\s*https?:\/\/\S*.*$/i, "").trim();
+      if (!line) continue;
+      const codeHit = line.match(/^(\d{2}\.\d{3}|AK\d+)\b/i);
+      let hits = codeHit ? pool.filter(c => c.p.code.toLowerCase() === codeHit[1].toLowerCase()) : [];
+      const L = norm(line), words = L.split(" ");
+      // Words left before the name must all be the paint's brand or range.
+      const prefixOk = (c, size) => words.slice(0, words.length - size).every(w => c.words.has(w));
+      if (!hits.length) hits = pool.filter(c => (L === c.n || L.endsWith(" " + c.n)) && prefixOk(c, c.n.split(" ").length));
+      let guess = false;
+      if (!hits.length) {
+        let best = Infinity;
+        for (const c of pool) {
+          const size = c.n.split(" ").length;
+          if (c.n.length < 6 || !prefixOk(c, size)) continue;
+          const d = editDistance(words.slice(-size).join(" "), c.n);
+          if (d <= 2 && d < best) { best = d; hits = [c]; } else if (d === best) hits.push(c);
+        }
+        guess = hits.length > 0;
+      }
+      if (!hits.length) { out.push({ line, p: null }); continue; }
+      const score = c => (hint.some(w => [...c.words].map(singular).includes(w)) ? 4 : 0) + (c.p.brand === lastBrand ? 2 : 0) + (state.hiddenBrands.includes(c.p.brand) ? 0 : 1);
+      const pick = hits.reduce((a, c) => c.n.length > a.n.length || (c.n.length === a.n.length && score(c) > score(a)) ? c : a).p;
+      lastBrand = pick.brand;
+      out.push({ line, p: pick, guess });
+    }
+    return out;
+  }
+
+  function openTool(kind, pid) {
+    toolProject = state.projects.find(p => p.id === pid); if (!toolProject) return;
+    const pr = toolProject;
+    if (kind === "import") {
+      $("#toolBody").innerHTML = `<button class="btn small sheet-close" data-closetool>Close</button>
+        <h2 style="padding-right:64px">Paste into ${esc(pr.name)}</h2>
+        <p class="note-text" style="margin:0">One paint per line. Headings, bullets and links are ignored, and a brand or range before the name (like <span class="hex">AK 3rd Gen French Blue</span>) narrows the match.</p>
+        <textarea id="importText" class="field" placeholder="Base:&#10;Corax White&#10;Army Painter Speedpaint Dark Wood"></textarea>
+        <div id="importOut"></div>`;
+      renderImport();
+    } else {
+      const bs = visibleBrands();
+      $("#toolBody").innerHTML = `<button class="btn small sheet-close" data-closetool>Close</button>
+        <h2 style="padding-right:64px">Convert ${esc(pr.name)}</h2>
+        <p class="note-text" style="margin:0">Makes a copy of this project with each paint swapped for its closest match in another brand, keeping the same type: metallics stay metallic, washes stay washes, and Contrast swaps with Speedpaint. Paints that match below the minimum stay as they are.</p>
+        <select id="convBrand" class="field" aria-label="Brand to convert to">${bs.map(b => `<option>${esc(b)}</option>`).join("")}</select>
+        <label style="display:flex;flex-direction:column;gap:4px"><span class="label">Minimum match <output id="convMinOut">90%</output></span><input id="convMin" type="range" min="50" max="100" step="1" value="90"></label>
+        <div id="convOut"></div>`;
+      const other = bs.find(b => !pr.items.every(id => (BY_ID.get(id) || {}).brand === b));
+      if (other) $("#convBrand").value = other;
+      renderConvert();
+    }
+    const d = $("#tool"); if (!d.open) d.showModal();
+    if (kind === "import") $("#importText").focus();
+  }
+
+  function renderImport() {
+    importHits = parsePaintList($("#importText").value);
+    const found = importHits.filter(h => h.p), missed = importHits.filter(h => !h.p);
+    const fresh = [...new Set(found.map(h => h.p.id))].filter(id => !toolProject.items.includes(id));
+    $("#importOut").innerHTML = !importHits.length ? "" : `<div style="display:flex;flex-direction:column;gap:10px">
+      ${found.length ? `<div class="list">${found.map(({ line, p, guess }) => `<div class="paint">${pot(p).replace(/ data-open="[^"]*"/, "")}<div class="info" style="cursor:default"><div class="name">${esc(p.name)}${rangeTag(p)}</div><div class="meta">${esc(label(p))}${guess ? ` · guessed from “${esc(line)}”` : ""}${toolProject.items.includes(p.id) ? " · already in project" : ""}</div></div><span>${brandBadge(p.brand)}</span></div>`).join("")}</div>` : ""}
+      ${missed.length ? `<div><span class="label">Not found, will be skipped</span><p class="note-text" style="margin:4px 0 0">${missed.map(h => esc(h.line)).join("<br>")}</p></div>` : ""}
+      <div class="row"><button class="btn primary" id="importAdd" ${fresh.length ? "" : "disabled"}>Add ${fresh.length} paints</button><span class="count">${found.length} found · ${missed.length} not found</span></div></div>`;
+  }
+
+  /**
+   * Paint type for conversion: washes swap with washes, contrast-style paints with contrast-style,
+   * everything else with standard paints, and metallics only with metallics of the same type.
+   * @created Claude (claude-opus-5-5) — 2026-10-01
+   */
+  function paintType(p) {
+    const r = p.range.toLowerCase();
+    const kind = /wash|shade|ink/.test(r) ? "wash" : /contrast|speedpaint/.test(r) ? "contrast" : "standard";
+    return (p.metal ? "metallic " : "") + kind;
+  }
+
+  function renderConvert() {
+    const brand = $("#convBrand").value, min = Number($("#convMin").value);
+    $("#convMinOut").textContent = min + "%";
+    convertPlan = toolProject.items.map(id => BY_ID.get(id)).filter(Boolean).map(p => {
+      if (p.brand === brand) return { from: p, to: p, d: 0, kept: true, why: "already " + brand };
+      const type = paintType(p);
+      const hit = nearest(p.lab, { brand, limit: 1, pool: PAINTS.filter(x => x.brand === brand && paintType(x) === type) })[0];
+      if (!hit || 100 - hit.d < min) return { from: p, to: p, d: hit ? hit.d : null, kept: true, why: hit ? `best ${hit.p.name} ${pct(hit.d)}` : `no ${type} paint` };
+      return { from: p, to: hit.p, d: hit.d, kept: false };
+    });
+    const swapped = convertPlan.filter(x => !x.kept).length;
+    const cell = p => `<div>${pot(p).replace(/ data-open="[^"]*"/, "")}<span class="t"><strong>${esc(p.name)}</strong><br><small class="meta">${esc(p.brand + " " + p.range)}</small></span></div>`;
+    $("#convOut").innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
+      <div>${convertPlan.map(x => `<div class="conv ${x.kept ? "kept" : ""}">${cell(x.from)}${x.kept ? `<span class="de q-rough">kept</span><div class="meta">${esc(x.why)}</div>` : `<span class="de ${quality(x.d)[1]}">${pct(x.d)}</span>${cell(x.to)}`}</div>`).join("")}</div>
+      <div class="row"><button class="btn primary" id="convGo" ${swapped ? "" : "disabled"}>Create “${esc((toolProject.name + " (" + brand + ")").slice(0, 60))}”</button><span class="count">${swapped} converted · ${convertPlan.length - swapped} kept</span></div></div>`;
   }
 
   // ---------- Collections tab ----------
@@ -836,6 +986,22 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
     if ("canceldel" in d) { confirmDelete = null; return renderProjects(); }
     if (d.delproj) { state.projects = state.projects.filter(p => p.id !== d.delproj); confirmDelete = null; commit(); return toast("Project deleted"); }
     if (d.unwish) { const [pid, id] = d.unwish.split("|"); return toggleWish(pid, id); }
+    if (d.fold) return toggleFold(d.fold);
+    if (d.import) return openTool("import", d.import);
+    if (d.convert) return openTool("convert", d.convert);
+    if ("closetool" in d) return $("#tool").close();
+    if (t.id === "importAdd") {
+      const ids = [...new Set(importHits.filter(h => h.p).map(h => h.p.id))].filter(id => !toolProject.items.includes(id));
+      toolProject.items.push(...ids); $("#tool").close(); commit();
+      return toast(`Added ${ids.length} paints to ${toolProject.name}`);
+    }
+    if (t.id === "convGo") {
+      const brand = $("#convBrand").value, name = (toolProject.name + " (" + brand + ")").slice(0, 60);
+      const copy = { id: "p" + Date.now().toString(36), name, items: [...new Set(convertPlan.map(x => x.to.id))] };
+      state.projects.splice(state.projects.indexOf(toolProject) + 1, 0, copy);
+      $("#tool").close(); commit();
+      return toast(`Created ${name}`);
+    }
     if (d.delcustom) { state.custom = state.custom.filter(c => c.id !== d.delcustom); state.owned = state.owned.filter(x => x !== d.delcustom); state.projects.forEach(p => p.items = p.items.filter(x => x !== d.delcustom)); $("#sheet").close(); commit({ rebuild: true }); return toast("Custom paint deleted"); }
     if (d.copylist) {
       const pr = state.projects.find(p => p.id === d.copylist);
@@ -871,6 +1037,11 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
     if (t.id === "sortSel") { ui.sort = t.value; saveUi(); return renderPaints(); }
     if (t.id === "matchBrand" || t.id === "matchOwned") return renderMatch();
     if (t.id === "harmBrand" || t.id === "harmOwned") return renderHarmony();
+    if (t.id === "convBrand") return renderConvert();
+  });
+  document.addEventListener("input", e => {
+    if (e.target.id === "importText") renderImport();
+    else if (e.target.id === "convMin") renderConvert();
   });
   // A logo that fails to load (missing file, blocked host) swaps to the text badge and is not retried.
   document.addEventListener("error", e => {
@@ -913,6 +1084,7 @@ textarea.field { min-height: 120px; resize: vertical; font-family: var(--font-mo
     $("#newProjectName").value = ""; commit(); toast("Project added");
   });
   $("#sheet").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $("#tool").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
 
   // ---------- Boot ----------
   state = loadLocal() || blankState();

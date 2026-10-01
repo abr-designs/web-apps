@@ -7,6 +7,11 @@
 // optionally prefixed by a product code as "code:Name|hex".
 // To add a collection permanently, append an entry to PAINT_COLLECTIONS.
 //
+// Hex values for Vallejo Game Color Wash, Army Painter and AK collections come
+// from github.com/Arcturus5404/miniature-paints, MIT License,
+// Copyright (c) 2022 Rick Fleuren. Vallejo 73.208 and 73.209 are estimated.
+// Updated by Claude (claude-opus-5-5) on 2026-10-01: added those collections.
+//
 // PAINT_BRANDS sets the badge shown on paint tags. "short" is the badge text
 // and "color" its background. "logo" is optional: a path to an image in the
 // logos folder (published with the page) that replaces the text badge. A logo
@@ -14,7 +19,9 @@
 // initials and a generated colour.
 window.PAINT_BRANDS = {
   Citadel: { short: "CIT", color: "#1F3A6B", logo: "logos/citadel.png" },
-  Vallejo: { short: "VAL", color: "#9E1B1F", logo: "logos/vallejo.png" }
+  Vallejo: { short: "VAL", color: "#9E1B1F", logo: "logos/vallejo.png" },
+  "Army Painter": { short: "AP", color: "#B5121B" },
+  AK: { short: "AK", color: "#2B2B2B" }
 };
 
 window.PAINT_COLLECTIONS = [
@@ -487,6 +494,599 @@ Heavy Green|2F5A34
 70.996:Gold|C49A3E|m
 70.801:Brass|A88E4E|m
 70.863:Gunmetal Grey|5A5E60|m
+`
+  },
+  {
+    brand: "Vallejo",
+    range: "Game Color Wash",
+    paints: `
+73.201:Black Wash|343235
+73.207:Blue Wash|1A5B9B
+73.204:Flesh Wash|B67C78
+73.205:Green Wash|72B25B
+73.202:Pale Grey Wash|CACAD2
+73.206:Red Wash|D55E86
+73.200:Sepia Wash|8B622C
+73.203:Umber Wash|766053
+73.209:Violet Wash|5A2A6E
+73.208:Yellow Wash|D9A21E
+`
+  },
+  {
+    brand: "Army Painter",
+    range: "Warpaints Fanatic",
+    paints: `
+Abyssal Blue|00506C
+Aegis Aqua|32B3D5
+Afterglow|E4EA8D
+Agate Skin|D7877B
+Alien Purple|6154A3
+Alpha Blue|667DC0
+Amber Skin|C4A083
+Amulet Aqua|68C5B6
+Ancient Stone|D0C3A3
+Angel Green|173E31
+Angelic Red|D42C39
+Aqua Alchemy|24BBA6
+Aquamarine|56C4CD
+Arctic Gem|1995D4
+Army Green|5D7554
+Ash Grey|84878F
+Augur Blue|ACBCE2
+Autumn Sage|75AD98
+Barbarian Flesh|F69B7F
+Baron Blue|7C95CC
+Barren Dune|DEBB72
+Basilisk Red|6C2539
+Blood Chalice|DB4B50
+Boney Spikes|E6D4C1
+Bootstrap Brown|5D4D4D
+Brainmatter Beige|DEDBD3
+Brigade Grey|D0D0D2
+Brigadine Brown|443A40
+Bright Gold|987B1A|m
+Bright Sapphire|84CEF0
+Buffed Hide|B3756A
+Burning Ore|F2653E
+Burnt Turf|BE9859
+Camouflage Green|6E8358
+Carnelian Skin|5D3E46
+Cobalt Metal|2E4249|m
+Command Khaki|B49488
+Company Grey|BCBEC2
+Crystal Blue|0273BC
+Cultist Purple|6962AB
+Daemonic Yellow|FECE2A
+Dark Emerald|3B4A25
+Death Metal|2B2B2B|m
+Deep Azure|006B79
+Deep Grey|4B5164
+Deep Ocean Blue|1B3044
+Demigod Flames|D17B41
+Desert Yellow|856D45
+Diabolic Plum|562D74
+Diviner Light|D59FC5
+Doomfire Drab|F9D9E6
+Dorado Skin|EEC79E
+Dragon Red|BF283B
+Dryad Brown|613630
+Dusty Skull|8B7C68
+Elder Flower|A8577B
+Electric Lime|BDD532
+Emerald Forest|5BBB4D
+Enchanted Pink|B66CAE
+Eternal Hunt|279A4C
+Evergreen Fog|396360
+Evil Chrome|5B3B2F|m
+Ferocious Green|75C377
+Fiendish Yellow|EC9A44
+Figgy Pink|E3AFC9
+Flickering Flame|F58B3D
+Forbidden Fruit|CD88A9
+Forest Faun|A1C7AF
+Frost Blue|9ABEDE
+Fur Brown|774544
+Gargoyle Grey|A8A292
+Gemstone Red|821D23
+Glittering Green|2E794A
+Glowing Inferno|F79D42
+Gothic Blue|2E3E79
+Great Hall Grey|BBB4A6
+Greedy Gold|745218|m
+Greenskin|1F7843
+Grey Castle|929286
+Grotesque Green|B3C29D
+Guardian Green|226248
+Gun Metal|4F5053|m
+Hexed Violet|8D81BE
+Hydra Turquoise|149398
+Ice Yellow|FFEDAD
+Imperial Navy|063565
+Impish Rouge|D957A0
+Inner Light|FDCB5F
+Jasper Skin|BA7372
+Kraken Lavender|D5CAE5
+Lava Orange|F5792C
+Leafy Green|76C045
+Leather Brown|7C5B54
+Legendary Red|EF4B3E
+Leopard Stone Skin|E7B4B1
+Magecast Magenta|704099
+Marine Mist|94D6D7
+Matt Black|000000
+Matt White|FFFFFF
+Medieval Forest|437C6D
+Mithril|9E9FA3
+Mocca Skin|81655A
+Moldy Wine|7D3451
+Molten Lava|F05A3E
+Moonstone Skin|C57B74
+Mossy Green|B1DCC0
+Mulled Berry|623348
+Necrotic Flesh|9AA984
+Neptune Glow|75CED4
+Night Sky|304358
+Oak Brown|39262A
+Obsidian Skin|4A4046
+Olive Drab|7A905F
+Onyx Skin|664A4D
+Opal Skin|FFD2C8
+Pale Sand|EFEAD3
+Paratrooper Tan|9A776C
+Patagon Pine|63917F
+Pearl Skin|FFE3D8
+Phalanx Blue|048BAE
+Pharaoh Guard|0C7C61
+Pink Potion|F4B9D4
+Pixie Pink|D96FAE
+Plate Mail Metal|686A6E|m
+Prairie Ochre|696242
+Pure Red|CD151C
+Quartz Skin|F0D0B4
+Raging Rose|E96663
+Raging Rouge|F68F82
+Rainforest|8BC63E
+Red Copper|4D2C30|m
+Regal Blue|004F88
+Resplendent Red|96272F
+Rough Iron|352D25|m
+Royal Blue|0162AF
+Ruby Skin|FBB99D
+Ruddy Umber|985951
+Runic Cobalt|7496B4
+Sacred Scarlet|F1634C
+Scarab Green|193C44
+Shieldwall Blue|08A1CC
+Shining Silver|86888C|m
+Skeleton Bone|C2B293
+Space Dust|FFE388
+Spellbound Fuchsia|AD4DA0
+Stratos Blue|33658F
+Tainted Gold|575235|m
+Talisman Teal|1FAE91
+Temple Gate Teal|046154
+Terrestial Titan|303149
+Thunderous Blue|34577B
+Tidal Blue|026B93
+Tiger’s Eye Skin|904D52
+Tomb King Tan|A29278
+Topaz Skin|B25A53
+Tourmaline Skin|E3988B
+Tree Ancient|513430
+Triumphant Navy|1A2C53
+True Brass|635D58|m
+True Copper|6B4731|m
+Tundra Taupe|4B4D3E
+Turquoise Siren|29B3B9
+Ultramarine Blue|284D8E
+Uniform Grey|6B707C
+Urban Buff|DBB9AB
+Violent Vermillion|F37964
+Violet Coven|A999C7
+Vivid Volt|CFDC51
+Warlock Magenta|834D9F
+Warped Yellow|FED548
+Wasteland Clay|A38755
+Weapon Bronze|955610|m
+Weird Elixir|E092BF
+Wicked Pink|CE0886
+Wild Green|46B758
+Wilted Rose|ECC5D7
+Wolf Grey|4F78A3
+Woodland Camo|4B6149
+Worn Stone|C4BFB1
+Wyvern Fury|993243
+`
+  },
+  {
+    brand: "Army Painter",
+    range: "Fanatic Wash",
+    paints: `
+Blue Tone|132B47
+Brush-On Primer|727475
+Dark Blue Tone|17202E
+Dark Red Tone|2E131A
+Dark Rust|290F12
+Dark Skin Shade|443638
+Dark Tone|1F1F1F
+Data System Glow|87C866
+Disgusting Slime|A5C345
+Dry Blood|24000E
+Fresh Rust|C25428
+Green Tone|1F3625
+Lens Flare Glow|FFF464
+Light Tone|7F5216
+Magenta Tone|590135
+Military Shade|23270E
+Oil Stains|1D252B
+Oozing Vomit|7B5C1D
+Orange Tone|64300F
+Plasma Coil Glow|5ECDF4
+Power Node Glow|F286B5
+Purple Tone|241C31
+Radiation Glow|FBB375
+Red Tone|531F28
+Rust Tone|452A11
+Sepia Tone|734014
+Soft Tone|563D2A
+Strong Skin Shade|442824
+Strong Tone|211913
+True Blood|8D0422
+Verdigris|61B89B
+Wash Medium|B1B3B4
+`
+  },
+  {
+    brand: "Army Painter",
+    range: "Speedpaint 2.0",
+    paints: `
+Absolution Green|214A28
+Aged Hide|D56C4F
+Algae Green|9CAA53
+Ancient Honey|EBBD21
+Ashen Stone|B3B9B9
+Aztec Gold|62732F|m
+Battleship Grey|B7C6C9
+Beowulf Blue|0C3F80
+Blinding Light|F5F4EF
+Blood Red|DB3016
+Bony Matter|B69471
+Brazen Copper|6A3D37|m
+Bright Red|E15A3D
+Broadsword Silver|595854|m
+Brownish Decay|7B6C33
+Burnished Red|633B33
+Burnt Moss|4D5A50
+Camo Cloak|5A713B
+Caribbean Ocean|09A6B5
+Carmine Dragon|DC3058
+Charming Chartreuse|C9CF47
+Cloudburst Blue|3C4258
+Crusader Skin|EB9A5B
+Dark Wood|482D1A
+Desolate Brown|7A703B
+Dusk Red|603E3D
+Enchanted Steel|4F595B|m
+Familiar Pink|D62F7F
+Fire Drake|D2916B
+Fire Giant Orange|E77924
+Forest Sprite|6FA045
+Ghillie Dew|90AC23
+Ghoul Green|44A963
+Glittering Loot|836608
+Goddess Glow|9A5751
+Golden Armour|714808|m
+Gravelord Grey|44474C
+Grim Black|161511
+Gunner Camo|325141
+Hardened Leather|8C501E
+Highlord Blue|1B5682
+Hive Dweller Purple|57366B
+Hoard Bronze|867240|m
+Holy White|E2E1DC
+Hoplite Gold|907317|m
+Howling Sand|CECFB0
+Lizardfolk Cyan|39989C
+Maggot Skin|CBC861
+Magic Blue|0B79AE
+Maize Yellow|F6D31F
+Malignant Green|BECB3D
+Moody Mauve|A14F7D
+Moonlake Coral|A5396D
+Mummified Grime|666748
+Murder Scene|6E2A39
+Noble Skin|4F493D
+Nuclear Sunrise|E56F25
+Occultist Cloak|30323E
+Ochre Clay|B8A936
+Orc Skin|258335
+Pallid Bone|E1CC95
+Pastel Indigo|9FBCDA
+Pastel Lavender|D5BFD4
+Pastel Salmon|F3C498
+Pastel Seafoam|B8D7C8
+Pastel Yellow|F6E178
+Peachy Flesh|EDA668
+Periwinkle Purple|585396
+Plasmatic Bolt|0A9B8C
+Polished Silver|888782|m
+Poppy Red|C8453B
+Princess Pink|E29FB0
+Purple Alchemy|AE3F6A
+Purple Swarm|653483
+Raging Sea|1B95A4
+Rigor Mortis|ADAD6F
+Royal Robes|5363A1
+Ruddy Fur|9D4925
+Runic Grey|557989
+Sand Golem|CB9413
+Satchel Brown|583D32
+Shamrock Green|60AB2C
+Slaughter Red|991926
+Speedpaint Medium|F3F0EB
+Talos Bronze|6B3B27|m
+Thunderbird Blue|66B797
+Tidal Wave|1278B6
+Tyrian Navy|2A414F
+Warrior Skin|A37051
+Zealot Yellow|F4D008
+`
+  },
+  {
+    brand: "AK",
+    range: "3rd Gen Standard",
+    paints: `
+AK11152:Alga Green|555E1B
+AK11086:Amaranth Red|CF4E27
+AK11183:Amethyst Blue|332A47
+AK11167:Anthracite Grey|1C2A2B
+AK11170:Aquatic Turquoise|006557
+AK11172:Archaic Turquoise|003839
+AK11024:Ash Grey|42423A
+AK11021:Basalt Grey|5B605A
+AK11052:Basic Skin Tone|F7B57B
+AK11030:Beige|E2B848
+AK11064:Beige Red|DE935A
+AK11160:Black Green|131E0D
+AK11098:Black Red|42271E
+AK11089:Blood Red|C52219
+AK11011:Blue Grey|C7D0CD
+AK11070:Blue Violet|886DA4
+AK11169:Blue-green|358578
+AK11094:Bordeaux Red|A13B2F
+AK11093:Brick Red|9E4429
+AK11127:British Khaki|654D1F
+AK11063:Brown Rose|D78464
+AK11151:Brownish Green|57460E
+AK11031:Buff|D1AC5C
+AK11079:Burn Orange|DB5E30
+AK11097:Burnt Red|533125
+AK11111:Burnt Umber|2D1E01
+AK11085:Cadmium Red|E9582C
+AK11156:Camouflage Green|4F411C
+AK11091:Carmine|B83E26
+AK11113:Chocolate (chipping)|331E09
+AK11214:Clear Blue|0D265C
+AK11216:Clear Green|029837
+AK11218:Clear Orange|EB5D0B
+AK11213:Clear Red|C61215
+AK11215:Clear Smoke|734C21
+AK11217:Clear Yellow|F49401
+AK11155:Command Green|312E0D
+AK11181:Dark Blue|1E2D4C
+AK11164:Dark Blue-grey|4A5E53
+AK11109:Dark Brown|533914
+AK11056:Dark Flesh|EBA43A
+AK11146:Dark Green|224618
+AK11133:Dark Green-grey|3B4D3D
+AK11022:Dark Grey|494A45
+AK11189:Dark Prussian Blue|0A0C1B
+AK11107:Dark Rust|542303
+AK11033:Dark Sand|E6BC56
+AK11190:Dark Sea Blue|0D1814
+AK11015:Dark Sea Grey|7B7873
+AK11083:Dead Red|F54949
+AK11114:Deck Tan|CCC4AF
+AK11058:Decomposed Flesh|B7A261
+AK11176:Deep Sky Blue|69B4C7
+AK11095:Dirty Red|7F190D
+AK11043:Dirty Yellow|ECA71C
+AK11177:Ducat Blue|3A889F
+AK11144:Emerald|036242
+AK11020:English Grey|6D6D65
+AK11153:Extra Dark Green|243128
+AK11135:Faded Green|7C8872
+AK11178:Fluorescent Blue|004064
+AK11129:Fluorescent Green|98C31E
+AK11068:Fluorescent Magenta|FF4C69
+AK11081:Fluorescent Orange|FE5102
+AK11049:Fluorescent Yellow|F6F101
+AK11166:French Blue|545653
+AK11136:Frog Green|97B821
+AK11154:German Field Grey|423E23
+AK11025:German Grey|383830
+AK11117:Golden Brown|AB7602
+AK11139:Golden Olive|737B26
+AK11041:Golden Yellow|FEB449
+AK11019:Graphite|6C6E60
+AK11140:Grass Green|62832C
+AK11122:Green Ochre|A68236
+AK11134:Green Sky|8BB283
+AK11126:Green-brown|705923
+AK11132:Green-grey|DFE4BC
+AK11005:Greenish White|E4EECC
+AK11016:Grey Green|808064
+AK11165:Grey-blue|5F6772
+AK11125:Grey-brown|705B3C
+AK11112:Grim Brown|211404
+AK11008:Grimy Grey|DFC998
+AK11150:Gunship Green|485335
+AK11108:Hull Red|381A02
+AK11036:Ice Yellow|FEEE8E
+AK11180:Imperial Blue|192152
+AK11138:Interior Yellow Green|ACA300
+AK11163:Intermediate Blue|676966
+AK11149:Intermediate Green|506E32
+AK11004:Ivory|F3EEC8
+AK11123:Japanese Brown|966D1B
+AK11066:Laser Magenta|6B102F
+AK11048:Laser Yellow|F5EF2B
+AK11023:Lead Grey|464741
+AK11110:Leather Brown|46311E
+AK11047:Lemon Yellow|FFE121
+AK11100:Light Brown|CF8139
+AK11115:Light Earth|D0B580
+AK11050:Light Flesh|FFDFB6
+AK11141:Light Green|59922B
+AK11077:Light Orange|F07A3C
+AK11186:Light Prussian Blue|132A38
+AK11105:Light Rust|DB5615
+AK11071:Lilac|656074
+AK11137:Lime Green|819F1D
+AK11145:Lizard Green|175A31
+AK11051:Luminous Flesh|EDC180
+AK11128:Luminous Green|CDD742
+AK11082:Luminous Orange|F18700
+AK11067:Magenta|B1325F
+AK11106:Mahogany Brown|622A05
+AK11092:Matt Red|B5311C
+AK11184:Medium Blue|163A48
+AK11054:Medium Flesh Tone|C98230
+AK11010:Medium Grey|B6B8A3
+AK11148:Medium Olive Green|3E501C
+AK11078:Medium Orange|FA682C
+AK11103:Medium Rust|9C4B30
+AK11034:Medium Sand|CC9B35
+AK11014:Medium Sea Grey|A19B81
+AK11124:Middle Stone|8B7029
+AK11143:Mint Green|008C5F
+AK11120:Mud Brown|705331
+AK11018:Neutral Grey|696E68
+AK11173:Ocean Blue|1E3636
+AK11099:Ocher Orange|F5A75F
+AK11118:Ochre|C7932D
+AK11002:Offwhite|EBEBE1
+AK11062:Old Rose|FE9679
+AK11147:Olive Green|4B5F20
+AK11101:Orange Brown|B1581E
+AK11188:Oxford|353942
+AK11161:Pale Blue|B4C4B7
+AK11013:Pale Grey|AEAFB4
+AK11032:Pale Sand|EFD581
+AK11038:Pale Yellow|FEDD58
+AK11130:Pistachio|DCD225
+AK11039:Purulent Yellow|EBD03B
+AK11053:Radiant Flesh|FEB254
+AK11046:Radiant Yellow|FFD409
+AK11017:Reddish Grey|7B6B52
+AK11158:Reflective Green|352E11
+AK11007:Rock Grey|C1B897
+AK11027:Rubber Black|29251A
+AK11084:Ruby|CF4747
+AK11159:Russian Green|292907
+AK11104:Saddle Brown|683A2B
+AK11040:Sahara Yellow|B1930D
+AK11061:Salmon|F5A175
+AK11035:Sand Yellow|E9BD3A
+AK11087:Scarlet Red|D03B27
+AK11060:Sickly Pink|F6AF91
+AK11006:Silver Grey|E2D7B7
+AK11175:Sky Blue|88C2CD
+AK11012:Sky Grey|BBBAB6
+AK11028:Smoke Black|2B2B21
+AK11174:Snow Blue|CAE4E1
+AK11162:Spectrum Blue|B4BEBF
+AK11185:Star Blue|014760
+AK11187:Strong Dark Blue|04151F
+AK11055:Sunny Skin Tone|FFA84F
+AK11121:Tan Earth|7D5C33
+AK11116:Tan Yellow|D19849
+AK11026:Tenebrous Grey|302C21
+AK11171:Turquoise|004A4D
+AK11179:Ultramarine|1E357B
+AK11157:Us Dark Green|423910
+AK11057:Vampiric Flesh|CFBC81
+AK11090:Vermillion|C44C33
+AK11075:Violet Red|573536
+AK11042:Volcanic Yellow|F09218
+AK11009:Warm Grey|B6A88B
+AK11003:White Grey|F5F5ED
+AK11096:Wine Red|69140D
+AK11044:Yellow|FAB711
+`
+  },
+  {
+    brand: "AK",
+    range: "3rd Gen Intense",
+    paints: `
+AK11029:Black|101207
+AK11182:Deep Blue|1A4067
+AK11102:Deep Brown|854A2A
+AK11142:Deep Green|1C6128
+AK11080:Deep Orange|FE5E14
+AK11074:Deep Purple|7A4967
+AK11088:Deep Red|DC211A
+AK11072:Deep Violet|74536E
+AK11045:Deep Yellow|FDC500
+AK11065:Intense Pink|E9748F
+AK11001:White|FFFFFF
+`
+  },
+  {
+    brand: "AK",
+    range: "3rd Gen Metallic",
+    paints: `
+AK11207:Aluminium|AFAFAF|m
+AK11202:Anodized Violet|9D8696|m
+AK11200:Astral Beryllium|799E8D|m
+AK11194:Brass|A55D09|m
+AK11196:Bronze|7F5405|m
+AK11198:Burnt Tin|331702|m
+AK11201:Cobalt Blue|012136|m
+AK11197:Copper|BD500B|m
+AK11208:Dark Aluminium|787878|m
+AK11204:Emerald Metallic Green|21753A|m
+AK11203:Foundry Red|C53733|m
+AK11191:Gold|9E6806|m
+AK11212:Gun Metal|4E4E4C|m
+AK11199:Metallic Blue|829C99|m
+AK11210:Natural Steel|A7A6A1|m
+AK11211:Oily Steel|A7A491|m
+AK11192:Old Gold|B89402|m
+AK11206:Pearl|F5EFD5|m
+AK11195:Rusty Brass|A04D0B|m
+AK11193:Rusty Gold|734B03|m
+AK11209:Silver|A0AAAC|m
+`
+  },
+  {
+    brand: "AK",
+    range: "3rd Gen Pastel",
+    paints: `
+AK11168:Pastel Blue|BDDDB8
+AK11131:Pastel Green|A9D099
+AK11076:Pastel Peach|F59A54
+AK11059:Pastel Pink|F9C1AA
+AK11069:Pastel Violet|FEE6F4
+AK11037:Pastel Yellow|FDDA76
+`
+  },
+  {
+    brand: "AK",
+    range: "3rd Gen Ink",
+    paints: `
+AK11229:Burnt Umber|1D1405
+AK11223:Carbon Black|110801
+AK11226:Dark Green|01663E
+AK11225:Luminous Green|73B72C
+AK11228:Night Blue|0B1C26
+AK11227:Penetrating Red|B64026
+AK11224:Purple|B47C89
+AK11219:Sepia|230D00
+AK11221:Skin|943718
+AK11222:Sooty Black|5F5D48
+AK11230:Titanium White|FFFFFF
+AK11220:Turquoise|005E5E
 `
   }
 ];
