@@ -1,0 +1,39 @@
+{
+  "id": "T-0011",
+  "title": "Wire startup flow and degraded states in main.js",
+  "description": "js/main.js: loadHikes, render Score-sorted cards immediately, then fetch weather and drive times in parallel, then rank and re-render. Subscribe list to store. Implement Loading / HikesOnly / Ranked / Error states.\n\nAcceptance: offline load still shows all cards sorted by Score with a notice; broken hikes.json shows an error message; screenshots of Ranked and offline states.\n\nFrom docs/plans/0001-hiker-web-app.md, section \"Key Flows\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "ui"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": true,
+  "order": 90,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:11.670Z",
+  "links": [],
+  "attachments": [
+    {
+      "name": "mcp-Claude_Browser-blob-1790637550140-6v5a0u.jpg",
+      "path": "media/T-0011-mcp-Claude_Browser-blob-1790637550140-6v5a0u.jpg",
+      "type": "image/jpeg"
+    },
+    {
+      "name": "mcp-Claude_Browser-blob-1790637610972-5xyiv5.jpg",
+      "path": "media/T-0011-mcp-Claude_Browser-blob-1790637610972-5xyiv5.jpg",
+      "type": "image/jpeg"
+    }
+  ],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.528Z",
+      "text": "Done: offline (APIs pointed at an invalid host) shows all 64 by Score with notice; hikes.json missing gainM shows 'Hike \"Bodega Ridge\" is missing: gainM'."
+    }
+  ],
+  "work": []
+}

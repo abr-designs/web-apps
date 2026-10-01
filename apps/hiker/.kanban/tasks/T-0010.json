@@ -1,0 +1,34 @@
+{
+  "id": "T-0010",
+  "title": "Build banded list and controls",
+  "description": "js/ui/list.js renderList(root, bands) with a heading per band. js/ui/controls.js renderControls(root, store, days): day picker (dates from forecast), in-season toggle, access exclude (Ferry, 4x4, Kayak), country, tag filter, set-home input. Controls only call store.set.\n\nAcceptance: changing day or filter re-renders without a network request; screenshot attached.\n\nFrom docs/plans/0001-hiker-web-app.md, sections \"Components > ui\", \"Key Flows > App state\".",
+  "lane": "done",
+  "priority": "medium",
+  "labels": [
+    "plan-0001",
+    "ui"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": true,
+  "order": 100,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:12.518Z",
+  "links": [],
+  "attachments": [
+    {
+      "name": "mcp-Claude_Browser-blob-1790637550140-6v5a0u.jpg",
+      "path": "media/T-0010-mcp-Claude_Browser-blob-1790637550140-6v5a0u.jpg",
+      "type": "image/jpeg"
+    }
+  ],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.455Z",
+      "text": "Done: day, in-season, country, avoid, tags, home. Changing day/filters made 0 network requests."
+    }
+  ],
+  "work": []
+}

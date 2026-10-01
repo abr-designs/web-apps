@@ -1,0 +1,1614 @@
+[
+  {
+    "id": "joffre-lakes",
+    "name": "Joffre Lakes",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/joffre-lakes",
+    "lat": 50.3695,
+    "lon": -122.4988,
+    "lengthKm": 9.5,
+    "timeHrs": 4,
+    "gainM": 360,
+    "difficulty": 1,
+    "quality": 5,
+    "accessibility": 2,
+    "months": [
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "june-September"
+  },
+  {
+    "id": "turtlehead",
+    "name": "Turtlehead",
+    "allTrails": "https://www.alltrails.com/explore/trail/us/washington/turtleback-mountain-to-orcas-knob?u=m",
+    "lat": 48.6672,
+    "lon": -122.9472,
+    "lengthKm": 8.5,
+    "timeHrs": 2.5,
+    "gainM": 270,
+    "difficulty": 1,
+    "quality": 5,
+    "accessibility": 4,
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "Ferry"
+    ],
+    "country": "US",
+    "notes": "All year"
+  },
+  {
+    "id": "bodega-ridge",
+    "name": "Bodega Ridge",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/bodega-ridge",
+    "lat": 48.9495,
+    "lon": -123.5122,
+    "lengthKm": 8.4,
+    "timeHrs": 2.33,
+    "gainM": 255,
+    "difficulty": 1,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "tags": [
+      "COASTAL_VIEWS",
+      "MOUNTAIN_VIEWS",
+      "GEOLOGY"
+    ],
+    "access": [
+      "Ferry"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "mount-daniel",
+    "name": "Mount Daniel",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/mount-daniel--2",
+    "lat": 49.6476,
+    "lon": -124.0044,
+    "lengthKm": 4.5,
+    "timeHrs": 2,
+    "gainM": 365,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [
+      "Ferry"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "cool-creek-canyon",
+    "name": "Cool Creek Canyon",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/cool-creek-canyon-hike",
+    "lat": 50.4245,
+    "lon": -122.6936,
+    "lengthKm": 2,
+    "timeHrs": 2,
+    "gainM": 320,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 5,
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "mount-erskine",
+    "name": "Mount Erskine",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/mount-erskine-via-toynbee",
+    "lat": 48.8391,
+    "lon": -123.5293,
+    "lengthKm": 5.5,
+    "timeHrs": 2.5,
+    "gainM": 380,
+    "difficulty": 2,
+    "quality": 5,
+    "accessibility": 4,
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "May-October"
+  },
+  {
+    "id": "cheakamus-lake",
+    "name": "Cheakamus Lake",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/cheakamus-lake-trail",
+    "lat": 50.0419,
+    "lon": -122.9896,
+    "lengthKm": 14.5,
+    "timeHrs": 4,
+    "gainM": 145,
+    "difficulty": 1,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "BIG_TREES",
+      "SWIMMING"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "April-October"
+  },
+  {
+    "id": "yak-peak",
+    "name": "Yak Peak",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/yak-peak-trail",
+    "lat": 49.5962,
+    "lon": -121.1203,
+    "lengthKm": 6,
+    "timeHrs": 4,
+    "gainM": 768,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 2,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "MOUNTAIN_VIEWS",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "semaphore-lakes",
+    "name": "Semaphore Lakes",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/semaphore-lakes-trail",
+    "lat": 50.5905,
+    "lon": -123.0178,
+    "lengthKm": 5.8,
+    "timeHrs": 2.5,
+    "gainM": 408,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WATERFALLS",
+      "WILDFLOWERS",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "June -Oct"
+  },
+  {
+    "id": "decker-tarn",
+    "name": "Decker Tarn",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/overlord-lakeside-decker-loop",
+    "lat": 50.0961,
+    "lon": -122.9011,
+    "lengthKm": 9,
+    "timeHrs": 3.5,
+    "gainM": 236,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "half-note-trail",
+    "name": "Half Note Trail",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/whistler-peak-half-note-to-high-note",
+    "lat": 50.0693,
+    "lon": -122.9466,
+    "lengthKm": 6,
+    "timeHrs": 2.5,
+    "gainM": 333,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "jocelyn-hill",
+    "name": "Jocelyn Hill",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/jocelyn-hill-trail-loop",
+    "lat": 48.509,
+    "lon": -123.5322,
+    "lengthKm": 9,
+    "timeHrs": 4,
+    "gainM": 210,
+    "difficulty": 1,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "tags": [],
+    "access": [
+      "Ferry"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "blue-lake",
+    "name": "Blue Lake",
+    "allTrails": "https://www.alltrails.com/trail/us/washington/blue-lake-trail--7?u=m",
+    "lat": 48.6567,
+    "lon": -121.7744,
+    "lengthKm": 7.4,
+    "timeHrs": 2.5,
+    "gainM": 305,
+    "difficulty": 1,
+    "quality": 4,
+    "accessibility": 5,
+    "months": [
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "tags": [
+      "COASTAL_VIEWS",
+      "MOUNTAIN_VIEWS",
+      "HISTORY",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "US"
+  },
+  {
+    "id": "greendrop-lake",
+    "name": "Greendrop Lake",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/lindeman-and-greendrop-lakes-trail",
+    "lat": 49.0989,
+    "lon": -121.4583,
+    "lengthKm": 10.9,
+    "timeHrs": 3.5,
+    "gainM": 469,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WATERFALLS",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "March-October"
+  },
+  {
+    "id": "garibaldi-lake",
+    "name": "Garibaldi Lake",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/four-lakes-garibaldi-highlands-and-debecks-hill-loop",
+    "lat": 49.7839,
+    "lon": -123.121,
+    "lengthKm": 20,
+    "timeHrs": 4,
+    "gainM": 1080,
+    "difficulty": 1,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "zoa-peak",
+    "name": "Zoa Peak",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/zoa-peak-trail",
+    "lat": 49.6102,
+    "lon": -121.0533,
+    "lengthKm": 9.8,
+    "timeHrs": 4.2,
+    "gainM": 697,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "the-flatiron",
+    "name": "The Flatiron",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/flatiron-via-needle-peak-trail",
+    "lat": 49.5951,
+    "lon": -121.1246,
+    "lengthKm": 10,
+    "timeHrs": 5,
+    "gainM": 690,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "three-brothers-mountain",
+    "name": "Three Brothers Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/three-brothers-mountain--3",
+    "lat": 49.1001,
+    "lon": -120.764,
+    "lengthKm": 21.5,
+    "timeHrs": 6.5,
+    "gainM": 480,
+    "difficulty": 2,
+    "quality": 5,
+    "accessibility": 2,
+    "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "May-October"
+  },
+  {
+    "id": "mount-galiano",
+    "name": "Mount Galiano",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/mount-galiano-via-top-of-the-world",
+    "lat": 48.8651,
+    "lon": -123.353,
+    "lengthKm": 13.5,
+    "timeHrs": 4.5,
+    "gainM": 300,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "SWIMMING",
+      "COASTAL_VIEWS",
+      "MOUNTAIN_VIEWS",
+      "HISTORY",
+      "GEOLOGY"
+    ],
+    "access": [
+      "Ferry"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "flora-lake",
+    "name": "Flora Lake",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/flora-lake-trail",
+    "lat": 49.099,
+    "lon": -121.4583,
+    "lengthKm": 11,
+    "timeHrs": 5.5,
+    "gainM": 1110,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "July-October"
+  },
+  {
+    "id": "frosty-mountain",
+    "name": "Frosty Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/frosty-mountain-trail",
+    "lat": 49.0629,
+    "lon": -120.8261,
+    "lengthKm": 22,
+    "timeHrs": 7.5,
+    "gainM": 1160,
+    "difficulty": 2,
+    "quality": 5,
+    "accessibility": 2,
+    "months": [
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "july-october"
+  },
+  {
+    "id": "elfin-lakes",
+    "name": "Elfin Lakes",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/elfin-lakes-diamondhead",
+    "lat": 49.7502,
+    "lon": -123.0534,
+    "lengthKm": 22,
+    "timeHrs": 7,
+    "gainM": 685,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 2,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "chief-mountain",
+    "name": "Chief Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/stawamus-chief-trail",
+    "lat": 49.6788,
+    "lon": -123.1545,
+    "lengthKm": 7,
+    "timeHrs": 5,
+    "gainM": 625,
+    "difficulty": 4,
+    "quality": 4,
+    "accessibility": 2,
+    "months": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "cascade-pass",
+    "name": "Cascade Pass",
+    "allTrails": "https://www.alltrails.com/trail/us/washington/cascade-pass-trail--3?u=m",
+    "lat": 48.475,
+    "lon": -121.075,
+    "lengthKm": 10.5,
+    "timeHrs": 3.66,
+    "gainM": 750,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "tags": [
+      "WATERFALLS",
+      "WILDFLOWERS",
+      "MOUNTAIN_VIEWS",
+      "HISTORY",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "US"
+  },
+  {
+    "id": "hozomeen-lake",
+    "name": "Hozomeen Lake",
+    "allTrails": "https://www.alltrails.com/trail/us/washington/hozomeen-lake-trail--2?u=m",
+    "lat": 48.9838,
+    "lon": -121.0729,
+    "lengthKm": 11.9,
+    "timeHrs": 3.5,
+    "gainM": 380,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "SWIMMING",
+      "MOUNTAIN_VIEWS",
+      "HISTORY"
+    ],
+    "access": [],
+    "country": "US",
+    "notes": "April-October"
+  },
+  {
+    "id": "echo-lake",
+    "name": "Echo Lake",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/echo-lake-trail",
+    "lat": 49.7132,
+    "lon": -123.1734,
+    "lengthKm": 7.6,
+    "timeHrs": 5.5,
+    "gainM": 905,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WATERFALLS",
+      "BIG_TREES",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS",
+      "GEOLOGY"
+    ],
+    "access": [
+      "4x4",
+      "Kayak"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "chain-lakes",
+    "name": "Chain Lakes",
+    "allTrails": "https://www.alltrails.com/explore/trail/us/washington/chain-lakes-loop-trail?u=m",
+    "lat": 48.8464,
+    "lon": -121.6923,
+    "lengthKm": 11.5,
+    "timeHrs": 5.5,
+    "gainM": 375,
+    "difficulty": 2,
+    "quality": 5,
+    "accessibility": 4,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "US",
+    "notes": "June-October"
+  },
+  {
+    "id": "evans-peak",
+    "name": "Evans Peak",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/evans-peak-trail",
+    "lat": 49.3273,
+    "lon": -122.4628,
+    "lengthKm": 9,
+    "timeHrs": 5,
+    "gainM": 950,
+    "difficulty": 5,
+    "quality": 4,
+    "accessibility": 1,
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "snow-camp-mountain",
+    "name": "Snow Camp Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/snow-camp-manning",
+    "lat": 49.0667,
+    "lon": -120.8847,
+    "lengthKm": 17,
+    "timeHrs": 6,
+    "gainM": 600,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "welcome-pass",
+    "name": "Welcome Pass",
+    "allTrails": "https://www.alltrails.com/trail/us/washington/welcome-pass-via-high-divide-trail?u=m",
+    "lat": 48.9079,
+    "lon": -121.707,
+    "lengthKm": 9,
+    "timeHrs": 5.5,
+    "gainM": 1010,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "US"
+  },
+  {
+    "id": "wedgemount-lake",
+    "name": "Wedgemount Lake",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/wedgemount-lake",
+    "lat": 50.1727,
+    "lon": -122.8632,
+    "lengthKm": 12.5,
+    "timeHrs": 8.5,
+    "gainM": 1165,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 2,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WATERFALLS",
+      "WILDFLOWERS",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "June-October"
+  },
+  {
+    "id": "cheam-peak",
+    "name": "Cheam Peak",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/cheam-peak",
+    "lat": 49.1679,
+    "lon": -121.6942,
+    "lengthKm": 9,
+    "timeHrs": 4,
+    "gainM": 690,
+    "difficulty": 2,
+    "quality": 5,
+    "accessibility": 5,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA",
+    "notes": "July-October"
+  },
+  {
+    "id": "mount-elsay",
+    "name": "Mount Elsay",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/mount-elsay--2",
+    "lat": 49.3674,
+    "lon": -122.949,
+    "lengthKm": 13,
+    "timeHrs": 10,
+    "gainM": 500,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 2,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "BIG_TREES",
+      "SWIMMING",
+      "COASTAL_VIEWS",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "statlu-lake",
+    "name": "Statlu Lake",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/statlu-lake-trail",
+    "lat": 49.506,
+    "lon": -122.0064,
+    "lengthKm": 13,
+    "timeHrs": 6,
+    "gainM": 300,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WATERFALLS",
+      "BIG_TREES",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "July-Oct"
+  },
+  {
+    "id": "twin-sisters",
+    "name": "Twin Sisters",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/the-lions-binkert-trail",
+    "lat": 49.4707,
+    "lon": -123.2347,
+    "lengthKm": 15,
+    "timeHrs": 9,
+    "gainM": 1654,
+    "difficulty": 4,
+    "quality": 4,
+    "accessibility": 1,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WATERFALLS",
+      "COASTAL_VIEWS",
+      "MOUNTAIN_VIEWS",
+      "HISTORY",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "July - October"
+  },
+  {
+    "id": "decker-mountain",
+    "name": "Decker Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/overlord-lakeside-decker-loop?mobileMap=false&ref=sidebar-static-map",
+    "lat": 50.0961,
+    "lon": -122.9012,
+    "lengthKm": 12,
+    "timeHrs": 6.5,
+    "gainM": 600,
+    "difficulty": 4,
+    "quality": 4,
+    "accessibility": 2,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "June-Oct"
+  },
+  {
+    "id": "lake-ann",
+    "name": "Lake Ann",
+    "allTrails": "https://www.alltrails.com/trail/us/washington/lake-ann?u=m",
+    "lat": 48.85,
+    "lon": -121.6863,
+    "lengthKm": 15.3,
+    "timeHrs": 5.5,
+    "gainM": 788,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WATERFALLS",
+      "WILDFLOWERS",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "US"
+  },
+  {
+    "id": "skywalk-north",
+    "name": "Skywalk North",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/skywalk-north-and-south-loop",
+    "lat": 50.1541,
+    "lon": -122.968,
+    "lengthKm": 20,
+    "timeHrs": 8.5,
+    "gainM": 1050,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "helm-lake",
+    "name": "Helm Lake",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/helm-lake?mobileMap=false&ref=sidebar-static-map",
+    "lat": 50.0419,
+    "lon": -122.9896,
+    "lengthKm": 32,
+    "timeHrs": 11,
+    "gainM": 1504,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 2,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "BIG_TREES",
+      "WILDFLOWERS",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "CA",
+    "notes": "July-October"
+  },
+  {
+    "id": "tenquille-lake",
+    "name": "Tenquille Lake",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/tenquille-lake-from-lillooet-river",
+    "lat": 50.5029,
+    "lon": -122.9677,
+    "lengthKm": 12.5,
+    "timeHrs": 4,
+    "gainM": 450,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 5,
+    "months": [
+      7,
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "hope-mountain",
+    "name": "Hope Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/hope-mountain--2",
+    "lat": 49.3287,
+    "lon": -121.3824,
+    "lengthKm": 8.5,
+    "timeHrs": 6,
+    "gainM": 690,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 5,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "skywalk-south",
+    "name": "Skywalk South",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/rick-s-roots-skywalk-south-and-rainbow-sproat-lake-loop",
+    "lat": 50.1441,
+    "lon": -122.9736,
+    "lengthKm": 18,
+    "timeHrs": 6,
+    "gainM": 1060,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "mount-price",
+    "name": "Mount Price",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/mount-price",
+    "lat": 49.9574,
+    "lon": -123.12,
+    "lengthKm": 27,
+    "timeHrs": 11,
+    "gainM": 1480,
+    "difficulty": 4,
+    "quality": 5,
+    "accessibility": 1,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "June-October"
+  },
+  {
+    "id": "skyline-divide",
+    "name": "Skyline Divide",
+    "allTrails": "https://www.alltrails.com/explore/trail/us/washington/skyline-divide?u=m",
+    "lat": 48.8803,
+    "lon": -121.8649,
+    "lengthKm": 13,
+    "timeHrs": 6,
+    "gainM": 670,
+    "difficulty": 2,
+    "quality": 5,
+    "accessibility": 5,
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "tags": [],
+    "access": [],
+    "country": "US",
+    "notes": "April-November"
+  },
+  {
+    "id": "golden-ears",
+    "name": "Golden Ears",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/golden-ears-trail",
+    "lat": 49.3273,
+    "lon": -122.4627,
+    "lengthKm": 25,
+    "timeHrs": 11,
+    "gainM": 1530,
+    "difficulty": 4,
+    "quality": 4,
+    "accessibility": 1,
+    "months": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "hidden-lake-lookout",
+    "name": "Hidden Lake Lookout",
+    "allTrails": "https://www.alltrails.com/trail/us/washington/hidden-lake-lookout-trail?u=m",
+    "lat": 48.5142,
+    "lon": -121.2219,
+    "lengthKm": 12.1,
+    "timeHrs": 5.5,
+    "gainM": 992,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "MOUNTAIN_VIEWS",
+      "HISTORY",
+      "GEOLOGY"
+    ],
+    "access": [],
+    "country": "US"
+  },
+  {
+    "id": "crown-mountain",
+    "name": "Crown Mountain",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/crown-mountain-trail",
+    "lat": 49.3793,
+    "lon": -123.0827,
+    "lengthKm": 9.5,
+    "timeHrs": 8,
+    "gainM": 1227,
+    "difficulty": 5,
+    "quality": 4,
+    "accessibility": 1,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "yellow-aster-butte",
+    "name": "Yellow Aster Butte",
+    "allTrails": "https://www.alltrails.com/explore/trail/us/washington/yellow-aster-butte-trail?u=m",
+    "lat": 48.9435,
+    "lon": -121.6626,
+    "lengthKm": 13,
+    "timeHrs": 7,
+    "gainM": 770,
+    "difficulty": 3,
+    "quality": 5,
+    "accessibility": 4,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "US",
+    "notes": "june-september"
+  },
+  {
+    "id": "palmers-pond",
+    "name": "Palmers Pond",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/palmer-pond-via-hudson-bay-company-heritage-trail",
+    "lat": 49.3337,
+    "lon": -121.1275,
+    "lengthKm": 11.5,
+    "timeHrs": 7,
+    "gainM": 950,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 5,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "marriott-basin",
+    "name": "Marriott Basin",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/marriott-basin-trail",
+    "lat": 50.3874,
+    "lon": -122.4627,
+    "lengthKm": 17.7,
+    "timeHrs": 6.5,
+    "gainM": 980,
+    "difficulty": 4,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "watersprite-lake",
+    "name": "Watersprite Lake",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/watersprite-lake-summer-route",
+    "lat": 49.7521,
+    "lon": -122.9346,
+    "lengthKm": 17,
+    "timeHrs": 7,
+    "gainM": 668,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 5,
+    "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA"
+  },
+  {
+    "id": "the-black-tusk",
+    "name": "The Black Tusk",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/black-tusk-trail",
+    "lat": 49.9574,
+    "lon": -123.1202,
+    "lengthKm": 29,
+    "timeHrs": 10.5,
+    "gainM": 1740,
+    "difficulty": 4,
+    "quality": 5,
+    "accessibility": 2,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "June-October"
+  },
+  {
+    "id": "gotcha-and-gott-peak",
+    "name": "Gotcha & Gott Peak",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/gotcha-peak-and-gott-peak-via-blowdown-pass--2",
+    "lat": 50.3701,
+    "lon": -122.1951,
+    "lengthKm": 12.2,
+    "timeHrs": 6,
+    "gainM": 1055,
+    "difficulty": 4,
+    "quality": 4,
+    "accessibility": 4,
+    "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "tags": [
+      "WILDFLOWERS",
+      "SWIMMING",
+      "MOUNTAIN_VIEWS"
+    ],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA",
+    "notes": "May-November"
+  },
+  {
+    "id": "brandywine-mountain",
+    "name": "Brandywine Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/brandywine-mountain--2",
+    "lat": 50.073,
+    "lon": -123.1687,
+    "lengthKm": 10,
+    "timeHrs": 5.5,
+    "gainM": 860,
+    "difficulty": 4,
+    "quality": 5,
+    "accessibility": 5,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA",
+    "notes": "july-october"
+  },
+  {
+    "id": "twin-lakes",
+    "name": "Twin Lakes",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/twin-lakes--2",
+    "lat": 50.4825,
+    "lon": -122.3731,
+    "lengthKm": 16,
+    "timeHrs": 7.5,
+    "gainM": 965,
+    "difficulty": 3,
+    "quality": 5,
+    "accessibility": 5,
+    "months": [
+      8,
+      9
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA",
+    "notes": "Unknown"
+  },
+  {
+    "id": "mount-steele",
+    "name": "Mount Steele",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/mount-steele-via-edwards-lake-trail",
+    "lat": 49.6021,
+    "lon": -123.6852,
+    "lengthKm": 18,
+    "timeHrs": 8,
+    "gainM": 840,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 5,
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "Ferry",
+      "4x4"
+    ],
+    "country": "CA",
+    "notes": "June-October"
+  },
+  {
+    "id": "illal-mountain",
+    "name": "Illal Mountain",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/jim-kelly-and-coquihalla-mountain-traverse",
+    "lat": 49.5344,
+    "lon": -120.9967,
+    "lengthKm": 13,
+    "timeHrs": 7.5,
+    "gainM": 745,
+    "difficulty": 4,
+    "quality": 5,
+    "accessibility": 5,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA",
+    "notes": "july-october"
+  },
+  {
+    "id": "mount-rohr",
+    "name": "Mount Rohr",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/rohr-lake-via-marriot-basin-trail",
+    "lat": 50.3873,
+    "lon": -122.4622,
+    "lengthKm": 12,
+    "timeHrs": 8,
+    "gainM": 1030,
+    "difficulty": 4,
+    "quality": 5,
+    "accessibility": 5,
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [
+      "4x4"
+    ],
+    "country": "CA",
+    "notes": "august-september"
+  },
+  {
+    "id": "flute-summit",
+    "name": "Flute Summit",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/flute-summit-via-singing-pass",
+    "lat": 50.1148,
+    "lon": -122.9529,
+    "lengthKm": 30.4,
+    "timeHrs": 11.3,
+    "gainM": 1699,
+    "difficulty": 4,
+    "quality": 4,
+    "accessibility": 3,
+    "months": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "anniversary-glacier",
+    "name": "Anniversary Glacier",
+    "lengthKm": 9,
+    "timeHrs": 5.5,
+    "gainM": 450,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 10,
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "rainbow-pass",
+    "name": "Rainbow Pass",
+    "lengthKm": 18.5,
+    "timeHrs": 7,
+    "gainM": 890,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 10,
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "camel-pass",
+    "name": "Camel Pass",
+    "lengthKm": 17.5,
+    "timeHrs": 7.5,
+    "gainM": 1090,
+    "difficulty": 2,
+    "quality": 4,
+    "accessibility": 10,
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "the-gargoyles",
+    "name": "The Gargoyles",
+    "lengthKm": 27,
+    "timeHrs": 9,
+    "gainM": 905,
+    "difficulty": 3,
+    "quality": 4,
+    "accessibility": 10,
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "panorama-ridge",
+    "name": "Panorama Ridge",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/panorama-ridge",
+    "lengthKm": 29.5,
+    "timeHrs": 10.5,
+    "gainM": 1555,
+    "difficulty": 3,
+    "quality": 5,
+    "accessibility": 10,
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "June-October"
+  }
+]

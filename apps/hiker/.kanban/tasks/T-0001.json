@@ -1,0 +1,28 @@
+{
+  "id": "T-0001",
+  "title": "Scaffold app shell, config, cache and state store",
+  "description": "Create index.html (loads js/main.js as type=module), styles.css (tokens on :root, dark mode, mobile layout), js/config.js (BANDS, TTLs, Open-Meteo and OSRM URLs, DAYS, DEFAULT_HOME), js/cache.js (cacheGet/cacheSet with TTL, all storage in try/catch) and js/state.js (createStore -> get/set/subscribe).\n\nAcceptance: page serves via `npx serve` with no console errors; cache survives reload and returns null after TTL; subscribe fires on set.\n\nFrom docs/plans/0001-hiker-web-app.md, sections \"Components > cache\", \"Components > state\", \"Implementation Notes\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "setup"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 10,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:20.615Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:22.796Z",
+      "text": "Done: index.html, styles.css (tokens, dark mode, 375px OK), config/cache/state. Served via npx serve (.claude/launch.json), no console errors."
+    }
+  ],
+  "work": []
+}

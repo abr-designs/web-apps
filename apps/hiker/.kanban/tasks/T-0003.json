@@ -1,0 +1,28 @@
+{
+  "id": "T-0003",
+  "title": "Port hikeScore with 64-row sheet regression test",
+  "description": "js/hikeScore.js exports hikeScore(hike): ((lengthKm*1000 + gainM*2) / (10/timeHrs)) * 2^difficulty * 2^accessibility / quality / 1000. tests/hikeScore.test.mjs checks every Local.csv row against its sheet Score to 2 decimals.\n\nAcceptance: `node --test tests/` passes with 0 mismatches; formula exists in exactly one file.\n\nFrom docs/plans/0001-hiker-web-app.md, section \"Components > hikeScore\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "scoring"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 30,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:18.910Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:22.940Z",
+      "text": "Done: 64/64 sheet Scores match. Run with node --test \"tests/*.test.mjs\" (Node 25 rejects the bare directory)."
+    }
+  ],
+  "work": []
+}

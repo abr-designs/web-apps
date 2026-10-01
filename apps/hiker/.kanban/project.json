@@ -1,0 +1,37 @@
+{
+  "name": "Hiker",
+  "description": "",
+  "lanes": [
+    {
+      "id": "backlog",
+      "name": "Backlog"
+    },
+    {
+      "id": "todo",
+      "name": "To Do"
+    },
+    {
+      "id": "in-progress",
+      "name": "In Progress"
+    },
+    {
+      "id": "review",
+      "name": "Review"
+    },
+    {
+      "id": "done",
+      "name": "Done"
+    }
+  ],
+  "sprints": [
+    {
+      "id": "hiker-v1",
+      "name": "Hiker v1",
+      "start": "2026-09-28",
+      "end": "2026-10-11",
+      "status": "active"
+    }
+  ],
+  "labels": {},
+  "created": "2026-09-28T21:40:57.760Z"
+}

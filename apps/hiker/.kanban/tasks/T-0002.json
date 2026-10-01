@@ -1,0 +1,28 @@
+{
+  "id": "T-0002",
+  "title": "Build convert.mjs and generate data/hikes.json",
+  "description": "tools/convert.mjs reads data/source/Local.csv and Database.csv and writes data/hikes.json in the Hike shape. Local supplies every Score input; Database adds lat, lon, months, tags, access joined on trail name (case-insensitive, trimmed). Decode Months / Trail Tags / Access Tags bitmasks to names. country = US when Local Restrictions contains USA. Keep When To Visit as notes. Do not store score.\n\nAcceptance: hikes.json has every Local hike; unmatched names and field conflicts printed to stdout; Joffre Lakes months = [8, 9]; Echo Lake access = [\"4x4\", \"Kayak\"].\n\nFrom docs/plans/0001-hiker-web-app.md, sections \"Components > convert\", \"Data\".",
+  "lane": "done",
+  "priority": "high",
+  "labels": [
+    "plan-0001",
+    "data"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 20,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:19.710Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:22.868Z",
+      "text": "Done: 64 hikes written. Joffre months [8,9], Echo access [4x4, Kayak]. 5 unmatched (Anniversary Glacier, Rainbow Pass, Camel Pass, The Gargoyles, Panorama Ridge), 10 conflicts reported, Local kept. Names title-cased."
+    }
+  ],
+  "work": []
+}

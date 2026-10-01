@@ -1,0 +1,28 @@
+{
+  "id": "T-0007",
+  "title": "Implement origin and routeClient (OSRM drive hours)",
+  "description": "js/origin.js getOrigin(): geolocation, else saved home (localStorage), else config.DEFAULT_HOME; saveHome(). js/routeClient.js getDriveHours(origin, hikes): one OSRM table request (sources=0, annotations=duration), seconds to hours, cached 7d keyed by origin rounded to 2 decimals.\n\nAcceptance: Joffre Lakes from Vancouver is roughly 2.5 to 3.5 h; denied geolocation falls back silently; no API key in the repo.\n\nFrom docs/plans/0001-hiker-web-app.md, sections \"Components > origin\", \"Components > routeClient\".",
+  "lane": "done",
+  "priority": "medium",
+  "labels": [
+    "plan-0001",
+    "routing"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": false,
+  "order": 70,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:15.381Z",
+  "links": [],
+  "attachments": [],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.239Z",
+      "text": "Done: Joffre from Vancouver 3.1 h. Order changed to saved home > geolocation > default (plan U-001). Set home to Kelowna recomputed Joffre to 5.5 h."
+    }
+  ],
+  "work": []
+}

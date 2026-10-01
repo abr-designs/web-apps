@@ -1,0 +1,39 @@
+{
+  "id": "T-0009",
+  "title": "Build hike card component",
+  "description": "js/ui/card.js renderCard(hike, dayForecast, driveHrs): name, AllTrails link, Score, length / time / gain, difficulty, quality, tags, access, season, weather summary with band badge, drive time. Missing weather or drive time renders a quiet placeholder.\n\nAcceptance: readable at 375px wide and in dark mode; screenshot attached.\n\nFrom docs/plans/0001-hiker-web-app.md, section \"Components > ui\".",
+  "lane": "done",
+  "priority": "medium",
+  "labels": [
+    "plan-0001",
+    "ui"
+  ],
+  "due": "",
+  "sprint": "hiker-v1",
+  "assignee": "",
+  "screenshot": true,
+  "order": 110,
+  "created": "2026-09-28T23:05:20.299Z",
+  "updated": "2026-09-29T14:19:13.423Z",
+  "links": [],
+  "attachments": [
+    {
+      "name": "mcp-Claude_Browser-blob-1790637567884-i0fkk7.jpg",
+      "path": "media/T-0009-mcp-Claude_Browser-blob-1790637567884-i0fkk7.jpg",
+      "type": "image/jpeg"
+    },
+    {
+      "name": "mcp-Claude_Browser-blob-1790637550140-6v5a0u.jpg",
+      "path": "media/T-0009-mcp-Claude_Browser-blob-1790637550140-6v5a0u.jpg",
+      "type": "image/jpeg"
+    }
+  ],
+  "comments": [
+    {
+      "author": "Claude",
+      "date": "2026-09-28T23:21:23.384Z",
+      "text": "Done: screenshots at 375px light and desktop dark attached."
+    }
+  ],
+  "work": []
+}
