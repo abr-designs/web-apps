@@ -140,6 +140,8 @@ input, select { font: inherit; color: inherit; }
 .rank-row .val { text-align: right; font-variant-numeric: tabular-nums; }
 .rank-row .val b { display: block; font-size: 17px; }
 .rank-row .val span { display: block; font-size: 12px; color: var(--muted); }
+.rank-more { font-size: 12px; color: var(--muted); text-align: center; }  /* [Claude 2026-10-03] */
+.sub-head { font-size: 13px; font-weight: 700; margin-top: 4px; }  /* [Claude 2026-10-03] */
 
 /* Checks */
 .checks { display: flex; flex-direction: column; gap: 10px; }
@@ -192,9 +194,16 @@ details.group > summary .sum-note { font-weight: 400; font-size: 12px; color: va
 .derived b { font-variant-numeric: tabular-nums; font-size: 14px; }
 input[type="range"] { width: 100%; accent-color: var(--accent); }
 
-.offer { border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-.offer-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.offer { border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 12px; }
+.offer-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer; list-style: none; }  /* [Claude 2026-10-03] foldable */
+.offer-head::-webkit-details-marker { display: none; }
+.offer-head .offer-title { min-width: 0; }
+.offer-head .offer-title::before { content: "\25B8  "; color: var(--muted); }
+.offer[open] .offer-head .offer-title::before { content: "\25BE  "; }
 .offer-head b { font-size: 14px; }
+.offer-head .offer-sum { display: block; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.offer[open] .offer-head .offer-sum { display: none; }
+.offer-body { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -265,12 +274,15 @@ svg .now { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
   <section class="card verdict" id="verdict"></section>
 
   <details class="group" open>
-    <summary>Dealer lease offers <span class="sum-note">what the salesperson quotes</span></summary>
+    <summary>New vehicle offers <span class="sum-note">lease or finance</span></summary>
     <div class="group-body">
       <div id="offers"></div>
       <div class="row-btns">
-        <button class="btn ghost sm" id="addOffer" type="button">Add another offer</button>
+        <button class="btn ghost sm" id="addOffer" type="button">Add lease offer</button>
+        <button class="btn ghost sm" id="addFinance" type="button">Add finance offer</button>
+        <button class="btn ghost sm" id="addUsed" type="button">Add used offer</button>
       </div>
+      <span class="hint">Enter lease payments as the $0-down quote. A down payment or incentive lowers the payment at the lease rate. Finance and used offers are sold at the same month as your Crosstrek on the slider below.</span>
       <div class="field">
         <label for="tradeOffer">Their trade-in offer for your Crosstrek ($, 0 if none)</label>
         <input id="tradeOffer" type="number" inputmode="decimal" step="100" data-bind="trade.offer">
@@ -302,12 +314,56 @@ svg .now { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
       </div>
       <div class="field">
         <label for="sellMonth">Sell it privately after <b id="sellLabel">-</b></label>
-        <input id="sellMonth" type="range" min="6" max="96" step="1" data-bind="keep.sellMonth">
-        <span class="hint">Selling pays off the loan balance from the sale price, so you never need the full residual in cash.</span>
+        <input id="sellMonth" type="range" min="6" max="96" step="1" list="yearMarks" data-bind="keep.sellMonth">
+        <datalist id="yearMarks"><option value="12"></option><option value="24"></option><option value="36"></option><option value="48"></option><option value="60"></option><option value="72"></option><option value="84"></option><option value="96"></option></datalist>
+        <span class="hint">Snaps to each year mark. Selling pays off the loan balance from the sale price, so you never need the full residual in cash.</span>
       </div>
       <div class="derived"><span>Buyout, tax and doc fee in</span><b id="outBuyout">-</b></div>
       <div class="derived"><span>Financed payment</span><b id="outFinPay">-</b></div>
       <div class="derived"><span>Loan balance when sold</span><b id="outFinBal">-</b></div>
+      <div class="derived"><span>Private sale when sold</span><b id="outResale">-</b></div>
+      <div class="derived"><span>Value lost from residual</span><b id="outResaleLost">-</b></div>
+      <div class="sub-head">Running costs for your Crosstrek</div>
+      <div class="grid2">
+        <div class="field">
+          <label for="keepIns">Insurance ($ / mo)</label>
+          <input id="keepIns" type="number" inputmode="decimal" step="5" data-bind="keep.insurance">
+        </div>
+        <div class="field">
+          <label for="keepFuel">Fuel (L / 100 km)</label>
+          <input id="keepFuel" type="number" inputmode="decimal" step="0.1" data-bind="keep.fuel">
+        </div>
+        <div class="field">
+          <label for="keepMaint">Maintenance ($ / yr)</label>
+          <input id="keepMaint" type="number" inputmode="decimal" step="50" data-bind="keep.maint">
+        </div>
+        <div class="field">
+          <label for="keepRepairs">Repairs out of warranty ($ / yr)</label>
+          <input id="keepRepairs" type="number" inputmode="decimal" step="50" data-bind="keep.repairs">
+        </div>
+      </div>
+      <div class="derived"><span>Running cost</span><b id="outRunKeep">-</b></div>
+    </div>
+  </details>
+
+  <details class="group">
+    <summary>Driving costs <span class="sum-note">shared by every vehicle</span></summary>
+    <div class="group-body">
+      <div class="grid2">
+        <div class="field">
+          <label for="runKm">You drive (km / yr)</label>
+          <input id="runKm" type="number" inputmode="numeric" step="1000" data-bind="running.kmPerYear">
+        </div>
+        <div class="field">
+          <label for="runGas">Gas ($ / L)</label>
+          <input id="runGas" type="number" inputmode="decimal" step="0.05" data-bind="running.gasPrice">
+        </div>
+        <div class="field">
+          <label for="runKwh">Electricity ($ / kWh)</label>
+          <input id="runKwh" type="number" inputmode="decimal" step="0.01" data-bind="running.kwhPrice">
+        </div>
+      </div>
+      <span class="hint">Insurance, energy and maintenance are added to every option for the months you drive it.</span>
     </div>
   </details>
 
@@ -435,7 +491,7 @@ svg .now { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
           <input id="goodRate" type="number" inputmode="decimal" step="0.25" data-bind="money.goodRatePct">
         </div>
       </div>
-      <p class="note">Every figure is in today's dollars: future payments are discounted at your savings rate, so cash paid up front carries the interest it would have earned. Private sales: the buyer pays 12% PST at ICBC on the greater of price and book value, the seller pays none. Insurance, fuel and repairs are left out; a new lease carries a full warranty and an older owned car does not.</p>
+      <p class="note">Every figure is in today's dollars: future payments are discounted at your savings rate, so cash paid up front carries the interest it would have earned. Private sales: the buyer pays 12% PST at ICBC on the greater of price and book value, the seller pays none. Insurance, energy and maintenance come from the Driving costs inputs; repairs out of warranty apply only to your Crosstrek.</p>
       <div class="row-btns">
         <button class="btn ghost sm" id="resetAll" type="button">Reset everything</button>
       </div>
@@ -489,8 +545,44 @@ const BENCH = [
   ["Ford", "2026 Escape ST-Line FWD", 33499, 4.99, 612.3, 5.49, 566.2],
   ["General Motors", "2026 Chevrolet Trax 1RS FWD", 24499, 5.99, 472.1, 6.49, 424.6],
   ["General Motors", "2026 Chevrolet Trailblazer LT AWD", 31199, 5.99, 572.5, 6.49, 524.3],
-  ["General Motors", "2026 Buick Envista Preferred FWD", 26999, 5.49, 498.4, 5.99, 451.2]
+  ["General Motors", "2026 Buick Envista Preferred FWD", 26999, 5.49, 498.4, 5.99, 451.2],
+  /* [Claude 2026-10-03] Tesla Canada configurator, Vancouver, read 2026-10-03. 36 mo is the $0-down, 20,000 km/yr quote;
+     48 mo is backed out from Tesla's 16,000 km/yr down-payment quote. Lease rates are implied from the payment drop per $5,000 down. */
+  ["Tesla", "2026 Model 3 Premium RWD", 39490, 4.85, 712, 4.85, 653],
+  ["Tesla", "2026 Model Y RWD", 49990, 5.33, 869, 5.33, 833]
 ];
+
+/* [Claude 2026-10-03] Details the survey lacks. Tesla finance is 5.21% at every term; fees are freight and PDI plus levies
+   when financed, and the levies alone when leased (freight is built into the lease payment). The Model Y qualifies for the
+   $5,000 federal EVAP incentive; the China-built Model 3 does not. */
+const BENCH_EXTRA = {
+  "2026 Model 3 Premium RWD": { finApr: 5.21, finFees: 2626, leaseFees: 126, incentive: 0, power: "electric", fuel: 15, maint: 350, insurance: 220, deprPct: 15 },
+  "2026 Model Y RWD": { finApr: 5.21, finFees: 2626, leaseFees: 126, incentive: 5000, power: "electric", fuel: 17, maint: 350, insurance: 230, deprPct: 15 }
+};
+
+/* [Claude 2026-10-03] Used hybrid and electric dealer listings near Vancouver (CarGurus.ca, read 2026-10-03).
+   [label, price, power, energy per 100 km (L or kWh), maintenance $/yr] */
+const USED = [
+  ["2022 Tesla Model 3 RWD, 36,102 km", 34888, "electric", 15, 400],
+  ["2022 Tesla Model 3 RWD, 80,000 km", 28800, "electric", 15, 450],
+  ["2022 Tesla Model 3 Long Range AWD, 73,097 km", 32997, "electric", 16, 450],
+  ["2021 Tesla Model 3 SR+ RWD, 69,892 km", 27699, "electric", 15, 450],
+  ["2024 Tesla Model Y, 53,550 km", 41980, "electric", 17, 400],
+  ["2023 Tesla Model Y RWD, 71,937 km", 37888, "electric", 17, 450],
+  ["2023 Tesla Model Y Long Range AWD, 74,391 km", 41497, "electric", 18, 450],
+  ["2022 Tesla Model Y Long Range AWD, 31,000 km", 46995, "electric", 18, 400],
+  ["2022 Tesla Model Y Long Range AWD, 75,866 km", 39900, "electric", 18, 450],
+  ["2024 Hyundai Ioniq 5 Preferred RWD, 24,491 km", 38988, "electric", 18, 400],
+  ["2023 Hyundai Ioniq 5 Preferred AWD Long Range, 55,200 km", 39988, "electric", 20, 450],
+  ["2022 Hyundai Ioniq 5 Preferred RWD, 47,212 km", 32495, "electric", 18, 450],
+  ["2025 Kia Niro EV Wind, 39,465 km", 33895, "electric", 16.5, 400],
+  ["2024 Kia Niro EV Wind, 38,576 km", 31499, "electric", 16.5, 400],
+  ["2021 Kia Niro EV EX Premium, 41,143 km", 27888, "electric", 16.5, 450],
+  ["2024 Toyota Corolla Cross Hybrid AWD, 40,802 km", 38899, "hybrid", 6.0, 600],
+  ["2021 Toyota RAV4 Hybrid XLE AWD, 68,106 km", 35999, "hybrid", 6.0, 700],
+  ["2022 Toyota RAV4 Hybrid SE AWD, 99,448 km", 37980, "hybrid", 6.0, 750],
+  ["2022 Toyota RAV4 Hybrid LE AWD, 91,510 km", 30499, "hybrid", 6.0, 750]
+].map(([label, price, power, fuel, maint]) => ({ label, price, power, fuel, maint }));
 
 /* Local resale listings (subaru_crosstrek_touring_listings.csv) */
 const DEFAULT_COMPS = [
@@ -523,9 +615,45 @@ function benchFor(bench, term) {
   return term >= 42 ? { rate: bench[5], pay: bench[6], term: 48 } : { rate: bench[3], pay: bench[4], term: 36 };
 }
 
-function defaultOffer() {
+/* [Claude 2026-10-03] Powertrain and default energy use guessed from the model name. */
+function powerFor(model) {
+  const x = BENCH_EXTRA[model];
+  if (x) return { power: x.power, fuel: x.fuel, maint: x.maint };
+  return /hybrid|e-boxer/i.test(model) ? { power: "hybrid", fuel: 5.6, maint: 550 } : { power: "gas", fuel: 7.8, maint: 600 };
+}
+
+/* [Claude 2026-10-03] Fills price, rate, fees and running costs from the chosen vehicle and deal type. */
+function applyVehicle(o, resetTerm) {
+  if (o.kind === "used") {
+    if (!USED.some(u => u.label === o.model) && o.model !== "other") o.model = USED[0].label;
+    const u = USED.find(x => x.label === o.model);
+    Object.assign(o, { apr: 7.49, fees: 595, incentive: 0, deprPct: 12, insurance: 210, maint: 600 }, u ? { msrp: u.price, power: u.power, fuel: u.fuel, maint: u.maint } : {});
+    if (resetTerm) o.termMonths = 60;
+    return o;
+  }
+  if (USED.some(u => u.label === o.model)) o.model = BENCH[0][1];
+  const bench = findBench(o.model);
+  const x = BENCH_EXTRA[o.model] || {};
+  if (bench) Object.assign(o, powerFor(o.model), { msrp: bench[2], insurance: x.insurance || 190, deprPct: x.deprPct || 13, incentive: x.incentive || 0 });
+  if (o.kind === "finance") {
+    if (resetTerm) o.termMonths = 60;
+    Object.assign(o, { apr: x.finApr || 5.99, fees: x.finFees || 595 });
+  } else {
+    if (resetTerm) o.termMonths = 36;
+    const b = benchFor(bench, o.termMonths);
+    if (b) Object.assign(o, { apr: b.rate, payment: b.pay, inclTax: false });
+    o.fees = x.leaseFees || 595;
+  }
+  return o;
+}
+
+/* [Claude 2026-10-03] Lease, new-vehicle finance or used-vehicle finance offer, with its own running costs. */
+function defaultOffer(kind) {
   const b = BENCH[0];
-  return { id: uid(), model: b[1], msrp: b[2], termMonths: 36, apr: b[3], payment: b[4], inclTax: false, down: 0, fees: 595, dispositionFee: 400 };
+  return applyVehicle({
+    id: uid(), kind: kind || "lease", model: b[1], msrp: b[2], termMonths: 36, apr: b[3], payment: b[4], inclTax: false,
+    down: 0, fees: 595, dispositionFee: 400, deprPct: 13, insurance: 190, incentive: 0
+  }, true);
 }
 
 function defaultState() {
@@ -538,7 +666,8 @@ function defaultState() {
     tax: { rate: 12, docFee: 595 },
     market: { haircutPct: 4, deprPct: 12, useDeprOverride: false, kmValue: 0.10, useOverride: false, override: 26000, comps: DEFAULT_COMPS.map(c => Object.assign({}, c)) },
     money: { cashRatePct: 3, goodRatePct: 4 },
-    keep: { apr: 4.99, termMonths: 60, down: 0, lenderFee: 0, sellMonth: 36 },
+    keep: { apr: 4.99, termMonths: 60, down: 0, lenderFee: 0, sellMonth: 36, power: "gas", insurance: 160, fuel: 8.0, maint: 800, repairs: 600 },  // [Claude 2026-10-03]
+    running: { kmPerYear: 20000, gasPrice: 1.85, kwhPrice: 0.14 },  // [Claude 2026-10-03]
     trade: { offer: 0 },
     offers: [defaultOffer()]
   };
@@ -591,6 +720,27 @@ function amortBalance(principal, aprPct, months, k) {
   const pmt = amortPayment(principal, aprPct, months);
   return principal * Math.pow(1 + r, k) - pmt * (Math.pow(1 + r, k) - 1) / r;
 }
+/* [Claude 2026-10-03] Monthly insurance, energy and maintenance for one vehicle. */
+function runningCost(v) {
+  const R = state.running;
+  const ins = Number(v.insurance) || 0;
+  const price = v.power === "electric" ? R.kwhPrice : R.gasPrice;
+  const energy = R.kmPerYear / 12 * (Number(v.fuel) || 0) / 100 * price;
+  const maint = ((Number(v.maint) || 0) + (Number(v.repairs) || 0)) / 12;
+  return { ins, energy, maint, total: ins + energy + maint };
+}
+/* [Claude 2026-10-03] Annual rate that takes base down to value over the given months. */
+function annualDrop(base, value, months) {
+  if (!(base > 0) || !(value > 0) || months <= 0) return 0;
+  return (1 - Math.pow(value / base, 12 / months)) * 100;
+}
+/* [Claude 2026-10-03] Lease payment after a down payment lowers the $0-down quote at the lease rate. */
+function leasePretax(o) {
+  const term = Math.max(1, Math.round(o.termMonths));
+  const quote = o.inclTax ? o.payment / (1 + state.tax.rate / 100) : o.payment;
+  return Math.max(0, quote - (o.down + (o.incentive || 0)) * (1 / term + o.apr / 2400));  // [Claude 2026-10-03] incentive acts as a cap reduction
+}
+
 /* Present value of k level payments made at the end of months 1..k. */
 function pvAnnuity(pmt, k, r) {
   if (k <= 0) return 0;
@@ -672,6 +822,7 @@ function keepPath(d, financed, sellMonth) {
 
   const K = state.keep;
   const term = Math.max(1, Math.round(K.termMonths));
+  const run = runningCost(K);  // [Claude 2026-10-03]
   let pmt = 0, balance = 0, interest = 0, keptMonthly = d.buyoutAllIn / term;
   if (!financed) {
     add("Buyout paid in cash", "Residual + doc fee + " + state.tax.rate + "% tax", d.buyoutAllIn, 0);
@@ -679,7 +830,7 @@ function keepPath(d, financed, sellMonth) {
     const down = clamp(K.down, 0, d.buyoutAllIn);
     const principal = d.buyoutAllIn - down + K.lenderFee;
     pmt = amortPayment(principal, K.apr, term);
-    keptMonthly = pmt + down / term;  // [Claude 2026-10-03]
+    keptMonthly = pmt;  // [Claude 2026-10-03]
     const paid = Math.min(N, term);
     balance = amortBalance(principal, K.apr, term, paid);
     interest = pmt * paid + balance - principal;
@@ -691,14 +842,90 @@ function keepPath(d, financed, sellMonth) {
   }
   const sale = d.valueAt(N);
   add("Private sale", "Sold after " + N + " months (estimate)", -sale, N, true);
+  const r = addRunning(lines, run, N, d.r);  // [Claude 2026-10-03]
+  nominal += r.nominal;
+  netPv += r.pv;
 
   return {
     key: financed ? "fin" : "cash",
     label: financed ? "Buy out, finance at " + state.keep.apr + "%" : "Buy out, pay cash",
+    vehicle: "Your 2024 Crosstrek Touring",  // [Claude 2026-10-03]
     sub: "Drive " + N + " months, then sell",
     months: N, lines, nominal, netPv, monthly: netPv / N,
-    pmt, balance, interest,
-    kept: { monthly: keptMonthly, months: term }  // [Claude 2026-10-03]
+    pmt, balance, interest, run,
+    kept: { monthly: keptMonthly + run.total, months: term },  // [Claude 2026-10-03]
+    resale: { value: sale, base: state.lease.residual, months: N }  // [Claude 2026-10-03]
+  };
+}
+
+/* [Claude 2026-10-03] Full vehicle name with year and brand, and a short form for labels. */
+function vehicleName(o) {
+  if (o.model === "other") return o.kind === "used" ? "Other used vehicle" : "Other new vehicle";
+  if (o.kind === "used") return o.model;
+  const b = findBench(o.model);
+  return b ? o.model.replace(/^(\d{4})\s/, "$1 " + b[0] + " ") : o.model;
+}
+function shortName(o) {
+  if (o.model === "other") return "other vehicle";
+  return (o.kind === "used" ? o.model.split(",")[0] : o.model).replace(/^\d{4}\s/, "");
+}
+
+/* [Claude 2026-10-03] Adds the running-cost line for months 1..N and returns its nominal and PV totals. */
+function addRunning(lines, run, N, r) {
+  lines.push({
+    label: "Insurance, energy, maintenance",
+    sub: N + " x " + fmt2(run.total) + ": insurance " + fmt(run.ins) + ", energy " + fmt(run.energy) + ", maintenance " + fmt(run.maint),
+    amount: run.total * N
+  });
+  return { nominal: run.total * N, pv: pvAnnuity(run.total, N, r) };
+}
+
+/* [Claude 2026-10-03] Buy a new vehicle with a loan, drive it N months, then sell it privately. */
+function financePath(offer, d, index, sellMonth) {
+  const N = Math.max(1, Math.round(sellMonth));
+  const pv = (x, m) => x / Math.pow(1 + d.r, m);
+  const term = Math.max(1, Math.round(offer.termMonths));
+  const exit = exitOptions(d)[0];
+  const run = runningCost(offer);
+  const allIn = (offer.msrp + offer.fees) * (1 + d.tax);
+  const down = clamp(offer.down, 0, allIn);
+  const incentive = clamp(offer.incentive || 0, 0, allIn - down);  // [Claude 2026-10-03] taken off after tax
+  const principal = allIn - down - incentive;
+  const pmt = amortPayment(principal, offer.apr, term);
+  const paid = Math.min(N, term);
+  const balance = amortBalance(principal, offer.apr, term, paid);
+  const interest = pmt * paid + balance - principal;
+  const sale = offer.msrp * Math.pow(1 - offer.deprPct / 100, N / 12);
+
+  const lines = [
+    { label: "Exit: " + exit.name, sub: exit.detail, amount: exit.cost, credit: exit.cost < 0 },
+    { label: "Down payment", sub: "Price " + fmt(offer.msrp) + " + fees " + fmt(offer.fees) + " + tax = " + fmt(allIn) + (incentive > 0 ? ", less " + fmt(incentive) + " incentive" : ""), amount: down },
+    { label: "Loan payments", sub: paid + " x " + fmt2(pmt) + " at " + offer.apr + "%, " + fmt(interest) + " interest", amount: pmt * paid }
+  ];
+  let nominal = exit.cost + down + pmt * paid;
+  let netPv = exit.cost + down + pvAnnuity(pmt, paid, d.r);
+  if (balance > 0.5) {
+    lines.push({ label: "Loan payoff at sale", sub: "Balance still owed after " + paid + " payments", amount: balance });
+    nominal += balance;
+    netPv += pv(balance, N);
+  }
+  lines.push({ label: "Private sale", sub: "Sold after " + N + " months at " + offer.deprPct + "%/yr depreciation", amount: -sale, credit: true });
+  nominal -= sale;
+  netPv -= pv(sale, N);
+  const rc = addRunning(lines, run, N, d.r);
+  nominal += rc.nominal;
+  netPv += rc.pv;
+
+  const used = offer.kind === "used";  // [Claude 2026-10-03]
+  return {
+    key: offer.id,
+    label: (used ? "Finance used " : "Finance ") + shortName(offer),
+    vehicle: vehicleName(offer),
+    sub: term + " months at " + offer.apr + "%, sell after " + N + ", " + exit.name.toLowerCase(),
+    months: N, lines, nominal, netPv, monthly: netPv / N,
+    pmt, balance, interest, run, offerIndex: index, kind: offer.kind,
+    kept: { monthly: pmt + run.total, months: term },
+    resale: { value: sale, base: offer.msrp, months: N }
   };
 }
 
@@ -728,25 +955,27 @@ function leasePath(offer, d, index) {
   const term = Math.max(1, Math.round(offer.termMonths));
   const exits = exitOptions(d);
   const exit = exits[0];
-  const payment = offer.payment * (offer.inclTax ? 1 : 1 + d.tax);
+  const payment = leasePretax(offer) * (1 + d.tax);  // [Claude 2026-10-03]
   const upfront = offer.down * (1 + d.tax) + offer.fees;
+  const run = runningCost(offer);  // [Claude 2026-10-03]
 
   const lines = [
     { label: "Exit: " + exit.name, sub: exit.detail, amount: exit.cost, credit: exit.cost < 0 },
     { label: "Due at signing", sub: "Down " + fmt(offer.down) + " + tax, fees " + fmt(offer.fees), amount: upfront },
-    { label: "Lease payments", sub: term + " x " + fmt2(payment) + (offer.inclTax ? "" : " (tax in)"), amount: payment * term },
+    { label: "Lease payments", sub: term + " x " + fmt2(payment) + " tax in" + (offer.down > 0 || offer.incentive > 0 ? ", lowered by the down payment and incentive" : ""), amount: payment * term },  // [Claude 2026-10-03]
     { label: "Hand-back fee at the end", sub: "Month " + term, amount: offer.dispositionFee }
   ];
-  const nominal = exit.cost + upfront + payment * term + offer.dispositionFee;
-  const netPv = exit.cost + upfront + pvAnnuity(payment, term, d.r) + pv(offer.dispositionFee, term);
+  const rc = addRunning(lines, run, term, d.r);  // [Claude 2026-10-03]
+  const nominal = exit.cost + upfront + payment * term + offer.dispositionFee + rc.nominal;
+  const netPv = exit.cost + upfront + pvAnnuity(payment, term, d.r) + pv(offer.dispositionFee, term) + rc.pv;
 
-  const short = offer.model === "other" ? "Other vehicle" : offer.model.replace(/^\d{4}\s/, "");
   return {
     key: offer.id,
-    label: "Lease " + short,
+    label: "Lease " + shortName(offer),  // [Claude 2026-10-03]
+    vehicle: vehicleName(offer),
     sub: term + " months at " + offer.apr + "%, " + exit.name.toLowerCase(),
     months: term, lines, nominal, netPv, monthly: netPv / term,
-    payment, exits, offerIndex: index
+    payment, exits, run, offerIndex: index, kind: "lease"
   };
 }
 
@@ -754,7 +983,7 @@ function computeAll() {
   const d = derive();
   const N = state.keep.sellMonth;
   const paths = [keepPath(d, false, N), keepPath(d, true, N)];
-  state.offers.forEach((o, i) => paths.push(leasePath(o, d, i)));
+  state.offers.forEach((o, i) => paths.push(o.kind === "lease" ? leasePath(o, d, i) : financePath(o, d, i, N)));  // [Claude 2026-10-03]
   const ranked = paths.slice().sort((a, b) => a.monthly - b.monthly);
   return { d, paths, ranked };
 }
@@ -769,14 +998,17 @@ function renderVerdict(res) {
   const el = document.getElementById("verdict");
   el.classList.toggle("is-tied", tied);
 
-  const rows = res.ranked.map((p, i) =>
+  const TOP = 4;  // [Claude 2026-10-03]
+  const rows = res.ranked.slice(0, TOP).map((p, i) =>
     '<div class="rank-row' + (i === 0 ? " first" : "") + '">' +
       '<span class="pos">' + (i + 1) + "</span>" +
-      '<div class="name">' + escapeHtml(p.label) + "<span>" + escapeHtml(p.sub) + "</span></div>" +
+      '<div class="name">' + escapeHtml(p.vehicle) + "<span>" + escapeHtml(p.label) + "</span><span>" + escapeHtml(p.sub) + "</span></div>" +  // [Claude 2026-10-03]
       '<div class="val"><b>' + fmt(p.monthly) + "/mo</b><span>" + fmt(p.netPv) + " over " + p.months + " mo</span>" +
-        (p.kept ? "<span>" + fmt(p.kept.monthly) + "/mo kept, " + p.kept.months + " mo</span>" : "") + "</div>" +
+        (p.kept ? "<span>" + fmt(p.kept.monthly) + "/mo kept, " + p.kept.months + " mo</span>" : "") +
+        (p.resale ? "<span>Resells " + fmt(p.resale.value) + ", " + pct(annualDrop(p.resale.base, p.resale.value, p.resale.months)) + "/yr</span>" : "") + "</div>" +  // [Claude 2026-10-03]
     "</div>"
-  ).join("");
+  ).join("") +
+    (res.ranked.length > TOP ? '<p class="rank-more">' + (res.ranked.length - TOP) + " more under Line items</p>" : "");  // [Claude 2026-10-03]
 
   el.innerHTML =
     '<div class="headline">' + (tied
@@ -785,7 +1017,7 @@ function renderVerdict(res) {
     '<p class="small">' + (tied
       ? "Only " + fmt(gap) + "/mo apart, inside the margin of error on resale estimates."
       : "Saves " + fmt(gap) + "/mo against " + escapeHtml(second.label) + ".") +
-      " Effective cost per month you drive, in today's dollars, after resale.</p>" +
+      " Effective cost per month you drive, in today's dollars, after resale and running costs. Kept is the monthly cost while you still own it, running costs in.</p>" +
     '<div class="rank-list">' + rows + "</div>";
 
   document.getElementById("bestBar").innerHTML =
@@ -838,21 +1070,42 @@ function renderChecks(res) {
       ? "Beats paying cash by " + fmt(finVsCash) + "/mo because your savings earn " + pct(M.cashRatePct) + "."
       : "Paying cash is " + fmt(-finVsCash) + "/mo cheaper, since the loan costs more than your savings earn.")]);
 
-  /* Lease offers against the BC survey */
+  /* [Claude 2026-10-03] Resale against the residual */
+  const drop = annualDrop(cash.resale.base, cash.resale.value, cash.resale.months);
+  items.push([chip(drop <= 15 ? "info" : "ok", pct(drop) + "/yr"),
+    "Sold after " + cash.resale.months + " months your Crosstrek should fetch <b>" + fmt(cash.resale.value) + "</b>, " +
+    fmt(cash.resale.base - cash.resale.value) + " below the " + fmt(cash.resale.base) + " residual. Most compact SUVs lose 10 to 15% a year after year three."]);
+
+  /* New vehicle offers: survey check for leases, rate check for loans, running costs against your Crosstrek */
   res.paths.filter(p => p.offerIndex != null).forEach(p => {
     const o = state.offers[p.offerIndex];
-    const b = benchFor(findBench(o.model), o.termMonths);
-    if (!b) {
-      items.push([chip("info", "No survey"), escapeHtml(p.label) + ": no survey figures for this vehicle."]);
-      return;
+    if (p.kind !== "lease") {  // [Claude 2026-10-03]
+      const k = o.apr < M.goodRatePct ? "good" : o.apr < M.goodRatePct + 1.5 ? "ok" : "bad";
+      items.push([chip(k, o.apr < M.goodRatePct ? "Under " + M.goodRatePct + "%" : "Over " + M.goodRatePct + "%"),
+        escapeHtml(p.label) + ": <b>" + pct(o.apr) + "</b> over " + o.termMonths + " months, " + fmt2(p.pmt) + "/mo. Resells for about <b>" +
+        fmt(p.resale.value) + "</b> after " + p.months + " months, " + fmt(o.msrp - p.resale.value) + " lost from the " + fmt(o.msrp) + " price."]);
+    } else {
+      const b = benchFor(findBench(o.model), o.termMonths);
+      if (!b) {
+        items.push([chip("info", "No survey"), escapeHtml(p.label) + ": no survey figures for this vehicle."]);
+      } else {
+        const effPay = o.payment / (o.inclTax ? 1 + d.tax : 1);  // [Claude 2026-10-03] quote is $0 down
+        const payGap = effPay - b.pay;
+        const rateGap = o.apr - b.rate;
+        const kind = rateGap <= 0.01 && payGap <= 10 ? "good" : rateGap <= 0.5 && payGap <= 40 ? "ok" : "bad";
+        items.push([chip(kind, kind === "good" ? "On par" : kind === "ok" ? "Negotiate" : "High"),
+          escapeHtml(p.label) + ": <b>" + pct(o.apr) + "</b> vs survey " + pct(b.rate) + " (" + b.term + " mo). $0-down payment <b>" +
+          fmt2(effPay) + "</b> pre-tax vs survey " + fmt2(b.pay) + (payGap > 0 ? ", " + fmt(payGap) + "/mo over." : ".")]);
+      }
     }
-    const effPay = o.payment / (o.inclTax ? 1 + d.tax : 1) + o.down / Math.max(1, o.termMonths);
-    const payGap = effPay - b.pay;
-    const rateGap = o.apr - b.rate;
-    const kind = rateGap <= 0.01 && payGap <= 10 ? "good" : rateGap <= 0.5 && payGap <= 40 ? "ok" : "bad";
-    items.push([chip(kind, kind === "good" ? "On par" : kind === "ok" ? "Negotiate" : "High"),
-      escapeHtml(p.label) + ": <b>" + pct(o.apr) + "</b> vs survey " + pct(b.rate) + " (" + b.term + " mo). Payment <b>" +
-      fmt2(effPay) + "</b> pre-tax incl. down spread, vs survey " + fmt2(b.pay) + (payGap > 0 ? ", " + fmt(payGap) + "/mo over." : ".")]);
+    /* [Claude 2026-10-03] Energy and maintenance savings, the part a hybrid or EV changes. */
+    const kr = cash.run, or = p.run;
+    const energySave = kr.energy - or.energy, maintSave = kr.maint - or.maint, insSave = kr.ins - or.ins;
+    const total = energySave + maintSave + insSave;
+    items.push([chip(total > 0 ? "good" : "info", (total >= 0 ? "Saves " : "Costs ") + fmt(Math.abs(total)) + "/mo"),
+      escapeHtml(p.label) + " (" + escapeHtml(o.power) + ") against your Crosstrek: energy <b>" + fmt(or.energy) + "</b> vs " + fmt(kr.energy) +
+      ", maintenance <b>" + fmt(or.maint) + "</b> vs " + fmt(kr.maint) + ", insurance <b>" + fmt(or.ins) + "</b> vs " + fmt(kr.ins) +
+      " per month. Over " + p.months + " months that is " + fmt(total * p.months) + (total >= 0 ? " saved" : " extra") + ", already counted in its ranked cost."]);
   });
 
   document.getElementById("checks").innerHTML = items.map(([c, t]) =>
@@ -887,8 +1140,13 @@ function renderChart(res) {
     cashS.push([n, keepPath(d, false, n).monthly]);
     finS.push([n, keepPath(d, true, n).monthly]);
   }
-  const leases = res.paths.filter(p => p.offerIndex != null);
-  const all = cashS.concat(finS).map(p => p[1]).concat(leases.map(p => p.monthly));
+  const leases = res.paths.filter(p => p.kind === "lease");  // [Claude 2026-10-03]
+  const newFin = state.offers.map((o, i) => [o, i]).filter(([o]) => o.kind !== "lease").map(([o, i]) => {  // [Claude 2026-10-03]
+    const s = [];
+    for (let n = lo; n <= hi; n++) s.push([n, financePath(o, d, i, n).monthly]);
+    return { o, i, s };
+  });
+  const all = cashS.concat(finS).concat(...newFin.map(f => f.s)).map(p => p[1]).concat(leases.map(p => p.monthly));
   const yMax = Math.ceil(Math.max(...all, 100) * 1.08 / 100) * 100;
   const yMin = Math.min(0, Math.floor(Math.min(...all) / 100) * 100);
 
@@ -916,9 +1174,15 @@ function renderChart(res) {
   out += line(finS, c2);
   legend.push([c1, "Buy out, cash"], [c2, "Buy out, " + state.keep.apr + "%"]);
 
-  leases.forEach((p, i) => {
-    const c = cssVar(SERIES[(i + 2) % SERIES.length]);
-    out += '<line class="ref" stroke="' + c + '" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y(p.monthly).toFixed(1) + '" y2="' + y(p.monthly).toFixed(1) + '"/>';
+  res.paths.filter(p => p.offerIndex != null).forEach(p => {  // [Claude 2026-10-03]
+    const c = cssVar(SERIES[(p.offerIndex + 2) % SERIES.length]);
+    if (p.kind === "lease") {
+      out += '<line class="ref" stroke="' + c + '" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + y(p.monthly).toFixed(1) + '" y2="' + y(p.monthly).toFixed(1) + '"/>';
+    } else {
+      const f = newFin.find(x => x.i === p.offerIndex);
+      out += line(f.s, c);
+      out += '<circle cx="' + x(nowN).toFixed(1) + '" cy="' + y(p.monthly).toFixed(1) + '" r="4" fill="' + c + '"/>';
+    }
     legend.push([c, p.label]);
   });
 
@@ -941,6 +1205,10 @@ function renderDerived(res) {
   set("outBuyout", fmt2(d.buyoutAllIn));
   set("outFinPay", fmt2(fin.pmt) + " x " + state.keep.termMonths);
   set("outFinBal", fmt(fin.balance));
+  const rs = fin.resale;  // [Claude 2026-10-03]
+  set("outResale", fmt(rs.value) + " at " + rs.months + " mo");
+  set("outResaleLost", fmt(rs.base - rs.value) + " (" + pct(annualDrop(rs.base, rs.value, rs.months)) + "/yr)");
+  set("outRunKeep", fmt(fin.run.total) + "/mo (energy " + fmt(fin.run.energy) + ", maint " + fmt(fin.run.maint) + ")");
   set("outResPct", pct(L.residual / L.msrp * 100));
   set("outProjKm", L.odometer > 0 ? num(d.projectedKm) + " km" : "Enter odometer");
   set("outOverage", fmt(d.overageCost) + (d.overageKm > 0 ? " (" + num(d.overageKm) + " km over)" : ""));
@@ -959,7 +1227,14 @@ function renderDerived(res) {
   set("countdown", "Lease ends " + endText + (d.daysToEnd > 0 ? " · " + d.daysToEnd + " days" : " · ended"));
   document.querySelectorAll("[data-payout]").forEach(el => {
     const p = res.paths.find(x => x.key === el.getAttribute("data-payout"));
-    if (p) el.textContent = fmt2(p.payment) + " tax in · " + fmt(p.monthly) + "/mo effective";
+    if (!p) return;
+    el.textContent = p.kind !== "lease"  // [Claude 2026-10-03]
+      ? fmt2(p.pmt) + " x " + state.offers[p.offerIndex].termMonths + " · resells " + fmt(p.resale.value) + " at " + p.months + " mo"
+      : fmt2(p.payment) + " tax in · " + fmt(p.monthly) + "/mo effective";
+  });
+  document.querySelectorAll("[data-runout]").forEach(el => {  // [Claude 2026-10-03]
+    const p = res.paths.find(x => x.key === el.getAttribute("data-runout"));
+    if (p) el.textContent = fmt(p.run.total) + "/mo (energy " + fmt(p.run.energy) + ", maint " + fmt(p.run.maint) + ")";
   });
 }
 
@@ -985,26 +1260,57 @@ function offerField(o, key, label, step, mode) {
 function renderOffers() {
   const models = BENCH.map(b => '<option value="' + escapeHtml(b[1]) + '">' + escapeHtml(b[0] + " " + b[1]) + "</option>").join("") +
     '<option value="other">Other vehicle</option>';
+  const pick = (o, key, opts) => '<select id="of-' + o.id + '-' + key + '" data-offer="' + o.id + '" data-key="' + key + '" data-text="1">' +  // [Claude 2026-10-03]
+    opts.map(([v, t]) => '<option value="' + v + '"' + (o[key] === v ? " selected" : "") + ">" + t + "</option>").join("") + "</select>";
   document.getElementById("offers").innerHTML = state.offers.map((o, i) => {
-    const b = benchFor(findBench(o.model), o.termMonths);
-    return '<div class="offer">' +
-      '<div class="offer-head"><b>Offer ' + (i + 1) + "</b>" +
-        (state.offers.length > 1 ? '<button class="btn ghost sm" type="button" data-kill-offer="' + o.id + '">Remove</button>' : "") + "</div>" +
+    const fin = o.kind !== "lease";  // [Claude 2026-10-03]
+    const b = fin ? null : benchFor(findBench(o.model), o.termMonths);
+    const tesla = !!BENCH_EXTRA[o.model];  // [Claude 2026-10-03]
+    const list = o.kind === "used"
+      ? USED.map(u => '<option value="' + escapeHtml(u.label) + '">' + escapeHtml(u.label + " · " + fmt(u.price)) + "</option>").join("") + '<option value="other">Other used vehicle</option>'
+      : models;
+    return '<details class="offer" data-fold="' + o.id + '"' + (o.folded ? "" : " open") + ">" +  // [Claude 2026-10-03] foldable card
+      '<summary class="offer-head"><span class="offer-title"><b>Offer ' + (i + 1) + " - " + { lease: "Lease", finance: "Finance new", used: "Finance used" }[o.kind] + " " + escapeHtml(vehicleName(o)) + "</b>" +
+        '<span class="offer-sum" data-payout="' + o.id + '"></span></span>' +
+        (state.offers.length > 1 ? '<button class="btn ghost sm" type="button" data-kill-offer="' + o.id + '">Remove</button>' : "") + "</summary>" +
+      '<div class="offer-body">' +
+      '<div class="grid2">' +
+        '<div class="field"><label for="of-' + o.id + '-kind">Deal</label>' + pick(o, "kind", [["lease", "Lease"], ["finance", "Finance new"], ["used", "Finance used"]]) + "</div>" +
+        '<div class="field"><label for="of-' + o.id + '-power">Powertrain</label>' + pick(o, "power", [["gas", "Gas"], ["hybrid", "Hybrid"], ["electric", "Electric"]]) + "</div>" +
+      "</div>" +
       '<div class="field"><label for="of-' + o.id + '-model">Vehicle</label>' +
         '<select id="of-' + o.id + '-model" data-offer="' + o.id + '" data-key="model" data-text="1">' +
-        models.replace('value="' + escapeHtml(o.model) + '"', 'value="' + escapeHtml(o.model) + '" selected') + "</select></div>" +
+        list.replace('value="' + escapeHtml(o.model) + '"', 'value="' + escapeHtml(o.model) + '" selected') + "</select></div>" +
       '<div class="grid2">' +
-        offerField(o, "payment", "Monthly payment ($)", 1) +
-        offerField(o, "apr", "Lease rate (%)", 0.01) +
-        offerField(o, "termMonths", "Term (months)", 12, "numeric") +
-        offerField(o, "down", "Down payment ($)", 500) +
-        offerField(o, "fees", "Fees at signing ($)", 25) +
-        offerField(o, "dispositionFee", "Hand-back fee ($)", 25) +
+        (fin
+          ? offerField(o, "msrp", "Price before tax ($)", 100) +
+            offerField(o, "apr", "Finance rate (%)", 0.01) +
+            offerField(o, "termMonths", "Loan term (months)", 12, "numeric") +
+            offerField(o, "down", "Down payment ($)", 500) +
+            offerField(o, "fees", "Doc and dealer fees ($)", 25) +
+            offerField(o, "deprPct", "Depreciation (% / yr)", 0.5) +
+            (o.kind === "used" ? "" : offerField(o, "incentive", "Incentive ($)", 500))  // [Claude 2026-10-03]
+          : offerField(o, "payment", "$0-down monthly payment ($)", 1) +
+            offerField(o, "apr", "Lease rate (%)", 0.01) +
+            offerField(o, "termMonths", "Term (months)", 12, "numeric") +
+            offerField(o, "down", "Down payment ($)", 500) +
+            offerField(o, "fees", "Fees at signing ($)", 25) +
+            offerField(o, "dispositionFee", "Hand-back fee ($)", 25) +
+            offerField(o, "incentive", "Incentive ($)", 500)) +  // [Claude 2026-10-03]
       "</div>" +
-      '<label class="tick"><input type="checkbox" id="of-' + o.id + '-tax" data-offer="' + o.id + '" data-key="inclTax"' + (o.inclTax ? " checked" : "") + "> Payment already includes tax</label>" +
-      (b ? '<p class="hint">BC survey: ' + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + ".</p>" : "") +
-      '<div class="derived"><span>Payment</span><b data-payout="' + o.id + '">-</b></div>' +
-    "</div>";
+      (fin ? "" : '<label class="tick"><input type="checkbox" id="of-' + o.id + '-tax" data-offer="' + o.id + '" data-key="inclTax"' + (o.inclTax ? " checked" : "") + "> Payment already includes tax</label>") +
+      (b ? '<p class="hint">' + (tesla ? "Tesla configurator" : "BC survey") + ": " + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + ".</p>" : "") +  // [Claude 2026-10-03]
+      (tesla ? '<p class="hint">Tesla finance is ' + pct(BENCH_EXTRA[o.model].finApr) + " at every term. " +
+        (BENCH_EXTRA[o.model].incentive ? "The " + fmt(BENCH_EXTRA[o.model].incentive) + " federal EVAP incentive is applied; set Incentive to 0 if you do not qualify." : "The Model 3 does not qualify for the federal EVAP incentive.") + "</p>" : "") +
+      (o.kind === "used" ? '<p class="hint">Dealer listing price. The used-car loan rate and depreciation are estimates; ask the dealer for their rate.</p>' : "") +
+      '<div class="derived"><span>' + (fin ? "Loan" : "Payment") + '</span><b data-payout="' + o.id + '">-</b></div>' +
+      '<div class="grid2">' +  // [Claude 2026-10-03] running costs
+        offerField(o, "insurance", "Insurance ($ / mo)", 5) +
+        offerField(o, "fuel", o.power === "electric" ? "Energy (kWh / 100 km)" : "Fuel (L / 100 km)", 0.1) +
+        offerField(o, "maint", "Maintenance ($ / yr)", 50) +
+      "</div>" +
+      '<div class="derived"><span>Running cost</span><b data-runout="' + o.id + '">-</b></div>' +
+    "</div></details>";
   }).join("");
 }
 
@@ -1044,6 +1350,10 @@ function onEdit(e) {
   if (!el.getAttribute) return;
 
   const bind = el.getAttribute("data-bind");
+  if (bind === "keep.sellMonth") {  // [Claude 2026-10-03] magnetic year marks
+    const v = Number(el.value), yr = Math.round(v / 12) * 12;
+    if (yr >= 12 && v !== yr && Math.abs(v - yr) <= 2) el.value = yr;
+  }
   if (bind) { setPath(state, bind, readValue(el)); render(); return; }
 
   const ci = el.getAttribute("data-comp");
@@ -1055,10 +1365,17 @@ function onEdit(e) {
     const key = el.getAttribute("data-key");
     if (!o) return;
     o[key] = readValue(el);
-    if (key === "model" && e.type === "change") {
-      const bench = findBench(o.model);
-      const b = benchFor(bench, o.termMonths);
-      if (b) { o.msrp = bench[2]; o.apr = b.rate; o.payment = b.pay; o.inclTax = false; }
+    if (key === "model" && e.type === "change") {  // [Claude 2026-10-03]
+      applyVehicle(o, false);
+      renderOffers();
+    }
+    if (key === "kind" && e.type === "change") {  // [Claude 2026-10-03]
+      applyVehicle(o, true);
+      renderOffers();
+    }
+    if (key === "power" && e.type === "change") {  // [Claude 2026-10-03]
+      const defs = { gas: [7.8, 600], hybrid: [5.6, 550], electric: [18, 350] }[o.power];
+      o.fuel = defs[0]; o.maint = defs[1];
       renderOffers();
     }
     render();
@@ -1068,8 +1385,14 @@ function onEdit(e) {
 function bindEvents() {
   document.addEventListener("input", onEdit);
   document.addEventListener("change", e => {
-    if (e.target.getAttribute && e.target.getAttribute("data-key") === "model") onEdit(e);
+    if (e.target.getAttribute && ["model", "kind", "power"].includes(e.target.getAttribute("data-key"))) onEdit(e);  // [Claude 2026-10-03]
   });
+
+  document.addEventListener("toggle", e => {  // [Claude 2026-10-03] remember folded offers
+    const id = e.target.getAttribute && e.target.getAttribute("data-fold");
+    const o = id && state.offers.find(x => x.id === id);
+    if (o) { o.folded = !e.target.open; save(); }
+  }, true);
 
   document.addEventListener("click", e => {
     const t = e.target;
@@ -1077,15 +1400,18 @@ function bindEvents() {
     const kc = t.getAttribute("data-kill-comp");
     if (kc !== null) { state.market.comps.splice(Number(kc), 1); renderComps(); render(); return; }
     const ko = t.getAttribute("data-kill-offer");
-    if (ko) { state.offers = state.offers.filter(o => o.id !== ko); renderOffers(); render(); }
+    if (ko) { e.preventDefault(); state.offers = state.offers.filter(o => o.id !== ko); renderOffers(); render(); }
   });
 
-  document.getElementById("addOffer").addEventListener("click", () => {
-    if (state.offers.length >= 3) return;
-    state.offers.push(defaultOffer());
+  const addOffer = kind => {  // [Claude 2026-10-03]
+    if (state.offers.length >= 6) return;
+    state.offers.push(defaultOffer(kind));
     renderOffers();
     render();
-  });
+  };
+  document.getElementById("addOffer").addEventListener("click", () => addOffer("lease"));
+  document.getElementById("addFinance").addEventListener("click", () => addOffer("finance"));
+  document.getElementById("addUsed").addEventListener("click", () => addOffer("used"));  // [Claude 2026-10-03]
 
   document.getElementById("addComp").addEventListener("click", () => {
     state.market.comps.push({ seller: "private", year: 2024, km: 0, price: 0 });
@@ -1121,8 +1447,8 @@ function loadSaved() {
     if (!raw) return null;
     const s = JSON.parse(raw);
     const base = defaultState();
-    ["lease", "tax", "market", "money", "keep", "trade"].forEach(k => { base[k] = Object.assign(base[k], s[k] || {}); });
-    if (Array.isArray(s.offers) && s.offers.length) base.offers = s.offers;
+    ["lease", "tax", "market", "money", "keep", "running", "trade"].forEach(k => { base[k] = Object.assign(base[k], s[k] || {}); });  // [Claude 2026-10-03]
+    if (Array.isArray(s.offers) && s.offers.length) base.offers = s.offers.map(o => Object.assign(defaultOffer(o.kind), powerFor(o.model || ""), o));  // [Claude 2026-10-03]
     return base;
   } catch (err) {
     return null;
