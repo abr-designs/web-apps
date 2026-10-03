@@ -139,7 +139,7 @@ input, select { font: inherit; color: inherit; }
 .rank-row .name span { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
 .rank-row .val { text-align: right; font-variant-numeric: tabular-nums; }
 .rank-row .val b { display: block; font-size: 17px; }
-.rank-row .val span { font-size: 12px; color: var(--muted); }
+.rank-row .val span { display: block; font-size: 12px; color: var(--muted); }
 
 /* Checks */
 .checks { display: flex; flex-direction: column; gap: 10px; }
@@ -670,15 +670,16 @@ function keepPath(d, financed, sellMonth) {
     netPv += pv(amount, month);
   };
 
-  let pmt = 0, balance = 0, interest = 0;
+  const K = state.keep;
+  const term = Math.max(1, Math.round(K.termMonths));
+  let pmt = 0, balance = 0, interest = 0, keptMonthly = d.buyoutAllIn / term;
   if (!financed) {
     add("Buyout paid in cash", "Residual + doc fee + " + state.tax.rate + "% tax", d.buyoutAllIn, 0);
   } else {
-    const K = state.keep;
     const down = clamp(K.down, 0, d.buyoutAllIn);
     const principal = d.buyoutAllIn - down + K.lenderFee;
-    const term = Math.max(1, Math.round(K.termMonths));
     pmt = amortPayment(principal, K.apr, term);
+    keptMonthly = pmt + down / term;  // [Claude 2026-10-03]
     const paid = Math.min(N, term);
     balance = amortBalance(principal, K.apr, term, paid);
     interest = pmt * paid + balance - principal;
@@ -696,7 +697,8 @@ function keepPath(d, financed, sellMonth) {
     label: financed ? "Buy out, finance at " + state.keep.apr + "%" : "Buy out, pay cash",
     sub: "Drive " + N + " months, then sell",
     months: N, lines, nominal, netPv, monthly: netPv / N,
-    pmt, balance, interest
+    pmt, balance, interest,
+    kept: { monthly: keptMonthly, months: term }  // [Claude 2026-10-03]
   };
 }
 
@@ -771,7 +773,8 @@ function renderVerdict(res) {
     '<div class="rank-row' + (i === 0 ? " first" : "") + '">' +
       '<span class="pos">' + (i + 1) + "</span>" +
       '<div class="name">' + escapeHtml(p.label) + "<span>" + escapeHtml(p.sub) + "</span></div>" +
-      '<div class="val"><b>' + fmt(p.monthly) + "/mo</b><span>" + fmt(p.netPv) + " over " + p.months + " mo</span></div>" +
+      '<div class="val"><b>' + fmt(p.monthly) + "/mo</b><span>" + fmt(p.netPv) + " over " + p.months + " mo</span>" +
+        (p.kept ? "<span>" + fmt(p.kept.monthly) + "/mo kept, " + p.kept.months + " mo</span>" : "") + "</div>" +
     "</div>"
   ).join("");
 
