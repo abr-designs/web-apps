@@ -64,7 +64,7 @@ export function convert(localRows, dbRows, log = console.log) {
       lat: num(d?.Latitude ?? ''), lon: num(d?.Longitude ?? ''),
       lengthKm: num(l['Length (km)']), timeHrs: num(l['Time (hrs)']), gainM: num(l['Elavation Gain (m)']),
       difficulty: num(l.Difficulty), quality: num(l.Quality), accessibility: num(l.Accessibility),
-      months: d ? decodeBits(d.Months, MONTHS) : undefined,
+      months: d?.Months ? decodeBits(d.Months, MONTHS) : undefined,
       tags: d ? decodeBits(d.Tags, TAGS) : [],
       access: d ? decodeBits(d.Offroading, ACCESS) : [],
       country: /USA/.test(l.Restrictions) ? 'US' : 'CA',

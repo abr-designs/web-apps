@@ -12,7 +12,7 @@ const rows = parseCsv(readFileSync(new URL('../data/source/Local.csv', import.me
   .filter(r => r['Trail Name'].trim());
 
 test('hikeScore matches every Local sheet Score to 2 decimals', () => {
-  assert.equal(rows.length, 64);
+  assert.equal(rows.length, 68);
   const mismatches = rows.filter(r => {
     const score = hikeScore({
       lengthKm: +r['Length (km)'], timeHrs: +r['Time (hrs)'], gainM: +r['Elavation Gain (m)'],

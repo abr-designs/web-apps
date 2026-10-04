@@ -1658,5 +1658,28 @@
     "tags": [],
     "access": [],
     "country": "CA"
+  },
+  {
+    "id": "eagle-mountain",
+    "name": "Eagle Mountain",
+    "lat": 49.3375136,
+    "lon": -122.8564953,
+    "lengthKm": 10,
+    "timeHrs": 3,
+    "gainM": 900,
+    "difficulty": 3,
+    "quality": 3,
+    "accessibility": 2,
+    "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "tags": [],
+    "access": [],
+    "country": "CA",
+    "notes": "June-October"
   }
 ]
