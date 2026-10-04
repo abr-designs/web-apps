@@ -553,14 +553,20 @@ svg .now { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
 /* ============================================================
    DATA: BC lease survey (vehicle_lease_comparison_bc.csv)
    [brand, model, msrp, rate36, pay36, rate48, pay48]
+   MSRP excludes freight and PDI. Payments are pre-tax, $0 down, freight in the cap cost.
+   [Claude 2026-10-04] Spot-checked against BC dealer quotes in Oct 2026: survey payments run about $75 to $125/mo
+   above them (Crosstrek Touring 36 mo: $438 at Docksteader Subaru vs $521.40 here). Refresh before trusting pay36/pay48.
    ============================================================ */
+const SURVEY_HIGH = "Survey payments run $75 to $125/mo above Oct 2026 BC dealer quotes; check a current quote.";  // [Claude 2026-10-04]
+/* [Claude 2026-10-04] Freight, PDI, doc fee and levies on a new non-Tesla purchase (Subaru BC: $2,295 + $531). */
+const NEW_FIN_FEES = 2826;
 const BENCH = [
   ["Subaru", "2026 Crosstrek Touring AWD", 33595, 1.99, 521.4, 3.49, 509.55],
   ["Subaru", "2026 Forester Convenience AWD", 34195, 2.49, 548.15, 3.49, 529.4],
   ["Subaru", "2026 Impreza Touring AWD", 31625, 1.99, 492.15, 3.49, 479.5],
-  ["Subaru", "2026 Crosstrek e-BOXER Hybrid", 40595, 1.99, 638.1, 3.49, 622.4],
+  ["Subaru", "2026 Crosstrek Hybrid Limited", 40595, 2.49, 638.1, 3.49, 622.4],
   ["Toyota", "2026 Corolla Cross LE AWD", 35047, 6.49, 684.5, 6.99, 634.5],
-  ["Toyota", "2026 RAV4 LE AWD", 37500, 6.49, 729.8, 6.99, 678.1],
+  ["Toyota", "2026 RAV4 LE AWD", 37500, 6.49, 729.8, 6.79, 678.1],
   ["Toyota", "2027 Corolla Hatchback SE", 27630, 6.49, 544.1, 6.99, 501.2],
   ["Toyota", "2026 Corolla Cross Hybrid SE AWD", 36160, 6.99, 712.5, 6.99, 662.3],
   ["Toyota", "2026 Corolla Sedan LE", 27250, 6.49, 539.0, 6.99, 494.6],
@@ -579,9 +585,9 @@ const BENCH = [
   ["Nissan", "2027 Kicks SV AWD", 29198, 4.99, 514.2, 5.49, 473.1],
   ["Nissan", "2026 Rogue S AWD", 35048, 5.49, 612.8, 5.99, 568.2],
   ["Nissan", "2026 Sentra SV", 25398, 4.99, 454.1, 5.49, 418.5],
-  ["Mazda", "2026 CX-30 GS AWD", 31450, 4.49, 538.5, 4.99, 498.2],
+  ["Mazda", "2026 CX-30 GS AWD", 32200, 4.49, 538.5, 4.99, 498.2],
   ["Mazda", "2026 CX-5 GS AWD", 34550, 4.49, 586.2, 4.99, 542.4],
-  ["Mazda", "2026 Mazda3 Sedan GX", 24900, 3.99, 428.1, 4.49, 394.5],
+  ["Mazda", "2026 Mazda3 Sedan GX", 25250, 3.99, 428.1, 4.49, 394.5],
   ["Kia", "2027 Seltos EX AWD", 30695, 5.49, 565.4, 5.99, 518.7],
   ["Kia", "2026 Sportage LX AWD", 33495, 5.49, 605.2, 5.99, 559.4],
   ["Kia", "2026 K4 EX", 23995, 4.99, 439.1, 5.49, 402.6],
@@ -601,10 +607,12 @@ const BENCH = [
 
 /* [Claude 2026-10-03] Details the survey lacks. Tesla finance is 5.21% at every term; fees are freight and PDI plus levies
    when financed, and the levies alone when leased (freight is built into the lease payment). The Model Y qualifies for the
-   $5,000 federal EVAP incentive; the China-built Model 3 does not. */
+   $5,000 federal EVAP incentive; the China-built Model 3 does not.
+   [Claude 2026-10-04] Fees include Tesla's $250 order fee. Energy use from the NRCan 2026 Fuel Consumption Guide.
+   EVAP is applied after tax and prorated to term / 48 on leases (Transport Canada Q&A). */
 const BENCH_EXTRA = {
-  "2026 Model 3 Premium RWD": { finApr: 5.21, finFees: 2626, leaseFees: 126, incentive: 0, power: "electric", fuel: 15, maint: 350, insurance: 220, deprPct: 15 },
-  "2026 Model Y RWD": { finApr: 5.21, finFees: 2626, leaseFees: 126, incentive: 5000, power: "electric", fuel: 17, maint: 350, insurance: 230, deprPct: 15 }
+  "2026 Model 3 Premium RWD": { finApr: 5.21, finFees: 2876, leaseFees: 376, incentive: 0, power: "electric", fuel: 15, maint: 350, insurance: 220, deprPct: 15, km48: 16000 },
+  "2026 Model Y RWD": { finApr: 5.21, finFees: 2876, leaseFees: 376, incentive: 5000, power: "electric", fuel: 15.4, maint: 350, insurance: 230, deprPct: 15, km48: 16000 }
 };
 
 /* [Claude 2026-10-03] Used hybrid and electric dealer listings near Vancouver (CarGurus.ca, read 2026-10-03).
@@ -615,17 +623,17 @@ const USED = [
   ["2022 Tesla Model 3 Long Range AWD, 73,097 km", 32997, "electric", 16, 450],
   ["2021 Tesla Model 3 SR+ RWD, 69,892 km", 27699, "electric", 15, 450],
   ["2024 Tesla Model Y, 53,550 km", 41980, "electric", 17, 400],
-  ["2023 Tesla Model Y RWD, 71,937 km", 37888, "electric", 17, 450],
+  ["2023 Tesla Model Y RWD, 71,937 km", 37888, "electric", 15.4, 450],
   ["2023 Tesla Model Y Long Range AWD, 74,391 km", 41497, "electric", 18, 450],
   ["2022 Tesla Model Y Long Range AWD, 31,000 km", 46995, "electric", 18, 400],
   ["2022 Tesla Model Y Long Range AWD, 75,866 km", 39900, "electric", 18, 450],
-  ["2024 Hyundai Ioniq 5 Preferred RWD, 24,491 km", 38988, "electric", 18, 400],
+  ["2024 Hyundai Ioniq 5 Preferred RWD, 24,491 km", 38988, "electric", 16.9, 400],
   ["2023 Hyundai Ioniq 5 Preferred AWD Long Range, 55,200 km", 39988, "electric", 20, 450],
-  ["2022 Hyundai Ioniq 5 Preferred RWD, 47,212 km", 32495, "electric", 18, 450],
-  ["2025 Kia Niro EV Wind, 39,465 km", 33895, "electric", 16.5, 400],
-  ["2024 Kia Niro EV Wind, 38,576 km", 31499, "electric", 16.5, 400],
-  ["2021 Kia Niro EV EX Premium, 41,143 km", 27888, "electric", 16.5, 450],
-  ["2024 Toyota Corolla Cross Hybrid AWD, 40,802 km", 38899, "hybrid", 6.0, 600],
+  ["2022 Hyundai Ioniq 5 Preferred RWD, 47,212 km", 32495, "electric", 16.9, 450],
+  ["2025 Kia Niro EV Wind, 39,465 km", 33895, "electric", 18.6, 400],
+  ["2024 Kia Niro EV Wind, 38,576 km", 31499, "electric", 18.6, 400],
+  ["2021 Kia Niro EV EX Premium, 41,143 km", 27888, "electric", 18.6, 450],
+  ["2024 Toyota Corolla Cross Hybrid AWD, 40,802 km", 38899, "hybrid", 5.6, 600],
   ["2021 Toyota RAV4 Hybrid XLE AWD, 68,106 km", 35999, "hybrid", 6.0, 700],
   ["2022 Toyota RAV4 Hybrid SE AWD, 99,448 km", 37980, "hybrid", 6.0, 750],
   ["2022 Toyota RAV4 Hybrid LE AWD, 91,510 km", 30499, "hybrid", 6.0, 750]
@@ -684,14 +692,22 @@ function applyVehicle(o, resetTerm) {
   if (bench) Object.assign(o, powerFor(o.model), { msrp: bench[2], insurance: x.insurance || 190, deprPct: x.deprPct || 13, incentive: x.incentive || 0 });
   if (o.kind === "finance") {
     if (resetTerm) o.termMonths = 60;
-    Object.assign(o, { apr: x.finApr || 5.99, fees: x.finFees || 595 });
+    Object.assign(o, { apr: x.finApr || 5.99, fees: x.finFees || NEW_FIN_FEES });  // [Claude 2026-10-04] freight was missing
   } else {
     if (resetTerm) o.termMonths = 36;
     const b = benchFor(bench, o.termMonths);
     if (b) Object.assign(o, { apr: b.rate, payment: b.pay, inclTax: false });
     o.fees = x.leaseFees || 595;
+    if (bench) o.incentive = leaseIncentive(o);  // [Claude 2026-10-04]
+    if (bench) o.kmAllowance = x.km48 && o.termMonths >= 42 ? x.km48 : 20000;  // [Claude 2026-10-04]
   }
   return o;
+}
+
+/* [Claude 2026-10-04] EVAP on a lease is prorated: full amount at 48 months or more, term / 48 of it below. */
+function leaseIncentive(o) {
+  const full = (BENCH_EXTRA[o.model] || {}).incentive || 0;
+  return Math.round(full * Math.min(1, o.termMonths / 48));
 }
 
 /* [Claude 2026-10-03] Lease, new-vehicle finance or used-vehicle finance offer, with its own running costs. */
@@ -699,7 +715,8 @@ function defaultOffer(kind) {
   const b = BENCH[0];
   return applyVehicle({
     id: uid(), kind: kind || "lease", model: b[1], msrp: b[2], termMonths: 36, apr: b[3], payment: b[4], inclTax: false,
-    down: 0, fees: 595, dispositionFee: 400, deprPct: 13, insurance: 190, incentive: 0
+    down: 0, fees: 595, dispositionFee: 400, deprPct: 13, insurance: 190, incentive: 0,
+    kmAllowance: 20000, overageRate: 0.10  // [Claude 2026-10-04] Subaru Canada 2026 excess-km rate
   }, true);
 }
 
@@ -714,7 +731,7 @@ function defaultState() {
     market: { haircutPct: 4, deprPct: 12, useDeprOverride: false, kmValue: 0.10, useOverride: false, override: 26000, comps: DEFAULT_COMPS.map(c => Object.assign({}, c)) },
     money: { cashRatePct: 3, goodRatePct: 4 },
     keep: { apr: 4.99, termMonths: 60, down: 0, lenderFee: 0, sellMonth: 36, power: "gas", insurance: 160, fuel: 8.0, maint: 800, repairs: 600 },  // [Claude 2026-10-03]
-    running: { kmPerYear: 20000, gasPrice: 1.85, kwhPrice: 0.14 },  // [Claude 2026-10-03]
+    running: { kmPerYear: 20000, gasPrice: 1.95, kwhPrice: 0.14 },  // [Claude 2026-10-03]
     trade: { offer: 0 },
     offers: [defaultOffer()]
   };
@@ -786,7 +803,12 @@ function annualDrop(base, value, months) {
 function leasePretax(o) {
   const term = Math.max(1, Math.round(o.termMonths));
   const quote = o.inclTax ? o.payment / (1 + state.tax.rate / 100) : o.payment;
-  return Math.max(0, quote - (o.down + (o.incentive || 0)) * (1 / term + o.apr / 2400));  // [Claude 2026-10-03] incentive acts as a cap reduction
+  return Math.max(0, quote - o.down * (1 / term + o.apr / 2400));
+}
+/* [Claude 2026-10-04] Incentive is a cap reduction applied after tax, so it comes off the tax-in payment. */
+function leaseIncentiveCut(o) {
+  const term = Math.max(1, Math.round(o.termMonths));
+  return (o.incentive || 0) * (1 / term + o.apr / 2400);
 }
 
 /* Present value of k level payments made at the end of months 1..k. */
@@ -871,7 +893,7 @@ function keepPath(d, financed, sellMonth) {
   const K = state.keep;
   const term = Math.max(1, Math.round(K.termMonths));
   const run = runningCost(K);  // [Claude 2026-10-03]
-  let pmt = 0, balance = 0, interest = 0, keptMonthly = d.buyoutAllIn / term;
+  let pmt = 0, balance = 0, interest = 0, keptMonthly = 0;  // [Claude 2026-10-04] paid in cash, so nothing monthly but running costs
   let down = d.buyoutAllIn, paid = 0;  // [Claude 2026-10-04] hoisted for the comparison table
   if (!financed) {
     add("Buyout paid in cash", "Residual + doc fee + " + state.tax.rate + "% tax", d.buyoutAllIn, 0);
@@ -901,8 +923,8 @@ function keepPath(d, financed, sellMonth) {
     vehicle: "Your 2024 Crosstrek Touring",  // [Claude 2026-10-03]
     sub: "Drive " + N + " months, then sell",
     months: N, lines, nominal, netPv, monthly: netPv / N,
-    pmt, balance, interest, run,
-    kept: { monthly: keptMonthly + run.total, months: term },  // [Claude 2026-10-03]
+    pmt, balance, interest, run, runPv: r.pv,  // [Claude 2026-10-04] runPv
+    kept: { monthly: keptMonthly + run.total, months: financed ? term : N },  // [Claude 2026-10-04]
     resale: { value: sale, base: state.lease.residual, months: N },  // [Claude 2026-10-03]
     cmp: { price: state.lease.residual, exit: 0, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale }  // [Claude 2026-10-04]
   };
@@ -945,7 +967,9 @@ function financePath(offer, d, index, sellMonth) {
   const paid = Math.min(N, term);
   const balance = amortBalance(principal, offer.apr, term, paid);
   const interest = pmt * paid + balance - principal;
-  const sale = offer.msrp * Math.pow(1 - offer.deprPct / 100, N / 12);
+  /* [Claude 2026-10-04] A used price is a dealer asking price; resale is private, so start from the comps' private-to-dealer ratio. */
+  const privRatio = offer.kind === "used" && d.dealerMedian > 0 ? clamp(d.privMedian * (1 - state.market.haircutPct / 100) / d.dealerMedian, 0.5, 1) : 1;
+  const sale = offer.msrp * privRatio * Math.pow(1 - offer.deprPct / 100, N / 12);
 
   const lines = [
     { label: "Exit: " + exit.name, sub: exit.detail, amount: exit.cost, credit: exit.cost < 0 },
@@ -959,7 +983,7 @@ function financePath(offer, d, index, sellMonth) {
     nominal += balance;
     netPv += pv(balance, N);
   }
-  lines.push({ label: "Private sale", sub: "Sold after " + N + " months at " + offer.deprPct + "%/yr depreciation", amount: -sale, credit: true });
+  lines.push({ label: "Private sale", sub: "Sold after " + N + " months at " + offer.deprPct + "%/yr depreciation" + (privRatio < 1 ? ", from " + pct(privRatio * 100) + " of the dealer price" : ""), amount: -sale, credit: true });  // [Claude 2026-10-04]
   nominal -= sale;
   netPv -= pv(sale, N);
   const rc = addRunning(lines, run, N, d.r);
@@ -973,7 +997,7 @@ function financePath(offer, d, index, sellMonth) {
     vehicle: vehicleName(offer),
     sub: term + " months at " + offer.apr + "%, sell after " + N + ", " + exit.name.toLowerCase(),
     months: N, lines, nominal, netPv, monthly: netPv / N,
-    pmt, balance, interest, run, offerIndex: index, kind: offer.kind,
+    pmt, balance, interest, run, runPv: rc.pv, offerIndex: index, kind: offer.kind,  // [Claude 2026-10-04] runPv
     kept: { monthly: pmt + run.total, months: term },
     resale: { value: sale, base: offer.msrp, months: N },
     cmp: { price: offer.msrp, exit: exit.cost, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale }  // [Claude 2026-10-04]
@@ -1006,19 +1030,23 @@ function leasePath(offer, d, index) {
   const term = Math.max(1, Math.round(offer.termMonths));
   const exits = exitOptions(d);
   const exit = exits[0];
-  const payment = leasePretax(offer) * (1 + d.tax);  // [Claude 2026-10-03]
+  const payment = Math.max(0, leasePretax(offer) * (1 + d.tax) - leaseIncentiveCut(offer));  // [Claude 2026-10-04] incentive after tax
   const upfront = offer.down * (1 + d.tax) + offer.fees;
   const run = runningCost(offer);  // [Claude 2026-10-03]
+  /* [Claude 2026-10-04] Km driven over the allowance, charged at hand-back. */
+  const overKm = Math.max(0, (state.running.kmPerYear - (Number(offer.kmAllowance) || 0)) * term / 12);
+  const overCost = overKm * (Number(offer.overageRate) || 0);
+  const handback = offer.dispositionFee + overCost;
 
   const lines = [
     { label: "Exit: " + exit.name, sub: exit.detail, amount: exit.cost, credit: exit.cost < 0 },
     { label: "Due at signing", sub: "Down " + fmt(offer.down) + " + tax, fees " + fmt(offer.fees), amount: upfront },
     { label: "Lease payments", sub: term + " x " + fmt2(payment) + " tax in" + (offer.down > 0 || offer.incentive > 0 ? ", lowered by the down payment and incentive" : ""), amount: payment * term },  // [Claude 2026-10-03]
-    { label: "Hand-back fee at the end", sub: "Month " + term, amount: offer.dispositionFee }
+    { label: "Hand-back at the end", sub: "Month " + term + ": fee " + fmt(offer.dispositionFee) + (overCost > 0 ? " + " + num(overKm) + " km over x $" + offer.overageRate : ""), amount: handback }  // [Claude 2026-10-04]
   ];
   const rc = addRunning(lines, run, term, d.r);  // [Claude 2026-10-03]
-  const nominal = exit.cost + upfront + payment * term + offer.dispositionFee + rc.nominal;
-  const netPv = exit.cost + upfront + pvAnnuity(payment, term, d.r) + pv(offer.dispositionFee, term) + rc.pv;
+  const nominal = exit.cost + upfront + payment * term + handback + rc.nominal;
+  const netPv = exit.cost + upfront + pvAnnuity(payment, term, d.r) * (1 + d.r) + pv(handback, term) + rc.pv;  // [Claude 2026-10-04] payments in advance
 
   return {
     key: offer.id,
@@ -1026,8 +1054,8 @@ function leasePath(offer, d, index) {
     vehicle: vehicleName(offer),
     sub: term + " months at " + offer.apr + "%, " + exit.name.toLowerCase(),
     months: term, lines, nominal, netPv, monthly: netPv / term,
-    payment, exits, run, offerIndex: index, kind: "lease",
-    cmp: { price: offer.msrp, exit: exit.cost, upfront, pmt: payment, paid: term, payments: payment * term, interest: null, payoff: 0, handback: offer.dispositionFee, resale: 0 }  // [Claude 2026-10-04]
+    payment, exits, run, runPv: rc.pv, offerIndex: index, kind: "lease",  // [Claude 2026-10-04] runPv
+    cmp: { price: offer.msrp, exit: exit.cost, upfront, pmt: payment, paid: term, payments: payment * term, interest: null, payoff: 0, handback, resale: 0 }  // [Claude 2026-10-04]
   };
 }
 
@@ -1092,10 +1120,11 @@ const COMPARE_ROWS = [
   { label: "Total cost", sub: "Today's dollars, after resale", get: p => p.netPv, best: "low",
     math: p => fmt(p.nominal) + " before discounting" },
   { head: "Where the monthly cost comes from" },
-  { label: "Vehicle cost", sub: "Exit, up front, payments, payoff and hand-back fee, less resale, spread over the months", get: p => (p.nominal - p.run.total * p.months) / p.months, best: "low", unit: "/mo",
-    math: p => "(" + sumMath(vehicleTerms(p)) + ") / " + p.months },
-  { label: "Running cost", sub: "Insurance, energy and maintenance", get: p => p.run.total, best: "low", unit: "/mo",
-    math: p => sumMath([p.run.ins, p.run.energy, p.run.maint]) },
+  /* [Claude 2026-10-04] Both rows in today's dollars so they add up to the effective cost. */
+  { label: "Vehicle cost", sub: "Exit, up front, payments, payoff and hand-back, less resale, today's dollars", get: p => (p.netPv - p.runPv) / p.months, best: "low", unit: "/mo",
+    math: p => "(" + fmt(p.netPv) + " - " + fmt(p.runPv) + " running) / " + p.months },
+  { label: "Running cost", sub: "Insurance, energy and maintenance, today's dollars", get: p => p.runPv / p.months, best: "low", unit: "/mo",
+    math: p => sumMath([p.run.ins, p.run.energy, p.run.maint]) + " a month, discounted" },
   { head: "Monthly while you have it" },
   { label: "Payment", sub: "Lease or loan, tax in", get: p => p.cmp.pmt, best: "low", unit: "/mo" },
   { label: "Insurance", get: p => p.run.ins, best: "low", unit: "/mo" },
@@ -1112,10 +1141,10 @@ const COMPARE_ROWS = [
     math: p => p.cmp.paid > 0 && p.cmp.pmt > 0 ? p.cmp.paid + " x " + fmt2(p.cmp.pmt) : "" },
   { label: "Loan interest", get: p => p.cmp.interest, best: "low" },
   { label: "Loan payoff at sale", get: p => p.cmp.payoff, best: "low" },
-  { label: "Hand-back fee", get: p => p.cmp.handback, best: "low" },
+  { label: "Hand-back", sub: "Fee and km over the allowance", get: p => p.cmp.handback, best: "low" },
   { label: "Resale value", sub: "Credit when sold", get: p => p.kind === "lease" ? null : p.cmp.resale, best: "high",
     math: p => "After " + p.months + " mo" },
-  { label: "Net vehicle cost", sub: "One-offs and payments, less resale", get: p => vehicleTerms(p).reduce((a, b) => a + b, 0), best: "low",
+  { label: "Net vehicle cost", sub: "One-offs and payments, less resale, before discounting", get: p => vehicleTerms(p).reduce((a, b) => a + b, 0), best: "low",
     math: p => sumMath(vehicleTerms(p)) },
   { head: "Vehicle" },
   { label: "Price", sub: "Residual for your Crosstrek", get: p => p.cmp.price },
@@ -1157,11 +1186,11 @@ function renderChecks(res) {
   const items = [];
 
   /* Buyout against buying the same car used */
-  const privReplace = d.privMedian * (1 + d.tax);
-  const dealerReplace = d.dealerMedian * (1 + d.tax) + state.tax.docFee;
+  const privReplace = d.valueEnd * (1 + d.tax);  // [Claude 2026-10-04] sold-price estimate at lease end, adjusted for your km
+  const dealerReplace = (d.dealerMedian + state.tax.docFee) * (1 + d.tax);  // [Claude 2026-10-04] doc fee is taxed
   const vsPriv = privReplace - d.buyoutAllIn;
   items.push([vsPriv > 0 ? chip("good", "Good") : chip("bad", "High"),
-    "Your buyout costs <b>" + fmt(d.buyoutAllIn) + "</b> all in. The same car bought privately runs about <b>" + fmt(privReplace) +
+    "Your buyout costs <b>" + fmt(d.buyoutAllIn) + "</b> all in. The same car bought privately at lease end runs about <b>" + fmt(privReplace) +
     "</b> with PST, or <b>" + fmt(dealerReplace) + "</b> from a dealer. " +
     (vsPriv > 0 ? "Buying yours is " + fmt(vsPriv) + " cheaper than replacing it." : "Replacing it privately is " + fmt(-vsPriv) + " cheaper.")]);
 
@@ -1169,7 +1198,7 @@ function renderChecks(res) {
   const flipGain = d.valueEnd - d.buyoutAllIn;
   items.push([flipGain > 0 ? chip("good", "Equity") : chip("info", "No equity"),
     "At lease end it should sell privately for about <b>" + fmt(d.valueEnd) + "</b>. Buying out and selling nets <b>" +
-    fmt(flipGain) + "</b> after the 12% tax on the buyout, so " +
+    fmt(flipGain) + "</b> after the " + state.tax.rate + "% tax on the buyout, so " +  // [Claude 2026-10-04]
     (flipGain > 0 ? "handing it back leaves money on the table." : "handing it back costs you nothing extra.")]);
 
   /* Dealer trade offer */
@@ -1421,12 +1450,14 @@ function renderOffers() {
             offerField(o, "down", "Down payment ($)", 500) +
             offerField(o, "fees", "Fees at signing ($)", 25) +
             offerField(o, "dispositionFee", "Hand-back fee ($)", 25) +
+            offerField(o, "kmAllowance", "Allowance (km / yr)", 1000, "numeric") +  // [Claude 2026-10-04]
+            offerField(o, "overageRate", "Overage ($ / km)", 0.01) +
             offerField(o, "incentive", "Incentive ($)", 500)) +  // [Claude 2026-10-03]
       "</div>" +
       (fin ? "" : '<label class="tick"><input type="checkbox" id="of-' + o.id + '-tax" data-offer="' + o.id + '" data-key="inclTax"' + (o.inclTax ? " checked" : "") + "> Payment already includes tax</label>") +
-      (b ? '<p class="hint">' + (tesla ? "Tesla configurator" : "BC survey") + ": " + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + ".</p>" : "") +  // [Claude 2026-10-03]
+      (b ? '<p class="hint">' + (tesla ? "Tesla configurator" : "BC survey") + ": " + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + "." + (tesla ? "" : " " + SURVEY_HIGH) + "</p>" : "") +  // [Claude 2026-10-04] survey caveat
       (tesla ? '<p class="hint">Tesla finance is ' + pct(BENCH_EXTRA[o.model].finApr) + " at every term. " +
-        (BENCH_EXTRA[o.model].incentive ? "The " + fmt(BENCH_EXTRA[o.model].incentive) + " federal EVAP incentive is applied; set Incentive to 0 if you do not qualify." : "The Model 3 does not qualify for the federal EVAP incentive.") + "</p>" : "") +
+        (BENCH_EXTRA[o.model].incentive ? "The " + fmt(BENCH_EXTRA[o.model].incentive) + " federal EVAP incentive is applied after tax, prorated to term / 48 on a lease; set Incentive to 0 if you do not qualify." : "The Model 3 does not qualify for the federal EVAP incentive.") + "</p>" : "") +
       (o.kind === "used" ? '<p class="hint">Dealer listing price. The used-car loan rate and depreciation are estimates; ask the dealer for their rate.</p>' : "") +
       '<div class="derived"><span>' + (fin ? "Loan" : "Payment") + '</span><b data-payout="' + o.id + '">-</b></div>' +
       '<div class="grid2">' +  // [Claude 2026-10-03] running costs
@@ -1498,6 +1529,11 @@ function onEdit(e) {
       applyVehicle(o, true);
       renderOffers();
     }
+    if (key === "termMonths" && e.type === "change" && o.kind === "lease" && BENCH_EXTRA[o.model]) {  // [Claude 2026-10-04] EVAP proration and km allowance follow the term
+      o.incentive = leaseIncentive(o);
+      o.kmAllowance = BENCH_EXTRA[o.model].km48 && o.termMonths >= 42 ? BENCH_EXTRA[o.model].km48 : 20000;
+      renderOffers();
+    }
     if (key === "power" && e.type === "change") {  // [Claude 2026-10-03]
       const defs = { gas: [7.8, 600], hybrid: [5.6, 550], electric: [18, 350] }[o.power];
       o.fuel = defs[0]; o.maint = defs[1];
@@ -1510,7 +1546,7 @@ function onEdit(e) {
 function bindEvents() {
   document.addEventListener("input", onEdit);
   document.addEventListener("change", e => {
-    if (e.target.getAttribute && ["model", "kind", "power"].includes(e.target.getAttribute("data-key"))) onEdit(e);  // [Claude 2026-10-03]
+    if (e.target.getAttribute && ["model", "kind", "power", "termMonths"].includes(e.target.getAttribute("data-key"))) onEdit(e);  // [Claude 2026-10-04] termMonths
   });
 
   document.addEventListener("toggle", e => {  // [Claude 2026-10-03] remember folded offers

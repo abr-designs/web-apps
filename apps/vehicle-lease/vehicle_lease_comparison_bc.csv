@@ -2,9 +2,9 @@ Brand,Model,Segment,MSRP,Rate_36,Pay_36,Rate_48,Pay_48
 Subaru,2026 Crosstrek Touring AWD,Subcompact Crossover (Gas),33595,1.99,521.4,3.49,509.55
 Subaru,2026 Forester Convenience AWD,Compact SUV (Gas),34195,2.49,548.15,3.49,529.4
 Subaru,2026 Impreza Touring AWD,Hatchback (Gas),31625,1.99,492.15,3.49,479.5
-Subaru,2026 Crosstrek e-BOXER Hybrid,Subcompact Crossover (Hybrid),40595,1.99,638.1,3.49,622.4
+Subaru,2026 Crosstrek Hybrid Limited,Subcompact Crossover (Hybrid),40595,2.49,638.1,3.49,622.4
 Toyota,2026 Corolla Cross LE AWD,Subcompact Crossover (Gas),35047,6.49,684.5,6.99,634.5
-Toyota,2026 RAV4 LE AWD,Compact SUV (Gas),37500,6.49,729.8,6.99,678.1
+Toyota,2026 RAV4 LE AWD,Compact SUV (Gas),37500,6.49,729.8,6.79,678.1
 Toyota,2027 Corolla Hatchback SE,Hatchback (Gas),27630,6.49,544.1,6.99,501.2
 Toyota,2026 Corolla Cross Hybrid SE AWD,Subcompact Crossover (Hybrid),36160,6.99,712.5,6.99,662.3
 Toyota,2026 Corolla Sedan LE,Compact Sedan (Gas),27250,6.49,539.0,6.99,494.6
@@ -23,9 +23,9 @@ Hyundai,2026 Venue Essential,Micro Crossover (Gas),21999,5.99,442.2,5.99,401.5
 Nissan,2027 Kicks SV AWD,Subcompact Crossover (Gas),29198,4.99,514.2,5.49,473.1
 Nissan,2026 Rogue S AWD,Compact SUV (Gas),35048,5.49,612.8,5.99,568.2
 Nissan,2026 Sentra SV,Compact Sedan (Gas),25398,4.99,454.1,5.49,418.5
-Mazda,2026 CX-30 GS AWD,Subcompact Crossover (Gas),31450,4.49,538.5,4.99,498.2
+Mazda,2026 CX-30 GS AWD,Subcompact Crossover (Gas),32200,4.49,538.5,4.99,498.2
 Mazda,2026 CX-5 GS AWD,Compact SUV (Gas),34550,4.49,586.2,4.99,542.4
-Mazda,2026 Mazda3 Sedan GX,Compact Sedan (Gas),24900,3.99,428.1,4.49,394.5
+Mazda,2026 Mazda3 Sedan GX,Compact Sedan (Gas),25250,3.99,428.1,4.49,394.5
 Kia,2027 Seltos EX AWD,Subcompact Crossover (Gas),30695,5.49,565.4,5.99,518.7
 Kia,2026 Sportage LX AWD,Compact SUV (Gas),33495,5.49,605.2,5.99,559.4
 Kia,2026 K4 EX,Compact Sedan (Gas),23995,4.99,439.1,5.49,402.6
