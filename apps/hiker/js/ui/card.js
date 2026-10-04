@@ -49,8 +49,9 @@ export function renderCard({ hike, forecast, dayIndex, band, driveHrs, image, on
       onRemove && el('button', { type: 'button', class: 'remove', onclick: onRemove }, icon('trash'), 'Remove this added hike')));
 
   // JSON string quoting is a valid CSS string, so quotes or backslashes in a hand-entered URL cannot break out.
+  // Set inline: an image named in styles.css is fetched under the stylesheet's referrer policy, not the page's no-referrer.
   if (onOpen) card.addEventListener('click', e => e.target.closest('a, button') || onOpen());
-  if (image) card.style.setProperty('--photo', `url(${JSON.stringify(image.url)})`);
+  if (image) card.style.backgroundImage = `url(${JSON.stringify(image.url)})`;
   return card;
 }
 

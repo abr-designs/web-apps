@@ -9,13 +9,18 @@ export const BAND_ORDER = ['good', 'fair', 'poor', 'nogo', 'unknown'];
 /**
  * filters = {inSeason: boolean, access: string[] (excluded), country: '' | 'CA' | 'US', tags: string[] (any),
  * maxDriveHrs: number (0 or missing = any)}. driveHours: Map of hike id to hours; hikes without one pass the drive filter.
+ * query: text the hike name must contain, ignoring case. A non-empty query searches every hike and ignores the filters.
  * Returns non-empty bands in BAND_ORDER: [{band, items: [{hike, day, weather}]}].
  * @created Claude (claude-opus-5-5) - 2026-09-28
  */
-export function rank(hikes, forecasts, { dayIndex = 0, filters = {}, month = new Date().getMonth() + 1, driveHours = new Map() } = {}) {
+export function rank(hikes, forecasts, { dayIndex = 0, filters = {}, month = new Date().getMonth() + 1, driveHours = new Map(), query = '' } = {}) {
   const groups = Object.fromEntries(BAND_ORDER.map(b => [b, []]));
+  const text = query.trim().toLowerCase();
+  const shown = text
+    ? hikes.filter(h => h.name.toLowerCase().includes(text))
+    : hikes.filter(h => matches(h, filters, month, driveHours.get(h.id)));
 
-  for (const hike of hikes.filter(h => matches(h, filters, month, driveHours.get(h.id)))) {
+  for (const hike of shown) {
     const day = forecasts.get(hike.id)?.[dayIndex];
     const weather = day ? weatherScore(day) : undefined;
     groups[day ? bandFor(weather) : 'unknown'].push({ hike, day, weather });

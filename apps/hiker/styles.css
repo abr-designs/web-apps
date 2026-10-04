@@ -102,10 +102,9 @@ a { color: var(--accent); }
 
 /* Card: photo background with a shaded lower half carrying the content */
 .card {
-  --photo: none;
   position: relative; display: flex; flex-direction: column; justify-content: flex-end;
   min-height: 540px; min-width: 0; overflow: hidden; border-radius: var(--radius);
-  color: #fff; background: var(--photo) center / cover no-repeat;
+  color: #fff; background: center / cover no-repeat;
   background-color: #3a3d2c;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
 }

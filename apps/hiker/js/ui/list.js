@@ -14,18 +14,18 @@ let shown = PAGE_SIZE;
 let lastView;
 
 /**
- * bands: output of rank(). ctx = {forecasts, dayIndex, driveHours, images, day, onRemove}; day is the selected date,
- * onRemove(hike) deletes a hike added in the app. view: a key for the day and filters; a new one starts at the top page again.
+ * bands: output of rank(). ctx = {forecasts, dayIndex, driveHours, images, day, onRemove, query}; day is the selected date,
+ * onRemove(hike) deletes a hike added in the app, query is the name search. view: a key for the day and filters; a new one starts at the top page again.
  * @created Claude (claude-opus-5-5) - 2026-09-28
  */
 export function renderList(root, bands, ctx = {}) {
-  const { forecasts = new Map(), dayIndex = 0, driveHours = new Map(), images = {}, day, onRemove, view } = ctx;
+  const { forecasts = new Map(), dayIndex = 0, driveHours = new Map(), images = {}, day, onRemove, query = '', view } = ctx;
   if (view !== lastView) {
     lastView = view;
     shown = PAGE_SIZE;
   }
   if (!bands.length) {
-    root.replaceChildren(el('p', { class: 'muted' }, 'No hikes match these filters.'));
+    root.replaceChildren(el('p', { class: 'muted' }, query.trim() ? `No hike name contains "${query.trim()}".` : 'No hikes match these filters.'));
     return;
   }
   const card = ({ hike, band }) => {

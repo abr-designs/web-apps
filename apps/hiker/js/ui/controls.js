@@ -25,7 +25,7 @@ let homeRequest = 0;
  * @created Claude (claude-opus-5-5) - 2026-09-28
  */
 export function renderControls(root, store, days, hikes) {
-  const { dayIndex, filters, home } = store.get();
+  const { dayIndex, filters, home, query } = store.get();
   const refresh = () => renderControls(root, store, days, hikes);
   const setFilters = patch => store.set({ filters: { ...filters, ...patch } });
   const toggle = (list, value) => (list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
@@ -45,6 +45,11 @@ export function renderControls(root, store, days, hikes) {
     homeStatus = text;
     refresh();
   };
+
+  const searchInput = el('input', {
+    type: 'search', placeholder: 'Hike name', 'aria-label': 'Search hikes by name', 'data-focus': 'search', value: query,
+  });
+  searchInput.addEventListener('input', () => store.set({ query: searchInput.value }));
 
   const homeInput = el('input', {
     type: 'search', placeholder: 'Town, park or lat, lon', 'aria-label': 'Find a home location', 'data-focus': 'home', value: homeQuery,
@@ -83,9 +88,14 @@ export function renderControls(root, store, days, hikes) {
   const active = (filters.inSeason ? 1 : 0) + (filters.country ? 1 : 0) + (filters.maxDriveHrs ? 1 : 0) + filters.access.length + filters.tags.length;
 
   // Every store change rebuilds the controls; put keyboard focus back on the same control afterwards.
-  const focused = root.contains(document.activeElement) ? document.activeElement.dataset.focus : undefined;
+  // Typing in a search box rebuilds it too, so the caret position comes back with the focus.
+  const was = root.contains(document.activeElement) ? document.activeElement : undefined;
+  const focused = was?.dataset.focus;
+  const caret = was?.tagName === 'INPUT' ? [was.selectionStart, was.selectionEnd] : undefined;
 
   root.replaceChildren(...[
+    row('Search', searchInput,
+      query.trim() && el('span', { class: 'home-status' }, 'Searching all hikes, filters off')),
     days.length > 0 && row('Day', days.map((date, i) =>
       chip(dayLabel(date, i), i === dayIndex, () => store.set({ dayIndex: i }), { title: date }))),
     el('div', { class: 'control-row home' },
@@ -118,5 +128,7 @@ export function renderControls(root, store, days, hikes) {
         { iconName: 'download', title: 'Replace data/hikes.json with this file to keep the added hikes' })),
   ].filter(Boolean));
 
-  if (focused) root.querySelector(`[data-focus="${CSS.escape(focused)}"]`)?.focus();
+  const target = focused && root.querySelector(`[data-focus="${CSS.escape(focused)}"]`);
+  target?.focus();
+  if (caret && target?.tagName === 'INPUT') target.setSelectionRange(...caret);
 }

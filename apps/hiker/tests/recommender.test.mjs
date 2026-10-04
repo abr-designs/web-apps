@@ -86,3 +86,9 @@ test('goodFirst puts hikes without a drive time at the bottom once drive times a
   assert.deepEqual(rest.map(i => i.hike.id), ['rest', 'goodNoDrive', 'restNoDrive']);
   assert.deepEqual(goodFirst(bands).good.map(i => i.hike.id), ['goodNoDrive', 'good']);
 });
+
+test('a name query searches every hike and ignores the filters', () => {
+  const hikes = [hike('Eagle Mountain', 1, { country: 'US' }), hike('Dozer', 2), hike('Eagle Bluffs', 3)];
+  assert.deepEqual(ids(rank(hikes, noWeather, { query: ' eagle ', filters: { country: 'CA' } })), ['Eagle Mountain', 'Eagle Bluffs']);
+  assert.deepEqual(ids(rank(hikes, noWeather, { query: '  ', filters: { country: 'CA' } })), ['Dozer', 'Eagle Bluffs']);
+});

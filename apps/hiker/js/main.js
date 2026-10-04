@@ -24,6 +24,7 @@ const store = createStore({
   dayIndex: 0,
   filters: { inSeason: false, access: [], country: '', tags: [], maxDriveHrs: 0 },
   home: null,
+  query: '',
 });
 
 let baseHikes = [];
@@ -36,10 +37,10 @@ let notes = [];
 let origin;
 
 function render() {
-  const { dayIndex, filters } = store.get();
-  const bands = rank(hikes, forecasts, { dayIndex, filters, driveHours });
+  const { dayIndex, filters, query } = store.get();
+  const bands = rank(hikes, forecasts, { dayIndex, filters, driveHours, query });
   renderList($list, bands, {
-    forecasts, dayIndex, driveHours, images, day: days[dayIndex], onRemove: removeHike, view: JSON.stringify({ dayIndex, filters }),
+    forecasts, dayIndex, driveHours, images, day: days[dayIndex], onRemove: removeHike, query, view: JSON.stringify({ dayIndex, filters, query }),
   });
   renderControls($controls, store, days, { added: addedHikes().length, onAdd: openHikeForm, onDownload: downloadHikes });
 }
