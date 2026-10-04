@@ -115,6 +115,39 @@ input, select { font: inherit; color: inherit; }
 .verdict { background: var(--mint); }
 .verdict.is-tied { background: var(--yellow); }
 .verdict .headline { font-size: 20px; font-weight: 700; }
+.verdict-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }  /* [Claude 2026-10-04] */
+.verdict-head .btn { flex: none; }
+
+/* [Claude 2026-10-04] Comparison modal */
+dialog.compare {
+  width: min(920px, calc(100% - 32px)); max-height: calc(100dvh - 32px);
+  padding: 0; border: 0; border-radius: var(--r-lg);
+  background: var(--surface); color: var(--ink);
+}
+dialog.compare::backdrop { background: rgba(0, 0, 0, 0.45); }
+.compare-inner { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.compare-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.compare-scroll { overflow-x: auto; }
+table.cmp { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }  /* separate keeps borders on the frozen column */
+table.cmp th, table.cmp td { padding: 6px 8px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); vertical-align: top; }
+table.cmp tr > :last-child { border-right: 0; }
+table.cmp tbody th, table.cmp thead th:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--surface);
+  text-align: left; font-weight: 600; min-width: 160px; max-width: 200px;
+  border-right: 1px solid var(--line-strong); box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+}
+table.cmp th span { display: block; font-weight: 400; font-size: 11px; color: var(--muted); }
+table.cmp thead th { text-align: right; font-size: 13px; min-width: 130px; vertical-align: bottom; }
+table.cmp td { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.cmp .cmp-math { display: block; font-size: 11px; font-weight: 400; color: var(--muted); white-space: normal; max-width: 190px; margin-left: auto; }
+table.cmp tr.cmp-head th, table.cmp tr.cmp-head td { padding-top: 14px; border-right-color: transparent; }
+table.cmp tr.cmp-head th { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border-right-color: var(--line-strong); }
+table.cmp td.cmp-best { background: var(--mint); color: var(--good); font-weight: 700; }
+.cmp-pos {
+  display: inline-grid !important; place-items: center; width: 20px; height: 20px; margin-left: auto; margin-bottom: 4px;
+  border-radius: 50%; background: var(--line); color: var(--ink) !important; font-size: 11px !important; font-weight: 700 !important;
+}
+table.cmp thead th:nth-child(2) .cmp-pos { background: var(--accent); color: var(--accent-ink) !important; }
 
 /* Ranked rows */
 .rank-list { display: flex; flex-direction: column; gap: 8px; }
@@ -500,6 +533,20 @@ svg .now { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
 
 </div>
 
+<!-- [Claude 2026-10-04] Comparison modal for the top ranked options -->
+<dialog class="compare" id="compare" aria-labelledby="compareTitle">
+  <div class="compare-inner">
+    <div class="compare-top">
+      <div>
+        <h2 id="compareTitle">Top options compared</h2>
+        <p class="small muted">Best value in each row is highlighted.</p>
+      </div>
+      <form method="dialog"><button class="btn ghost sm" type="submit">Close</button></form>
+    </div>
+    <div class="compare-scroll"><table class="cmp" id="compareTable"></table></div>
+  </div>
+</dialog>
+
 <script>
 "use strict";
 
@@ -727,7 +774,8 @@ function runningCost(v) {
   const price = v.power === "electric" ? R.kwhPrice : R.gasPrice;
   const energy = R.kmPerYear / 12 * (Number(v.fuel) || 0) / 100 * price;
   const maint = ((Number(v.maint) || 0) + (Number(v.repairs) || 0)) / 12;
-  return { ins, energy, maint, total: ins + energy + maint };
+  return { ins, energy, maint, total: ins + energy + maint,
+    fuel: Number(v.fuel) || 0, price, electric: v.power === "electric", maintYr: Number(v.maint) || 0, repairsYr: Number(v.repairs) || 0 };  // [Claude 2026-10-04] inputs for the comparison maths
 }
 /* [Claude 2026-10-03] Annual rate that takes base down to value over the given months. */
 function annualDrop(base, value, months) {
@@ -824,14 +872,15 @@ function keepPath(d, financed, sellMonth) {
   const term = Math.max(1, Math.round(K.termMonths));
   const run = runningCost(K);  // [Claude 2026-10-03]
   let pmt = 0, balance = 0, interest = 0, keptMonthly = d.buyoutAllIn / term;
+  let down = d.buyoutAllIn, paid = 0;  // [Claude 2026-10-04] hoisted for the comparison table
   if (!financed) {
     add("Buyout paid in cash", "Residual + doc fee + " + state.tax.rate + "% tax", d.buyoutAllIn, 0);
   } else {
-    const down = clamp(K.down, 0, d.buyoutAllIn);
+    down = clamp(K.down, 0, d.buyoutAllIn);  // [Claude 2026-10-04]
     const principal = d.buyoutAllIn - down + K.lenderFee;
     pmt = amortPayment(principal, K.apr, term);
     keptMonthly = pmt;  // [Claude 2026-10-03]
-    const paid = Math.min(N, term);
+    paid = Math.min(N, term);  // [Claude 2026-10-04]
     balance = amortBalance(principal, K.apr, term, paid);
     interest = pmt * paid + balance - principal;
     if (down > 0) add("Down payment", "Toward the buyout", down, 0);
@@ -854,7 +903,8 @@ function keepPath(d, financed, sellMonth) {
     months: N, lines, nominal, netPv, monthly: netPv / N,
     pmt, balance, interest, run,
     kept: { monthly: keptMonthly + run.total, months: term },  // [Claude 2026-10-03]
-    resale: { value: sale, base: state.lease.residual, months: N }  // [Claude 2026-10-03]
+    resale: { value: sale, base: state.lease.residual, months: N },  // [Claude 2026-10-03]
+    cmp: { price: state.lease.residual, exit: 0, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale }  // [Claude 2026-10-04]
   };
 }
 
@@ -925,7 +975,8 @@ function financePath(offer, d, index, sellMonth) {
     months: N, lines, nominal, netPv, monthly: netPv / N,
     pmt, balance, interest, run, offerIndex: index, kind: offer.kind,
     kept: { monthly: pmt + run.total, months: term },
-    resale: { value: sale, base: offer.msrp, months: N }
+    resale: { value: sale, base: offer.msrp, months: N },
+    cmp: { price: offer.msrp, exit: exit.cost, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale }  // [Claude 2026-10-04]
   };
 }
 
@@ -975,7 +1026,8 @@ function leasePath(offer, d, index) {
     vehicle: vehicleName(offer),
     sub: term + " months at " + offer.apr + "%, " + exit.name.toLowerCase(),
     months: term, lines, nominal, netPv, monthly: netPv / term,
-    payment, exits, run, offerIndex: index, kind: "lease"
+    payment, exits, run, offerIndex: index, kind: "lease",
+    cmp: { price: offer.msrp, exit: exit.cost, upfront, pmt: payment, paid: term, payments: payment * term, interest: null, payoff: 0, handback: offer.dispositionFee, resale: 0 }  // [Claude 2026-10-04]
   };
 }
 
@@ -1011,9 +1063,11 @@ function renderVerdict(res) {
     (res.ranked.length > TOP ? '<p class="rank-more">' + (res.ranked.length - TOP) + " more under Line items</p>" : "");  // [Claude 2026-10-03]
 
   el.innerHTML =
+    '<div class="verdict-head">' +  // [Claude 2026-10-04]
     '<div class="headline">' + (tied
       ? "Close call: " + escapeHtml(best.label) + " or " + escapeHtml(second.label)
       : escapeHtml(best.label) + " is cheapest") + "</div>" +
+    '<button class="btn sm" type="button" data-open-compare>Details</button></div>' +  // [Claude 2026-10-04]
     '<p class="small">' + (tied
       ? "Only " + fmt(gap) + "/mo apart, inside the margin of error on resale estimates."
       : "Saves " + fmt(gap) + "/mo against " + escapeHtml(second.label) + ".") +
@@ -1022,6 +1076,74 @@ function renderVerdict(res) {
 
   document.getElementById("bestBar").innerHTML =
     "<span class=\"muted\">Best right now</span><b>" + fmt(best.monthly) + "/mo</b>" + escapeHtml(best.label);
+}
+
+/* [Claude 2026-10-04] Side-by-side table of every ranked option, best value per row highlighted, with the maths under each figure. */
+const sumMath = terms => terms.filter(v => Math.abs(v) >= 0.5)
+  .map((v, i) => (i ? (v < 0 ? " - " : " + ") : (v < 0 ? "-" : "")) + fmt(Math.abs(v))).join("") || "$0";
+const vehicleTerms = p => [p.cmp.exit, p.cmp.upfront, p.cmp.payments, p.cmp.payoff, p.cmp.handback, p.kind === "lease" ? 0 : -p.cmp.resale];
+const COMPARE_ROWS = [
+  { head: "Ranking" },
+  { label: "Effective cost", sub: "Per month driven, today's dollars", get: p => p.monthly, best: "low", unit: "/mo",
+    math: p => fmt(p.netPv) + " / " + p.months + " mo" },
+  { label: "Extra vs best", get: (p, top) => p.monthly - top[0].monthly, unit: "/mo",
+    math: (p, top) => p === top[0] ? "" : fmt(p.monthly) + " - " + fmt(top[0].monthly) },
+  { label: "Months driven", get: p => p.months, fmt: v => v + " mo" },
+  { label: "Total cost", sub: "Today's dollars, after resale", get: p => p.netPv, best: "low",
+    math: p => fmt(p.nominal) + " before discounting" },
+  { head: "Where the monthly cost comes from" },
+  { label: "Vehicle cost", sub: "Exit, up front, payments, payoff and hand-back fee, less resale, spread over the months", get: p => (p.nominal - p.run.total * p.months) / p.months, best: "low", unit: "/mo",
+    math: p => "(" + sumMath(vehicleTerms(p)) + ") / " + p.months },
+  { label: "Running cost", sub: "Insurance, energy and maintenance", get: p => p.run.total, best: "low", unit: "/mo",
+    math: p => sumMath([p.run.ins, p.run.energy, p.run.maint]) },
+  { head: "Monthly while you have it" },
+  { label: "Payment", sub: "Lease or loan, tax in", get: p => p.cmp.pmt, best: "low", unit: "/mo" },
+  { label: "Insurance", get: p => p.run.ins, best: "low", unit: "/mo" },
+  { label: "Energy", sub: "Gas or electricity", get: p => p.run.energy, best: "low", unit: "/mo",
+    math: p => num(state.running.kmPerYear) + " km / 12 x " + p.run.fuel + (p.run.electric ? " kWh" : " L") + "/100 x $" + p.run.price },
+  { label: "Maintenance", sub: "Repairs included for your Crosstrek", get: p => p.run.maint, best: "low", unit: "/mo",
+    math: p => (p.run.repairsYr > 0 ? "(" + sumMath([p.run.maintYr, p.run.repairsYr]) + ")" : fmt(p.run.maintYr)) + " / 12" },
+  { label: "Out of pocket", sub: "Payment plus running costs", get: p => p.cmp.pmt + p.run.total, best: "low", unit: "/mo",
+    math: p => sumMath([p.cmp.pmt, p.run.total]) },
+  { head: "One-off amounts" },
+  { label: "Current lease exit", sub: "Cheapest of hand back, flip or trade", get: p => p.cmp.exit, best: "low" },
+  { label: "Up front", sub: "Down payment, signing or cash buyout", get: p => p.cmp.upfront, best: "low" },
+  { label: "Payments total", get: p => p.cmp.payments, best: "low",
+    math: p => p.cmp.paid > 0 && p.cmp.pmt > 0 ? p.cmp.paid + " x " + fmt2(p.cmp.pmt) : "" },
+  { label: "Loan interest", get: p => p.cmp.interest, best: "low" },
+  { label: "Loan payoff at sale", get: p => p.cmp.payoff, best: "low" },
+  { label: "Hand-back fee", get: p => p.cmp.handback, best: "low" },
+  { label: "Resale value", sub: "Credit when sold", get: p => p.kind === "lease" ? null : p.cmp.resale, best: "high",
+    math: p => "After " + p.months + " mo" },
+  { label: "Net vehicle cost", sub: "One-offs and payments, less resale", get: p => vehicleTerms(p).reduce((a, b) => a + b, 0), best: "low",
+    math: p => sumMath(vehicleTerms(p)) },
+  { head: "Vehicle" },
+  { label: "Price", sub: "Residual for your Crosstrek", get: p => p.cmp.price },
+  { label: "Value lost", sub: "Price less resale", get: p => p.kind === "lease" ? null : p.cmp.price - p.cmp.resale, best: "low",
+    math: p => fmt(p.cmp.price) + " - " + fmt(p.cmp.resale) },
+  { label: "Depreciation", get: p => p.resale ? annualDrop(p.resale.base, p.resale.value, p.resale.months) : null, best: "low", fmt: v => pct(v) + "/yr" }
+];
+function renderCompare(res) {
+  const top = res.ranked;
+  const head = "<tr><th></th>" + top.map((p, i) =>
+    '<th><span class="cmp-pos">' + (i + 1) + "</span>" + escapeHtml(p.vehicle) + "<span>" + escapeHtml(p.label) + "</span></th>").join("") + "</tr>";
+  const body = COMPARE_ROWS.map(row => {
+    if (row.head) return '<tr class="cmp-head"><th>' + row.head + '</th><td colspan="' + top.length + '"></td></tr>';  // [Claude 2026-10-04] label cell stays frozen
+    const vals = top.map(p => row.get(p, top));
+    const nums = vals.filter(v => v != null);
+    let bestVal = null;
+    if (row.best && nums.length > 1 && Math.max(...nums) - Math.min(...nums) >= 0.5) {
+      bestVal = row.best === "low" ? Math.min(...nums) : Math.max(...nums);
+    }
+    const show = v => v == null ? "-" : row.fmt ? row.fmt(v) : fmt(v) + (row.unit || "");
+    return "<tr><th>" + row.label + (row.sub ? "<span>" + row.sub + "</span>" : "") + "</th>" +
+      vals.map((v, i) => {
+        const m = v != null && row.math ? row.math(top[i], top) : "";  // [Claude 2026-10-04]
+        return "<td" + (bestVal != null && v != null && Math.abs(v - bestVal) < 0.5 ? ' class="cmp-best"' : "") + ">" + show(v) +
+          (m ? '<span class="cmp-math">' + m + "</span>" : "") + "</td>";
+      }).join("") + "</tr>";
+  }).join("");
+  document.getElementById("compareTable").innerHTML = "<thead>" + head + "</thead><tbody>" + body + "</tbody>";
 }
 
 function chip(kind, text) { return '<span class="chip ' + kind + '">' + text + "</span>"; }
@@ -1238,6 +1360,7 @@ function renderDerived(res) {
   });
 }
 
+let lastRes = null;  // [Claude 2026-10-04]
 function render() {
   const res = computeAll();
   renderVerdict(res);
@@ -1245,6 +1368,8 @@ function render() {
   renderBreakdown(res);
   renderChart(res);
   renderDerived(res);
+  lastRes = res;  // [Claude 2026-10-04]
+  if (document.getElementById("compare").open) renderCompare(res);  // [Claude 2026-10-04]
   save();
 }
 
@@ -1399,6 +1524,7 @@ function bindEvents() {
     if (!t.getAttribute) return;
     const kc = t.getAttribute("data-kill-comp");
     if (kc !== null) { state.market.comps.splice(Number(kc), 1); renderComps(); render(); return; }
+    if (t.hasAttribute("data-open-compare")) { renderCompare(lastRes); document.getElementById("compare").showModal(); return; }  // [Claude 2026-10-04]
     const ko = t.getAttribute("data-kill-offer");
     if (ko) { e.preventDefault(); state.offers = state.offers.filter(o => o.id !== ko); renderOffers(); render(); }
   });
@@ -1409,6 +1535,8 @@ function bindEvents() {
     renderOffers();
     render();
   };
+  const compare = document.getElementById("compare");  // [Claude 2026-10-04] close on backdrop click
+  compare.addEventListener("click", e => { if (e.target === compare) compare.close(); });
   document.getElementById("addOffer").addEventListener("click", () => addOffer("lease"));
   document.getElementById("addFinance").addEventListener("click", () => addOffer("finance"));
   document.getElementById("addUsed").addEventListener("click", () => addOffer("used"));  // [Claude 2026-10-03]
