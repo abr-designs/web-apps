@@ -1610,5 +1610,53 @@
     "access": [],
     "country": "CA",
     "notes": "June-October"
+  },
+  {
+    "id": "diez-vista-1",
+    "name": "Diez Vista 1",
+    "allTrails": "https://www.alltrails.com/trail/canada/british-columbia/diez-vistas-trail-to-vista-1",
+    "lat": 49.3375136,
+    "lon": -122.8564953,
+    "lengthKm": 7.6,
+    "timeHrs": 2.2,
+    "gainM": 504,
+    "difficulty": 3,
+    "quality": 3,
+    "accessibility": 1,
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "sawblade",
+    "name": "Sawblade",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/garbage-trail-woodland-walk-coquitlam-lake-view-trail",
+    "lat": 49.3136267,
+    "lon": -122.7492643,
+    "lengthKm": 7.9,
+    "timeHrs": 2,
+    "gainM": 280,
+    "difficulty": 1,
+    "quality": 3,
+    "accessibility": 1,
+    "tags": [],
+    "access": [],
+    "country": "CA"
+  },
+  {
+    "id": "dozer",
+    "name": "Dozer",
+    "allTrails": "https://www.alltrails.com/explore/trail/canada/british-columbia/sterling-loop-trail",
+    "lat": 49.3136267,
+    "lon": -122.7492643,
+    "lengthKm": 14.2,
+    "timeHrs": 2.5,
+    "gainM": 776,
+    "difficulty": 3,
+    "quality": 2,
+    "accessibility": 1,
+    "tags": [],
+    "access": [],
+    "country": "CA"
   }
 ]

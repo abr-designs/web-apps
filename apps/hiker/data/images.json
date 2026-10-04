@@ -377,5 +377,23 @@
     "page": "https://commons.wikimedia.org/wiki/File:Panorama_Ridge,_north_aspect.jpg",
     "title": "Panorama Ridge, north aspect.jpg",
     "credit": "Su-Laine, CC BY-SA 2.0 (Wikimedia Commons)"
+  },
+  "diez-vista-1": {
+    "url": "https://www.outdoorvancouver.ca/wp-content/uploads/2013/07/diez-vistas-hike-1060x696.jpg",
+    "page": "https://www.outdoorvancouver.ca/wp-content/uploads/2013/07/diez-vistas-hike-1060x696.jpg",
+    "credit": "Outdoor Vancouver",
+    "title": "diez-vistas-hike-1060x696.jpg"
+  },
+  "sawblade": {
+    "url": "https://www.vancouvertrails.com/images/photos/woodland-walk-trail-6.jpg",
+    "page": "https://www.vancouvertrails.com/images/photos/woodland-walk-trail-6.jpg",
+    "credit": "Vancouver Trails",
+    "title": "woodland-walk-trail-6.jpg"
+  },
+  "dozer": {
+    "url": "https://www.vmcdn.ca/f/files/glaciermedia/import/lmp-all/841338-0311-bulldozer.jpg",
+    "page": "https://www.vmcdn.ca/f/files/glaciermedia/import/lmp-all/841338-0311-bulldozer.jpg",
+    "credit": "Glacier Media",
+    "title": "841338-0311-bulldozer.jpg"
   }
 }
