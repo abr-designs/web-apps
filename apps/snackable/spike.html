@@ -1,0 +1,206 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-05 -->
+<!--
+  Embed spike (plan 0001, step 1): checks that itch.io HTML5 games load inside an iframe on this host.
+  Pick a game from the bar at the bottom. "Fit" toggles between stretching the iframe to the whole stage (default)
+  and scaling the game's native size (letterbox).
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Snackable Embed Spike</title>
+  <style>
+    :root {
+      --bg: #111;
+      --fg: #eee;
+      --muted: #999;
+      --bar-bg: #222;
+      --ok: #6c6;
+      --bad: #e66;
+      --bar-height: 56px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.3 system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #stage {
+      position: fixed;
+      inset: 0 0 var(--bar-height) 0;
+      overflow: hidden;
+    }
+    #game {
+      position: absolute;
+      border: 0;
+      background: #000;
+    }
+    #stage.fit-scale #game {
+      left: 50%;
+      top: 50%;
+      transform-origin: center;
+    }
+    #stage.fit-stretch #game {
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #status {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgb(0 0 0 / 60%);
+      pointer-events: none;
+    }
+    #status.ok { color: var(--ok); }
+    #status.bad { color: var(--bad); }
+    #bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--bar-height);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding: 0 8px env(safe-area-inset-bottom);
+      background: var(--bar-bg);
+    }
+    #bar select { flex: 1; min-width: 0; }
+    #bar select, #bar button {
+      height: 40px;
+      font: inherit;
+      color: var(--fg);
+      background: #333;
+      border: 1px solid #444;
+      border-radius: 8px;
+    }
+    #bar button { padding: 0 12px; }
+  </style>
+</head>
+<body>
+  <div id="stage" class="fit-stretch">
+    <iframe id="game" allowfullscreen scrolling="no" allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"></iframe>
+    <div id="status">Loading list…</div>
+  </div>
+  <div id="bar">
+    <button id="prev" aria-label="Previous game">◀</button>
+    <select id="picker" aria-label="Game"></select>
+    <button id="next" aria-label="Next game">▶</button>
+    <button id="fit">Fit</button>
+  </div>
+
+  <script type="module">
+    // Created by Claude (claude-opus-5-5)
+    // Date: 2026-10-05
+    const LOAD_TIMEOUT_MS = 10000;
+    // Games whose sides are within this ratio of each other count as square and fit both orientations.
+    const SQUARE_TOLERANCE = 1.15;
+    const portraitQuery = matchMedia("(orientation: portrait)");
+
+    const stage = document.getElementById("stage");
+    const frame = document.getElementById("game");
+    const status = document.getElementById("status");
+    const picker = document.getElementById("picker");
+
+    let allGames = [];
+    let games = []; // allGames filtered to the device's current orientation
+    let current = null;
+    let timeoutId = 0;
+    let loadStart = 0;
+
+    /** @created Claude (claude-opus-5-5) — 2026-10-05 */
+    function setStatus(text, kind = "") {
+      status.textContent = text;
+      status.className = kind;
+    }
+
+    /** @created Claude (claude-opus-5-5) — 2026-10-05 */
+    function layout() {
+      if (!current || !stage.classList.contains("fit-scale")) {
+        frame.style.width = frame.style.height = frame.style.transform = "";
+        return;
+      }
+      const w = current.width || stage.clientWidth;
+      const h = current.height || stage.clientHeight;
+      const scale = Math.min(stage.clientWidth / w, stage.clientHeight / h);
+      frame.style.width = `${w}px`;
+      frame.style.height = `${h}px`;
+      frame.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+
+    /** @created Claude (claude-opus-5-5) — 2026-10-05 */
+    function show(index) {
+      current = games[index];
+      picker.value = String(index);
+      layout();
+      setStatus(`Loading ${current.title}…`);
+      loadStart = performance.now();
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => setStatus("No load event after 10s (blocked or slow?)", "bad"), LOAD_TIMEOUT_MS);
+      frame.src = current.embedUrl;
+    }
+
+    frame.addEventListener("load", () => {
+      if (!current || frame.src === "about:blank") return;
+      clearTimeout(timeoutId);
+      const seconds = ((performance.now() - loadStart) / 1000).toFixed(1);
+      setStatus(`Loaded in ${seconds}s · ${current.width}x${current.height}`, "ok");
+      setTimeout(() => setStatus(""), 3000);
+    });
+
+    /** @created Claude (claude-opus-5-5) — 2026-10-05 */
+    function fitsDevice(game) {
+      if (!game.width || !game.height) return true;
+      const ratio = game.width / game.height;
+      if (ratio < SQUARE_TOLERANCE && ratio > 1 / SQUARE_TOLERANCE) return true;
+      return portraitQuery.matches ? ratio < 1 : ratio > 1;
+    }
+
+    /**
+     * Rebuilds the picker for the current orientation. The game already playing keeps running;
+     * the next pick comes from the filtered list.
+     * @created Claude (claude-opus-5-5) — 2026-10-05
+     */
+    function applyOrientation() {
+      games = allGames.filter(fitsDevice);
+      picker.replaceChildren(...games.map((g, i) => new Option(g.title, String(i))));
+      const orientation = portraitQuery.matches ? "portrait" : "landscape";
+      setStatus(`${games.length}/${allGames.length} games fit ${orientation}`, "ok");
+      const index = games.indexOf(current);
+      if (index >= 0) picker.value = String(index);
+      else if (!current && games.length) show(0);
+      else picker.selectedIndex = -1;
+    }
+
+    /** @created Claude (claude-opus-5-5) — 2026-10-05 */
+    const step = (delta) => {
+      if (games.length) show((Number(picker.value || -1) + delta + games.length) % games.length);
+    };
+    document.getElementById("prev").addEventListener("click", () => step(-1));
+    document.getElementById("next").addEventListener("click", () => step(1));
+    picker.addEventListener("change", () => show(Number(picker.value)));
+    document.getElementById("fit").addEventListener("click", () => {
+      stage.classList.toggle("fit-scale");
+      stage.classList.toggle("fit-stretch");
+      layout();
+    });
+    window.addEventListener("resize", layout);
+
+    try {
+      allGames = await (await fetch("data/games.json")).json();
+      applyOrientation();
+      portraitQuery.addEventListener("change", applyOrientation);
+    } catch (err) {
+      setStatus(`Couldn't load data/games.json: ${err.message}`, "bad");
+    }
+  </script>
+</body>
+</html>

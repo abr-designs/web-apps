@@ -1,0 +1,28 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-05 -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111111">
+  <title>Snackable</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="feed" aria-live="polite"></main>
+
+  <div id="strip" role="group" aria-label="Swipe up or tap for the next game, swipe down for the previous one">
+    <div class="strip__now">
+      <a id="now-link" class="strip__title" target="_blank" rel="noopener"></a>
+      <span id="now-author" class="strip__sub"></span>
+    </div>
+    <div class="strip__next">
+      <span class="strip__label">Next ↑</span>
+      <span id="next-title" class="strip__sub"></span>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
