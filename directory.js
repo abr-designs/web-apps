@@ -1,7 +1,7 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-09-30
 //
-// Renders apps.json (built by scripts/build-directory.mjs) as the compact list directory.
+// Renders apps.json and dev.json (built by scripts/build-directory.mjs) as the compact list directory with an In Development tab.
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -41,6 +41,11 @@ function el(doc, tag, className, text) {
   return node;
 }
 
+/** @created Claude (claude-opus-5-5) 2026-10-05 */
+export function tabLabel(count) {
+  return `In Development (${count})`;
+}
+
 /** @created Claude (claude-opus-5-5) 2026-09-30 */
 export function renderList(entries, doc) {
   if (entries.length === 0) return el(doc, 'p', 'status', 'No apps published yet.');
@@ -51,8 +56,9 @@ export function renderList(entries, doc) {
     if (ICONS[app.icon]) tile.append(svgIcon(doc, ICONS[app.icon], 'tile-icon'));
     else tile.textContent = app.name.charAt(0).toUpperCase();
 
+    const subtitle = app.pr ? `PR #${app.pr.number} · ${app.pr.title}` : app.description;
     const text = el(doc, 'span', 'app-text');
-    text.append(el(doc, 'span', 'app-name', app.name), el(doc, 'span', 'app-desc', app.description));
+    text.append(el(doc, 'span', 'app-name', app.name), el(doc, 'span', 'app-desc', subtitle));
     const updated = formatUpdated(app.updated);
     if (updated) text.append(el(doc, 'span', 'app-date', updated));
 
@@ -60,26 +66,57 @@ export function renderList(entries, doc) {
     link.href = app.url;
     link.append(tile, text, svgIcon(doc, CHEVRON, 'chevron'));
 
-    const item = el(doc, 'li');
+    const item = el(doc, 'li', app.pr ? 'dev-item' : undefined);
     item.append(link);
+    if (app.pr) {
+      const prLink = el(doc, 'a', 'pr-link', `#${app.pr.number}`);
+      prLink.href = app.pr.url;
+      item.append(prLink);
+    }
     list.append(item);
   }
   return list;
 }
 
+async function loadJson(url) {
+  const response = await fetch(url, { cache: 'no-cache' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
 async function init() {
   const container = document.getElementById('app-list');
   const count = document.getElementById('app-count');
-  try {
-    const response = await fetch('apps.json', { cache: 'no-cache' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const entries = await response.json();
-    count.textContent = entries.length === 1 ? '1 app' : `${entries.length} apps`;
-    container.replaceChildren(renderList(entries, document));
-  } catch {
+  const tabs = document.getElementById('tabs');
+  const tabApps = document.getElementById('tab-apps');
+  const tabDev = document.getElementById('tab-dev');
+
+  const [apps, dev] = await Promise.allSettled([loadJson('apps.json'), loadJson('dev.json')]);
+  if (apps.status === 'rejected') {
     count.textContent = '';
     container.replaceChildren(el(document, 'p', 'status', "Couldn't load the app list. Refresh to try again."));
+    return;
   }
+  const devEntries = dev.status === 'fulfilled' && Array.isArray(dev.value) ? dev.value : [];
+
+  const render = () => {
+    const showDev = devEntries.length > 0 && location.hash === '#dev';
+    tabApps.setAttribute('aria-selected', String(!showDev));
+    tabDev.setAttribute('aria-selected', String(showDev));
+    const entries = showDev ? devEntries : apps.value;
+    if (showDev) count.textContent = `${entries.length} in development`;
+    else count.textContent = entries.length === 1 ? '1 app' : `${entries.length} apps`;
+    container.replaceChildren(renderList(entries, document));
+  };
+
+  if (devEntries.length > 0) {
+    tabDev.textContent = tabLabel(devEntries.length);
+    tabs.hidden = false;
+    tabApps.addEventListener('click', () => { history.replaceState(null, '', location.pathname + location.search); render(); });
+    tabDev.addEventListener('click', () => { history.replaceState(null, '', '#dev'); render(); });
+    window.addEventListener('hashchange', render);
+  }
+  render();
 }
 
 if (typeof document !== 'undefined') init();

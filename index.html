@@ -17,7 +17,11 @@
       <h1>Web apps</h1>
       <p id="app-count" class="count"></p>
     </header>
-    <div id="app-list"></div>
+    <nav id="tabs" class="tabs" role="tablist" aria-label="App lists" hidden>
+      <button type="button" role="tab" id="tab-apps" aria-selected="true" aria-controls="app-list">Apps</button>
+      <button type="button" role="tab" id="tab-dev" aria-selected="false" aria-controls="app-list">In Development</button>
+    </nav>
+    <div id="app-list" role="tabpanel"></div>
   </main>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # web-apps
 
-Static web apps by abr-designs, published together on GitHub Pages at https://abr-designs.github.io/web-apps/. The root page is a directory that lists every app in `apps/`, newest update first. It rebuilds on every push to `main`.
+Static web apps by abr-designs, published together on GitHub Pages at https://abr-designs.github.io/web-apps/. The root page is a directory that lists every app in `apps/`, newest update first. It rebuilds on every push to `main` and whenever a PR into `main` is opened, updated, or closed.
 
 ## Add an app
 
@@ -24,9 +24,15 @@ Static web apps by abr-designs, published together on GitHub Pages at https://ab
    | `icon` | no | `mountain`, `layout-kanban`, `car`, `brush`, `book` (anything else shows the first letter of `name`) |
    | `color` | no | `teal`, `purple`, `coral`, `pink`, `amber`, `blue`, `gray` (default `gray`) |
 
-4. Open a PR. The `Pages` workflow validates every app. Merging deploys it.
+4. Open a PR. The `Pages` workflow validates every app and publishes a preview under In Development. Merging deploys it.
 
 Folders starting with `.` and an app's top-level `docs/`, `tests/`, and `tools/` stay in the repo but are not published.
+
+## In Development
+
+Every open PR into `main` from this repo that adds or edits `apps/<slug>/` gets a row under the In Development tab and a preview at `https://abr-designs.github.io/web-apps/dev/pr-<n>/<slug>/`. Link straight to the tab with `https://abr-designs.github.io/web-apps/#dev`. Closing or merging the PR removes the preview on the next deploy. An invalid app in a PR is skipped with a warning in the workflow log and never blocks the main deploy.
+
+Previews run on the same origin as the published apps, so they share localStorage and IndexedDB with them. A preview that changes a storage key or schema can change the saved data the published app reads.
 
 ## Preview locally
 

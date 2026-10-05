@@ -2,9 +2,10 @@
 // Date: 2026-09-30
 //
 // Validates apps/*/app.json, writes apps.json, and assembles the Pages site.
-// Usage: node scripts/build-directory.mjs [--out <dir>]
+// Usage: node scripts/build-directory.mjs [--out <dir>] [--dev <prs.json>]
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -88,23 +89,115 @@ export function buildIndex(apps, getUpdated) {
     });
 }
 
+/**
+ * Slugs with at least one added or modified file in `git diff --name-status` output.
+ * @created Claude (claude-opus-5-5) 2026-10-05
+ */
+export function changedSlugs(nameStatus) {
+  const slugs = new Set();
+  const slugOf = (p) => p.match(/^apps\/([^/]+)\//)?.[1];
+  for (const line of nameStatus.split('\n')) {
+    const [status, ...paths] = line.trim().split('\t');
+    if (!status || paths.length === 0) continue;
+    const kept = status === 'D' ? [] : /^[RC]/.test(status) ? paths.slice(1) : paths;
+    for (const p of kept) {
+      const slug = slugOf(p);
+      if (slug) slugs.add(slug);
+    }
+  }
+  return [...slugs].sort();
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-05 */
+export function buildDevIndex(prs, appsByPr) {
+  return prs
+    .flatMap((pr) => (appsByPr.get(pr.number) ?? []).map((app) => ({
+      ...app,
+      updated: pr.updatedAt,
+      url: `dev/pr-${pr.number}/${app.slug}/`,
+      pr: { number: pr.number, title: pr.title, url: pr.url },
+    })))
+    .sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated)
+      || b.pr.number - a.pr.number
+      || a.slug.localeCompare(b.slug));
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-05 */
+export function gitRunner(cwd) {
+  return (args, opts = {}) => execFileSync('git', args, {
+    cwd,
+    encoding: opts.buffer ? 'buffer' : 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 256 * 1024 * 1024,
+  });
+}
+
+function gitErrorLine(err) {
+  const stderr = err.stderr ? err.stderr.toString().trim() : '';
+  return (stderr || err.message).split('\n')[0];
+}
+
+/**
+ * Fetches each open PR head and validates the apps it adds or edits.
+ * App files land in <workDir>/pr-<n>/apps/<slug>. Problems become warnings, never errors.
+ * @created Claude (claude-opus-5-5) 2026-10-05
+ */
+export function collectDev(prs, run, workDir) {
+  const appsByPr = new Map();
+  const warnings = [];
+
+  for (const pr of prs) {
+    if (pr.isCrossRepository) continue;
+    const n = pr.number;
+    const appsRoot = path.join(workDir, `pr-${n}`, 'apps');
+    let slugs;
+    try {
+      run(['fetch', '--no-tags', 'origin', `pull/${n}/head`]);
+      slugs = changedSlugs(run(['diff', '--name-status', `HEAD...${pr.headRefOid}`, '--', 'apps/']));
+      for (const slug of slugs) {
+        const files = run(['ls-tree', '-r', '--name-only', pr.headRefOid, '--', `apps/${slug}/`]).split('\n').filter(Boolean);
+        for (const file of files) {
+          const dest = path.join(workDir, `pr-${n}`, file);
+          fs.mkdirSync(path.dirname(dest), { recursive: true });
+          fs.writeFileSync(dest, run(['show', `${pr.headRefOid}:${file}`], { buffer: true }));
+        }
+      }
+    } catch (err) {
+      warnings.push(`warning: PR #${n}: ${gitErrorLine(err)}`);
+      continue;
+    }
+    if (slugs.length === 0) continue;
+
+    const { apps, errors } = collectApps(appsRoot);
+    for (const e of errors) warnings.push(`warning: PR #${n} ${e}`);
+    appsByPr.set(n, apps);
+  }
+
+  return { entries: buildDevIndex(prs, appsByPr), warnings };
+}
+
+function copyApp(appDir, dest) {
+  fs.cpSync(appDir, dest, {
+    recursive: true,
+    filter: (src) => {
+      const parts = path.relative(appDir, src).split(path.sep).filter(Boolean);
+      if (parts.some((p) => p.startsWith('.'))) return false;
+      return !(parts.length > 0 && STRIPPED_DIRS.includes(parts[0]));
+    },
+  });
+}
+
 /** @created Claude (claude-opus-5-5) 2026-09-30 */
-export function assembleSite(rootDir, outDir, entries) {
+export function assembleSite(rootDir, outDir, entries, devEntries = [], workDir = null) {
   fs.mkdirSync(outDir, { recursive: true });
   for (const file of SHELL_FILES) fs.copyFileSync(path.join(rootDir, file), path.join(outDir, file));
   fs.writeFileSync(path.join(outDir, 'apps.json'), JSON.stringify(entries, null, 2));
+  fs.writeFileSync(path.join(outDir, 'dev.json'), JSON.stringify(devEntries, null, 2));
   fs.writeFileSync(path.join(outDir, '.nojekyll'), '');
 
-  for (const { slug } of entries) {
-    const appDir = path.join(rootDir, 'apps', slug);
-    fs.cpSync(appDir, path.join(outDir, slug), {
-      recursive: true,
-      filter: (src) => {
-        const parts = path.relative(appDir, src).split(path.sep).filter(Boolean);
-        if (parts.some((p) => p.startsWith('.'))) return false;
-        return !(parts.length > 0 && STRIPPED_DIRS.includes(parts[0]));
-      },
-    });
+  for (const { slug } of entries) copyApp(path.join(rootDir, 'apps', slug), path.join(outDir, slug));
+  for (const { slug, pr } of devEntries) {
+    copyApp(path.join(workDir, `pr-${pr.number}`, 'apps', slug), path.join(outDir, 'dev', `pr-${pr.number}`, slug));
   }
 }
 
@@ -126,6 +219,12 @@ function main(argv) {
     console.error('--out needs a directory');
     return 1;
   }
+  const devIndex = argv.indexOf('--dev');
+  const devFile = devIndex === -1 ? null : argv[devIndex + 1];
+  if (devIndex !== -1 && !devFile) {
+    console.error('--dev needs a PR list file');
+    return 1;
+  }
 
   const { apps, errors } = collectApps(path.join(rootDir, 'apps'));
   if (errors.length > 0) {
@@ -137,10 +236,21 @@ function main(argv) {
   for (const e of entries) console.log(`${e.slug}  ${e.updated ?? 'uncommitted'}  ${e.name}`);
   console.log(`${entries.length} app(s)`);
 
+  let dev = { entries: [], warnings: [] };
+  let workDir = null;
+  if (devFile) {
+    workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'web-apps-dev-'));
+    const prs = JSON.parse(fs.readFileSync(devFile, 'utf8').replace(/^﻿/, ''));
+    dev = collectDev(prs, gitRunner(rootDir), workDir);
+    for (const w of dev.warnings) console.log(w);
+    for (const e of dev.entries) console.log(`PR #${e.pr.number}  ${e.slug}  ${e.name}`);
+    console.log(`${dev.entries.length} in development`);
+  }
+
   if (outDir) {
     const target = resolveOutDir(rootDir, outDir);
     fs.rmSync(target, { recursive: true, force: true });
-    assembleSite(rootDir, target, entries);
+    assembleSite(rootDir, target, entries, dev.entries, workDir);
     console.log(`Site written to ${outDir}`);
   }
   return 0;

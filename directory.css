@@ -123,3 +123,47 @@ h1 { font-size: 22px; font-weight: 500; margin: 0; }
 .app-desc, .app-date { font-size: 13px; color: var(--text-muted); }
 .app-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-date { font-size: 12px; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs[hidden] { display: none; }
+
+.tabs [role="tab"] {
+  min-height: 44px;
+  padding: 0 12px;
+  margin-bottom: -1px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.tabs [role="tab"][aria-selected="true"] {
+  color: var(--text-primary);
+  font-weight: 500;
+  border-bottom-color: var(--text-primary);
+}
+
+.tabs [role="tab"]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+.dev-item { display: flex; align-items: center; }
+.dev-item .app-row { flex: 1; min-width: 0; }
+
+.pr-link {
+  flex: none;
+  padding: 12px 14px 12px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.pr-link:hover { color: var(--text-primary); text-decoration: underline; }
+.pr-link:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }

@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { collectApps, buildIndex, assembleSite, resolveOutDir } from './build-directory.mjs';
+import { execFileSync } from 'node:child_process';
+import { collectApps, buildIndex, assembleSite, resolveOutDir, changedSlugs, buildDevIndex, collectDev, gitRunner } from './build-directory.mjs';
 
 function makeTree(files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-'));
@@ -129,4 +130,109 @@ test('app.json that is not an object is reported', () => {
   const { errors } = collectApps(dir);
   assert.match(errors.join('\n'), /apps\/a: app\.json must be a JSON object/);
   assert.match(errors.join('\n'), /apps\/b: app\.json must be a JSON object/);
+});
+
+test('changedSlugs keeps added and modified apps, drops delete-only and root files', () => {
+  const out = [
+    'A\tapps/new/index.html', 'M\tapps/edit/app.json', 'M\tapps/edit/js/a.js',
+    'D\tapps/gone/index.html', 'M\tapps/.gitkeep',
+    'R100\tapps/old/a.js\tapps/renamed/a.js', 'D\tapps/old/index.html',
+  ].join('\n');
+  assert.deepEqual(changedSlugs(out), ['edit', 'new', 'renamed']);
+});
+
+test('changedSlugs on empty output', () => {
+  assert.deepEqual(changedSlugs(''), []);
+});
+
+test('buildDevIndex sorts by PR update then number then slug and shapes entries', () => {
+  const pr = (number, updatedAt) => ({ number, title: `T${number}`, url: `u${number}`, updatedAt });
+  const prs = [pr(1, '2026-10-01T00:00:00Z'), pr(2, '2026-10-03T00:00:00Z')];
+  const appsByPr = new Map([[1, [meta('a')]], [2, [meta('c'), meta('b')]]]);
+  const entries = buildDevIndex(prs, appsByPr);
+  assert.deepEqual(entries.map((e) => `${e.pr.number}/${e.slug}`), ['2/b', '2/c', '1/a']);
+  assert.deepEqual(entries[0], { ...meta('b'), updated: '2026-10-03T00:00:00Z', url: 'dev/pr-2/b/', pr: { number: 2, title: 'T2', url: 'u2' } });
+});
+
+function gitRepo() {
+  const dir = makeTree({ 'apps/base/index.html': '', 'apps/base/app.json': okJson });
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, encoding: 'utf8' }).trim();
+  git('init', '-q', '-b', 'main');
+  git('add', '.');
+  git('commit', '-qm', 'base');
+  const branch = (name, files) => {
+    git('checkout', '-qb', name);
+    for (const [rel, content] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(dir, rel), content);
+    }
+    git('add', '.');
+    git('commit', '-qm', name);
+    const sha = git('rev-parse', 'HEAD');
+    git('checkout', '-q', 'main');
+    return sha;
+  };
+  const real = gitRunner(dir);
+  const run = (args, opts) => (args[0] === 'fetch' ? '' : real(args, opts));
+  return { dir, branch, run };
+}
+
+const prOf = (number, headRefOid, extra = {}) => ({
+  number, title: `T${number}`, url: `u${number}`, updatedAt: '2026-10-03T00:00:00Z', headRefOid, isCrossRepository: false, ...extra,
+});
+
+test('collectDev skips fork PRs without calling git', () => {
+  const run = () => { throw new Error('git called'); };
+  const result = collectDev([prOf(1, 'abc', { isCrossRepository: true })], run, makeTree({}));
+  assert.deepEqual(result, { entries: [], warnings: [] });
+});
+
+test('collectDev returns changed valid apps from a PR head', () => {
+  const repo = gitRepo();
+  const sha = repo.branch('pr4', { 'apps/new/index.html': '<p>hi</p>', 'apps/new/app.json': okJson, 'apps/new/docs/a.md': '' });
+  const workDir = makeTree({});
+  const { entries, warnings } = collectDev([prOf(4, sha)], repo.run, workDir);
+  assert.deepEqual(warnings, []);
+  assert.deepEqual(entries.map((e) => e.url), ['dev/pr-4/new/']);
+  assert.equal(fs.readFileSync(path.join(workDir, 'pr-4', 'apps', 'new', 'index.html'), 'utf8'), '<p>hi</p>');
+});
+
+test('collectDev warns on invalid app.json in a PR and keeps going', () => {
+  const repo = gitRepo();
+  const bad = repo.branch('pr3', { 'apps/bad/index.html': '', 'apps/bad/app.json': '{}' });
+  const good = repo.branch('pr5', { 'apps/good/index.html': '', 'apps/good/app.json': okJson });
+  const { entries, warnings } = collectDev([prOf(3, bad), prOf(5, good)], repo.run, makeTree({}));
+  assert.match(warnings.join('\n'), /^warning: PR #3 apps\/bad: app\.json needs a non-empty "name"/m);
+  assert.deepEqual(entries.map((e) => e.slug), ['good']);
+});
+
+test('collectDev warns and continues when git fails for a PR', () => {
+  const repo = gitRepo();
+  const good = repo.branch('pr2', { 'apps/good/index.html': '', 'apps/good/app.json': okJson });
+  const run = (args, opts) => {
+    if (args[0] === 'fetch' && args.includes('pull/1/head')) throw Object.assign(new Error('Command failed'), { stderr: Buffer.from("fatal: couldn't find remote ref pull/1/head\n") });
+    return repo.run(args, opts);
+  };
+  const { entries, warnings } = collectDev([prOf(1, 'deadbeef'), prOf(2, good)], run, makeTree({}));
+  assert.deepEqual(warnings, ["warning: PR #1: fatal: couldn't find remote ref pull/1/head"]);
+  assert.deepEqual(entries.map((e) => e.slug), ['good']);
+});
+
+test('assembleSite writes dev.json and filtered dev copies', () => {
+  const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '' });
+  const workDir = makeTree({ 'pr-4/apps/new/index.html': '', 'pr-4/apps/new/docs/a.md': '', 'pr-4/apps/new/.claude/x': '' });
+  const out = path.join(root, '_site');
+  const dev = [{ ...meta('new'), updated: '2026-10-03T00:00:00Z', url: 'dev/pr-4/new/', pr: { number: 4, title: 'T', url: 'u' } }];
+  assembleSite(root, out, [], dev, workDir);
+  assert.ok(fs.existsSync(path.join(out, 'dev/pr-4/new/index.html')));
+  assert.ok(!fs.existsSync(path.join(out, 'dev/pr-4/new/docs')));
+  assert.ok(!fs.existsSync(path.join(out, 'dev/pr-4/new/.claude')));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'dev.json'), 'utf8')), dev);
+});
+
+test('assembleSite writes empty dev.json without dev entries', () => {
+  const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '' });
+  const out = path.join(root, '_site');
+  assembleSite(root, out, []);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'dev.json'), 'utf8')), []);
 });
