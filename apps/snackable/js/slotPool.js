@@ -6,7 +6,7 @@ const STATUS_TEXT = {
   Failed: "Couldn't load. Swipe to skip.",
 };
 
-/** One game iframe plus its cover and status. States: Empty, Loading, Ready, Playing, Failed. @created Claude (claude-opus-5-5) — 2026-10-05 */
+/** One game iframe plus its cover and status. States: Empty, Parked, Loading, Ready, Playing, Failed. @created Claude (claude-opus-5-5) — 2026-10-05 */
 export class GameSlot {
   entry = null;
   state = "Empty";
@@ -43,7 +43,7 @@ export class GameSlot {
 
   /**
    * live: starts the game now (it runs hidden until activated).
-   * light: shows the cover and prefetches the embed page; the game starts on activate().
+   * light: shows the cover and prefetches the embed page, then waits Parked; the game starts on activate().
    * @created Claude (claude-opus-5-5) — 2026-10-05
    */
   load(entry, mode) {
@@ -60,6 +60,7 @@ export class GameSlot {
     } else {
       this.#prefetch = Object.assign(document.createElement("link"), { rel: "prefetch", href: entry.embedUrl });
       document.head.append(this.#prefetch);
+      this.setState("Parked");
     }
   }
 
@@ -70,20 +71,25 @@ export class GameSlot {
     else if (this.state === "Ready") this.setState("Playing");
   }
 
-  /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  deactivate() {
+  /**
+   * Stops the game but keeps the entry and shows the cover; activate() restarts it. A cross-origin
+   * iframe cannot be muted or paused, so stopping means unloading. No-op when the slot is empty.
+   * @created Claude (claude-opus-5-5) — 2026-10-05
+   */
+  park() {
+    if (!this.entry) return;
+    clearTimeout(this.#timeoutId);
+    if (this.#started) this.#frame.src = "about:blank";
+    this.#started = false;
     this.#isCurrent = false;
-    if (this.state === "Playing") this.setState("Ready");
+    this.setState("Parked");
   }
 
   /** Stops the game and frees the iframe. @created Claude (claude-opus-5-5) — 2026-10-05 */
   clear() {
-    clearTimeout(this.#timeoutId);
-    if (this.#started) this.#frame.src = "about:blank";
+    this.park();
     this.#prefetch?.remove();
     this.#prefetch = null;
-    this.#started = false;
-    this.#isCurrent = false;
     this.entry = null;
     this.#cover.hidden = true;
     this.#cover.removeAttribute("src");
@@ -108,6 +114,7 @@ export class GameSlot {
     this.el.dataset.state = state;
     this.#status.textContent = STATUS_TEXT[state] ?? "";
     if (state === "Ready" || state === "Playing") this.#cover.hidden = true;
+    if (state === "Parked") this.#cover.hidden = !this.#cover.getAttribute("src");
     if (this.entry) console.debug(`[slot] ${this.entry.title}: ${state}`);
   }
 

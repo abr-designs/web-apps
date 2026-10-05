@@ -106,7 +106,7 @@ html, body {
 }
 
 .strip__now { flex: 1; }
-.strip__next { flex: 0 1 40%; align-items: flex-end; text-align: right; }
+.strip__next { flex: 0 1 30%; align-items: flex-end; text-align: right; }
 
 .strip__title, .strip__sub, .strip__label {
   overflow: hidden;
@@ -124,3 +124,126 @@ html, body {
 
 .strip__label { font-weight: 600; }
 .strip__sub { color: var(--muted); font-size: 12px; }
+
+.strip__button {
+  flex: none;
+  min-width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.strip__button:active { background: var(--strip-border); }
+
+/* Undo toast, floating just above the strip. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--strip-height) + 12px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 8px;
+  background: var(--strip-bg);
+  border: 1px solid var(--strip-border);
+  white-space: nowrap;
+}
+
+.toast[hidden], .history[hidden] { display: none; }
+
+.toast button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--strip-border);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+}
+
+/* History sheet: covers feed and strip. */
+.history {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.history__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--strip-border);
+}
+
+.history__heading { flex: 1; margin: 0; font-size: 18px; }
+
+.history__action {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--strip-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+}
+
+.history__list {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.history__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 6px 16px;
+  border-bottom: 1px solid var(--strip-border);
+}
+
+.history__play {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history__play:disabled { opacity: 0.4; cursor: default; }
+
+.history__cover {
+  flex: none;
+  width: 64px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--strip-bg);
+}
+
+.history__text { display: flex; flex-direction: column; min-width: 0; }
+.history__title, .history__sub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.history__title { font-weight: 600; }
+.history__sub { color: var(--muted); font-size: 12px; }
+.history__flag[aria-pressed="true"] { color: var(--bad); }
+.history__link { flex: none; width: 80px; padding: 12px 8px; text-align: right; color: var(--muted); font-size: 12px; }
+.history__empty { padding: 24px 16px; color: var(--muted); text-align: center; }

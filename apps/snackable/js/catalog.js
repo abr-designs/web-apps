@@ -1,9 +1,12 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-05
 
+/** Shown next to the author and on source links. */
+export const SOURCE_LABEL = { itch: "itch.io", pico8: "Lexaloffle" };
+
 /**
- * Loads the game list, shuffles it once, and serves it filtered to the device orientation.
- * Call setOrientation() after load() to fill the filtered list.
+ * Loads the game list, shuffles it once, and serves it filtered to the device orientation,
+ * minus games marked broken. Call setOrientation() after load() to fill the filtered list.
  * @created Claude (claude-opus-5-5) — 2026-10-05
  */
 export class GameCatalog {
@@ -11,10 +14,12 @@ export class GameCatalog {
   #games = [];
   #isPortrait = true;
   #squareTolerance;
+  #playLog;
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  constructor(squareTolerance) {
+  constructor(squareTolerance, playLog) {
     this.#squareTolerance = squareTolerance;
+    this.#playLog = playLog;
   }
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -27,7 +32,17 @@ export class GameCatalog {
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
   setOrientation(isPortrait) {
     this.#isPortrait = isPortrait;
-    this.#games = this.#all.filter((g) => this.fits(g));
+    this.refilter();
+  }
+
+  /** Rebuilds the filtered list after a broken mark changes. @created Claude (claude-opus-5-5) — 2026-10-05 */
+  refilter() {
+    this.#games = this.#all.filter((g) => this.fits(g) && !this.#playLog.isBroken(g.id));
+  }
+
+  /** Any entry by id, filtered or not; null when games.json no longer has it. @created Claude (claude-opus-5-5) — 2026-10-05 */
+  find(id) {
+    return this.#all.find((g) => g.id === id) ?? null;
   }
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */

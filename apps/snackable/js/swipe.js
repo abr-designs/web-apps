@@ -6,14 +6,14 @@ const TAP_SLOP_PX = 10;
 
 /**
  * Turns gestures on `el` into navigation: swipe up or tap calls onNext, swipe down calls onPrev.
- * Pointers that start on a link are left alone so the link can open.
+ * Pointers that start on a link or button are left alone so it can be pressed.
  * @created Claude (claude-opus-5-5) — 2026-10-05
  */
 export function attachSwipe(el, { onNext, onPrev, thresholdPx }) {
   let start = null; // the first pointer only; extra fingers are ignored
 
   el.addEventListener("pointerdown", (e) => {
-    if (start || e.target.closest("a")) return;
+    if (start || e.target.closest("a, button")) return;
     start = { id: e.pointerId, x: e.clientX, y: e.clientY };
     el.setPointerCapture(e.pointerId);
   });

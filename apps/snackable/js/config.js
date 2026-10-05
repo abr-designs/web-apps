@@ -8,5 +8,7 @@ export const config = {
   swipeThresholdPx: 50,
   transitionMs: 250,
   squareTolerance: 1.15, // games whose sides are within this ratio fit both orientations
+  historyMax: 50, // games kept in History
+  undoMs: 4000, // how long the "Marked broken" Undo toast stays
   gamesUrl: "data/games.json",
 };

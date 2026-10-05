@@ -1,9 +1,12 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-05
 
+import { SOURCE_LABEL } from "./catalog.js";
+
 /**
- * Tracks the current index and coordinates catalog, slot pool and strip.
+ * Tracks the current index and coordinates catalog, slot pool, play log and strip.
  * The slot at pool position p holds catalog index (index + p - 1).
+ * Only the current slot runs a game: a game leaving the screen is parked.
  * @created Claude (claude-opus-5-5) — 2026-10-05
  */
 export class FeedController {
@@ -11,15 +14,17 @@ export class FeedController {
   #pool;
   #strip;
   #config;
+  #playLog;
   #index = 0;
   #busy = false;
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  constructor(catalog, pool, strip, config) {
+  constructor(catalog, pool, strip, config, playLog) {
     this.#catalog = catalog;
     this.#pool = pool;
     this.#strip = strip;
     this.#config = config;
+    this.#playLog = playLog;
   }
 
   /** prev stays empty at index 0. @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -28,6 +33,7 @@ export class FeedController {
       if (p > 0) slot.load(this.#catalog.get(p - 1), this.#config.preloadMode);
     });
     this.#pool.current.activate();
+    this.#playLog.record(this.#pool.current.entry);
     this.#updateStrip();
   }
 
@@ -36,9 +42,10 @@ export class FeedController {
     if (this.#busy || this.#catalog.size === 0) return;
     this.#lock();
     this.#index++;
-    this.#pool.current.deactivate();
+    this.#pool.current.park();
     const recycled = this.#pool.rotateForward();
     this.#pool.current.activate();
+    this.#playLog.record(this.#pool.current.entry);
     recycled.load(this.#catalog.get(this.#index + this.#pool.slots.length - 2), this.#config.preloadMode);
     this.#updateStrip();
   }
@@ -55,10 +62,12 @@ export class FeedController {
       return;
     }
     this.#index--;
-    this.#pool.current.deactivate();
+    this.#pool.current.park();
     const recycled = this.#pool.rotateBack();
     this.#pool.current.activate();
-    if (this.#index > 0) recycled.load(this.#catalog.get(this.#index - 1), this.#config.preloadMode);
+    this.#playLog.record(this.#pool.current.entry);
+    // "light" leaves the new prev slot Parked (cover only) so no hidden game runs behind the current one.
+    if (this.#index > 0) recycled.load(this.#catalog.get(this.#index - 1), "light");
     this.#updateStrip();
   }
 
@@ -78,6 +87,41 @@ export class FeedController {
     this.#updateStrip();
   }
 
+  /**
+   * Plays a game picked from History in the current slot. Only called with an entry that is in the
+   * filtered list, so the index can re-anchor to it. The previous slot is left as it was.
+   * @created Claude (claude-opus-5-5) — 2026-10-05
+   */
+  jumpTo(entry) {
+    if (this.#busy) return;
+    this.#pool.current.load(entry, "live");
+    this.#pool.current.activate();
+    this.#playLog.record(entry);
+    this.refreshAhead();
+  }
+
+  /**
+   * Marks the current game broken and moves on. Returns its id for the Undo toast, or null when
+   * nothing happened. If it was the last game that fits, it stays on screen.
+   * @created Claude (claude-opus-5-5) — 2026-10-05
+   */
+  markCurrentBroken() {
+    const entry = this.#pool.current.entry;
+    if (this.#busy || !entry) return null;
+    this.#playLog.setBroken(entry.id, true);
+    this.#catalog.refilter();
+    this.next();
+    this.refreshAhead();
+    return entry.id;
+  }
+
+  /** Used by Undo and History's flag toggle; a game marked here keeps playing if it is current. @created Claude (claude-opus-5-5) — 2026-10-05 */
+  setBroken(id, isBroken) {
+    this.#playLog.setBroken(id, isBroken);
+    this.#catalog.refilter();
+    this.refreshAhead();
+  }
+
   /** Ignores input until the slide animation ends. @created Claude (claude-opus-5-5) — 2026-10-05 */
   #lock() {
     this.#busy = true;
@@ -89,8 +133,8 @@ export class FeedController {
     const now = this.#pool.current.entry;
     const next = this.#pool.ahead[0]?.entry;
     this.#strip.nowLink.textContent = now?.title ?? "";
-    this.#strip.nowLink.href = now?.itchPageUrl ?? "#";
-    this.#strip.nowAuthor.textContent = now ? `by ${now.author} · itch.io` : "";
+    this.#strip.nowLink.href = now?.pageUrl ?? "#";
+    this.#strip.nowAuthor.textContent = now ? `by ${now.author} · ${SOURCE_LABEL[now.source]}` : "";
     this.#strip.nextTitle.textContent = next?.title ?? (this.#catalog.size === 0 ? "None fit this orientation" : "");
   }
 }

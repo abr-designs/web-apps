@@ -1,22 +1,27 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-05
 //
-// Builds data/games.json from one or more itch.io listings.
+// Builds data/games.json from itch.io listings and hand-picked Lexaloffle BBS PICO-8 posts.
 // Usage: node tools/curate.mjs [--pages N] [--refresh] [listingUrl ...]
 //   --pages N   RSS pages to read per listing (36 games per page, default 3)
 //   --refresh   refetch every game, including ones already in data/games.json
 // Reads each listing's RSS feed (listing URL + ".xml?page=N"). If no feed can be read
 // (429 / Cloudflare), falls back to tools/sources.txt. Each new game page is then fetched
-// to find its HTML5 upload.
+// to find its HTML5 upload. PICO-8 post URLs come from tools/sources-pico8.txt.
+// Ids listed in tools/blocklist.txt (History's "Copy broken list") are left out.
 
 import { readFile, writeFile } from "node:fs/promises";
 
 const DEFAULT_LISTINGS = [
   "https://itch.io/games/duration-seconds/html5/input-touchscreen/platform-android",
   "https://itch.io/games/duration-seconds/html5/input-touchscreen",
+  "https://itch.io/games/duration-seconds/html5/tag-pico-8",
 ];
 const DEFAULT_PAGES = 3;
 const SOURCES_PATH = new URL("./sources.txt", import.meta.url);
+const PICO8_SOURCES_PATH = new URL("./sources-pico8.txt", import.meta.url);
+const BLOCKLIST_PATH = new URL("./blocklist.txt", import.meta.url);
+const PICO8_SIZE = 128;
 const OUTPUT_PATH = new URL("../data/games.json", import.meta.url);
 const REQUEST_DELAY_MS = 600;
 const RETRY_DELAY_MS = 5000;
@@ -79,15 +84,24 @@ async function getSourceUrls(listings, pages) {
   }
 
   console.warn("No RSS feed readable, using sources.txt");
-  const text = await readFile(SOURCES_PATH, "utf8");
-  return text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  return readLines(SOURCES_PATH);
+}
+
+/** Non-empty, non-# lines; [] when the file is missing. @created Claude (claude-opus-5-5) — 2026-10-05 */
+async function readLines(path) {
+  try {
+    const text = await readFile(path, "utf8");
+    return text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  } catch {
+    return [];
+  }
 }
 
 /** @created Claude (claude-opus-5-5) — 2026-10-05 */
 async function loadExisting() {
   try {
     const games = JSON.parse(await readFile(OUTPUT_PATH, "utf8"));
-    return new Map(games.map((g) => [g.itchPageUrl, g]));
+    return new Map(games.map((g) => [g.pageUrl, g]));
   } catch {
     return new Map();
   }
@@ -107,13 +121,43 @@ async function curateGame(pageUrl) {
 
   return {
     id: String(data.id),
+    source: "itch",
     title: data.title,
     author: data.authors?.[0]?.name ?? new URL(pageUrl).hostname.split(".")[0],
     embedUrl: `https://itch.io/embed-upload/${uploadId}?color=111111`,
-    itchPageUrl: pageUrl,
+    pageUrl,
     coverImage: data.cover_image ?? "",
     width,
     height,
+  };
+}
+
+/**
+ * A Lexaloffle BBS post (?tid= or ?pid=). The cart id comes from the post's snippet.php link and
+ * the game is played through Lexaloffle's own widget. null when the post has no cart.
+ * @created Claude (claude-opus-5-5) — 2026-10-05
+ */
+async function curatePico8(postUrl) {
+  const html = await fetchText(postUrl);
+  const cartId = html.match(/snippet\.php\?cart_id=([\w-]+)/)?.[1];
+  if (!cartId) return null;
+  const decode = (s) =>
+    s
+      .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+      .replaceAll("&amp;", "&")
+      .replaceAll("&quot;", '"')
+      .trim();
+  return {
+    id: `pico8:${cartId}`,
+    source: "pico8",
+    title: decode(html.match(/<title>([^<]+)/)?.[1] ?? cartId),
+    // The first post's author name is the first bold profile link on the page.
+    author: decode(html.match(/<a href="\/bbs\/\?uid=\d+"><b[^>]*>([^<]+)/)?.[1] ?? "unknown"),
+    embedUrl: `https://www.lexaloffle.com/bbs/widget.php?pid=${cartId}`,
+    pageUrl: postUrl,
+    coverImage: html.match(/og:image" content="([^"]+)"/)?.[1] ?? "",
+    width: PICO8_SIZE,
+    height: PICO8_SIZE,
   };
 }
 
@@ -126,23 +170,31 @@ function orientationOf(game) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const urls = await getSourceUrls(args.listings, args.pages);
+const itchUrls = await getSourceUrls(args.listings, args.pages);
+const pico8Urls = await readLines(PICO8_SOURCES_PATH);
+const blocklist = new Set(await readLines(BLOCKLIST_PATH));
 const existing = args.refresh ? new Map() : await loadExisting();
 const games = [];
+const sources = [
+  ...itchUrls.map((url) => ({ url, curate: curateGame, skipReason: "no HTML5 embed on page" })),
+  ...pico8Urls.map((url) => ({ url, curate: curatePico8, skipReason: "no cart in post" })),
+];
+console.log(`${pico8Urls.length} PICO-8 posts from sources-pico8.txt`);
 
-for (const url of urls) {
+for (const { url, curate, skipReason } of sources) {
+  if (games.some((g) => g.pageUrl === url)) continue; // listed twice
   const cached = existing.get(url);
   if (cached) {
     games.push(cached);
     continue;
   }
   try {
-    const game = await curateGame(url);
+    const game = await curate(url);
     if (game) {
       games.push(game);
       console.log(`  ok    ${orientationOf(game).padEnd(9)} ${game.title}`);
     } else {
-      console.log(`  skip  ${url} (no HTML5 embed on page)`);
+      console.log(`  skip  ${url} (${skipReason})`);
     }
   } catch (err) {
     console.log(`  fail  ${url} (${err.message})`);
@@ -150,10 +202,13 @@ for (const url of urls) {
   await sleep(REQUEST_DELAY_MS);
 }
 
-await writeFile(OUTPUT_PATH, JSON.stringify(games, null, 2) + "\n");
+const kept = games.filter((g) => !blocklist.has(g.id));
+if (kept.length < games.length) console.log(`Dropped ${games.length - kept.length} games listed in blocklist.txt`);
+
+await writeFile(OUTPUT_PATH, JSON.stringify(kept, null, 2) + "\n");
 const counts = { portrait: 0, square: 0, landscape: 0 };
-games.forEach((g) => counts[orientationOf(g)]++);
+kept.forEach((g) => counts[orientationOf(g)]++);
 console.log(
-  `Wrote ${games.length} games to data/games.json ` +
+  `Wrote ${kept.length} games to data/games.json ` +
     `(portrait ${counts.portrait}, square ${counts.square}, landscape ${counts.landscape})`,
 );
