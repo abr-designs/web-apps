@@ -10,13 +10,14 @@
 | Updated | 2026-10-05 |
 | Proficiency | 3/10 |
 | Engine | HTML / CSS / vanilla JS (ES modules), hosted on GitHub Pages |
-| Revisions | 8 (latest: U-008) |
+| Revisions | 9 (latest: U-009) |
 | Summary | Mobile-first, TikTok-style vertical feed of seconds-long itch.io HTML5 games and PICO-8 carts, with a swipe strip to move between them, the next game preloaded, a play history and a way to mark broken games. |
 
 ## Revision Log
 
 | ID | Date | Type | Change |
 |---|---|---|---|
+| U-009 | 2026-10-05 | Update | The database and likes / favorites todos are designed in plan 0002 (Supabase shared data). |
 | U-008 | 2026-10-05 | Improvement | Steps 8-12 built. Swiping back loads the new previous slot parked (cover only), so no game runs above the current one. Undo and History's ⚑ toggle share `FeedController.setBroken(id, isBroken)`. PICO-8 covers use the post's `og:image`. 217 games (22 PICO-8 carts). |
 | U-007 | 2026-10-05 | Update | Added two todos under Implementation Notes: explore a database for a shared global game list, and likes / favorites. |
 | U-006 | 2026-10-05 | Update | Only the current game plays: a game leaving the screen is parked (iframe stopped, cover kept) and restarts on return. Adds marking games broken (strip ⚑ with undo, stored on the phone, exported to `tools/blocklist.txt`), a History sheet (last 50, tap to replay), and PICO-8 carts from the Lexaloffle BBS plus itch.io's pico-8 tag. Steps 8-12 planned. |
@@ -470,8 +471,8 @@ Build order (each step testable on the phone via GitHub Pages):
 
 Later (not designed yet, each needs its own design pass):
 
-- [ ] **Explore a database.** A hosted store for one global game list, so curated games, broken reports and blocklist entries are shared by every player instead of living in `games.json` and one phone's `localStorage`. GitHub Pages only serves static files, so this means a hosted service (candidates to compare: Supabase, Firebase, Cloudflare D1 behind a Worker). Questions to answer: who can write, how broken reports are moderated, cost at prototype scale, and whether `curate.mjs` writes to it.
-- [ ] **Likes / favorites.** A ♥ in the strip to like the current game and a Favorites filter in the History sheet. Can start on the phone through `PlayLog` (a `snackable.likes` key); shared like counts or ranking the feed by likes depend on the database item above.
+- [x] **Explore a database.** Designed in [0002-snackable-shared-data.md](0002-snackable-shared-data.md) (Supabase, anonymous sign-in, shared reports and likes). A hosted store for one global game list, so curated games, broken reports and blocklist entries are shared by every player instead of living in `games.json` and one phone's `localStorage`. GitHub Pages only serves static files, so this means a hosted service (candidates to compare: Supabase, Firebase, Cloudflare D1 behind a Worker). Questions to answer: who can write, how broken reports are moderated, cost at prototype scale, and whether `curate.mjs` writes to it.
+- [x] **Likes / favorites.** Designed in [0002-snackable-shared-data.md](0002-snackable-shared-data.md). A ♥ in the strip to like the current game and a Favorites filter in the History sheet. Can start on the phone through `PlayLog` (a `snackable.likes` key); shared like counts or ranking the feed by likes depend on the database item above.
 
 Gotchas:
 - Use `100dvh` for height; `100vh` on Android Chrome includes the hidden URL bar area.
