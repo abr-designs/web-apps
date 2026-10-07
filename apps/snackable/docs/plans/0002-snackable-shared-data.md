@@ -307,6 +307,10 @@ alter table games enable row level security;
 alter table reports enable row level security;
 alter table likes enable row level security;
 
+-- Explicit Data API access; RLS policies below narrow it to the right rows.
+grant select on games to anon, authenticated;
+grant select, insert, delete on reports, likes to authenticated;
+
 create policy "anyone reads games" on games for select using (true);
 
 create policy "read own reports" on reports for select to authenticated using (player_id = auth.uid());
@@ -317,7 +321,7 @@ create policy "add own likes" on likes for insert to authenticated with check (p
 create policy "remove own likes" on likes for delete to authenticated using (player_id = auth.uid());
 
 -- Runs as its owner, so it counts every player's rows while exposing only totals.
-create view game_stats as
+create view game_stats with (security_invoker = false) as
 select g.id as game_id,
   (select count(*) from reports r where r.game_id = g.id and r.orientation = 'portrait') as reports_portrait,
   (select count(*) from reports r where r.game_id = g.id and r.orientation = 'landscape') as reports_landscape,
