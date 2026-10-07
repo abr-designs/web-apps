@@ -8,6 +8,7 @@ import { FeedController } from "./feed.js";
 import { attachSwipe } from "./swipe.js";
 import { PlayLog } from "./playLog.js";
 import { HistorySheet } from "./historySheet.js";
+import { SharedStore } from "./sharedStore.js";
 
 const feedEl = document.getElementById("feed");
 const stripEl = document.getElementById("strip");
@@ -100,3 +101,13 @@ portraitQuery.addEventListener("change", () => {
 
 if (catalog.size > 0) startFeed();
 else showMessage("No games fit this orientation. Try rotating your phone.");
+
+// Starts from the bundled list above, then swaps in the shared one when Supabase answers.
+const store = new SharedStore(config.supabaseUrl, config.supabaseAnonKey, config.connectTimeoutMs);
+const shared = await store.connect();
+if (shared) {
+  catalog.merge(shared.games, shared.stats, feed?.lastLoaded ?? null);
+  if (feed) feed.refreshAhead();
+  else if (catalog.size > 0) startFeed();
+  if (historySheet.isOpen) historySheet.render();
+}

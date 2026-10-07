@@ -15,6 +15,7 @@ export class GameCatalog {
   #isPortrait = true;
   #squareTolerance;
   #playLog;
+  #stats = new Map();
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
   constructor(squareTolerance, playLog) {
@@ -27,6 +28,30 @@ export class GameCatalog {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${res.status} ${url}`);
     this.#all = shuffle(await res.json());
+  }
+
+  /**
+   * Swaps in the shared list. Order and entry objects are kept through lastLoaded (the last entry
+   * already in a slot; null keeps nothing), so preloaded slots and indexOf() still match. Everything
+   * after it is weighted-shuffled by likes. Games no longer listed drop out.
+   * @created Claude (claude-opus-5-5) — 2026-10-07
+   */
+  merge(games, stats, lastLoaded) {
+    this.#stats = stats;
+    const listed = new Map(games.map((g) => [g.id, g]));
+    const keepCount = lastLoaded ? this.#all.indexOf(lastLoaded) + 1 : 0;
+    // Kept entries take the shared fields (status included) but stay the same objects.
+    const kept = this.#all.slice(0, keepCount).filter((g) => listed.has(g.id));
+    kept.forEach((g) => Object.assign(g, listed.get(g.id)));
+    const keptIds = new Set(kept.map((g) => g.id));
+    const rest = games.filter((g) => !keptIds.has(g.id));
+    this.#all = [...kept, ...weightedShuffle(rest, (g) => 1 + this.stats(g.id).likes)];
+    this.refilter();
+  }
+
+  /** { reportsPortrait, reportsLandscape, likes }; zeros for an unknown id. @created Claude (claude-opus-5-5) — 2026-10-07 */
+  stats(id) {
+    return this.#stats.get(id) ?? { reportsPortrait: 0, reportsLandscape: 0, likes: 0 };
   }
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -78,4 +103,16 @@ function shuffle(items) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/**
+ * Each item gets the key random ** (1 / weight), highest first: heavier items tend to come earlier,
+ * every item appears once, and equal weights give a plain shuffle. Returns a new array.
+ * @created Claude (claude-opus-5-5) — 2026-10-07
+ */
+function weightedShuffle(items, weightOf) {
+  return items
+    .map((item) => ({ item, key: Math.random() ** (1 / weightOf(item)) }))
+    .sort((a, b) => b.key - a.key)
+    .map(({ item }) => item);
 }

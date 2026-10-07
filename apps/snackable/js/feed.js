@@ -87,6 +87,11 @@ export class FeedController {
     this.#updateStrip();
   }
 
+  /** The entry in the last ahead slot, for catalog.merge(). @created Claude (claude-opus-5-5) — 2026-10-07 */
+  get lastLoaded() {
+    return this.#pool.ahead.at(-1)?.entry ?? null;
+  }
+
   /**
    * Plays a game picked from History in the current slot. Only called with an entry that is in the
    * filtered list, so the index can re-anchor to it. The previous slot is left as it was.
