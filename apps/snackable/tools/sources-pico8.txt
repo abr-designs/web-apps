@@ -1,0 +1,28 @@
+# Created by Claude (claude-opus-5-5)
+# Date: 2026-10-05
+# Lexaloffle BBS PICO-8 cart posts, one URL per line. Read by tools/curate.mjs; posts without a cart are skipped.
+# Seeded from the BBS cart search for "pico-1k" (1 KB jam games). Prune anything that is not a short game.
+https://www.lexaloffle.com/bbs/?tid=44826
+https://www.lexaloffle.com/bbs/?tid=54397
+https://www.lexaloffle.com/bbs/?tid=44512
+https://www.lexaloffle.com/bbs/?tid=151671
+https://www.lexaloffle.com/bbs/?tid=54075
+https://www.lexaloffle.com/bbs/?tid=159445
+https://www.lexaloffle.com/bbs/?tid=44970
+https://www.lexaloffle.com/bbs/?tid=49383
+https://www.lexaloffle.com/bbs/?tid=144570
+https://www.lexaloffle.com/bbs/?tid=151835
+https://www.lexaloffle.com/bbs/?tid=29359
+https://www.lexaloffle.com/bbs/?tid=49340
+https://www.lexaloffle.com/bbs/?tid=144241
+https://www.lexaloffle.com/bbs/?tid=151663
+https://www.lexaloffle.com/bbs/?tid=144141
+https://www.lexaloffle.com/bbs/?tid=159539
+https://www.lexaloffle.com/bbs/?tid=159307
+https://www.lexaloffle.com/bbs/?tid=49259
+https://www.lexaloffle.com/bbs/?tid=159269
+https://www.lexaloffle.com/bbs/?tid=159362
+https://www.lexaloffle.com/bbs/?tid=54459
+https://www.lexaloffle.com/bbs/?tid=158931
+https://www.lexaloffle.com/bbs/?tid=44950
+https://www.lexaloffle.com/bbs/?tid=148139

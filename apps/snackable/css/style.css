@@ -1,0 +1,249 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-10-05 */
+
+:root {
+  --bg: #111;
+  --fg: #eee;
+  --muted: #9a9a9a;
+  --strip-bg: #1c1c1c;
+  --strip-border: #2c2c2c;
+  --bad: #e66;
+  --strip-height: 56px;
+  --transition-ms: 250ms; /* overwritten from config.transitionMs */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.3 system-ui, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#feed {
+  position: fixed;
+  inset: 0 0 var(--strip-height) 0;
+  overflow: hidden;
+}
+
+.feed__message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* One game slot. Offset is set inline: translateY(-100%) prev, 0 current, 100% next. */
+.slot {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  transition: transform var(--transition-ms) ease-out;
+}
+
+.slot--instant { transition: none; }
+
+.slot__frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.slot__cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  pointer-events: none;
+}
+
+.slot__status {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 70%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.slot__status:empty { display: none; }
+.slot[data-state="Failed"] .slot__status { color: var(--bad); }
+
+#strip {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--strip-height);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--strip-bg);
+  border-top: 1px solid var(--strip-border);
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.strip__now, .strip__next {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.strip__now { flex: 1; }
+.strip__next { flex: 0 1 30%; align-items: flex-end; text-align: right; }
+
+.strip__title, .strip__sub, .strip__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.strip__title {
+  align-self: flex-start; /* tap area matches the text; the rest of the strip stays a swipe surface */
+  font-weight: 600;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.strip__label { font-weight: 600; }
+.strip__sub { color: var(--muted); font-size: 12px; }
+
+.strip__button {
+  flex: none;
+  min-width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.strip__button:active { background: var(--strip-border); }
+
+/* Undo toast, floating just above the strip. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--strip-height) + 12px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 8px;
+  background: var(--strip-bg);
+  border: 1px solid var(--strip-border);
+  white-space: nowrap;
+}
+
+.toast[hidden], .history[hidden] { display: none; }
+
+.toast button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--strip-border);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+}
+
+/* History sheet: covers feed and strip. */
+.history {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.history__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--strip-border);
+}
+
+.history__heading { flex: 1; margin: 0; font-size: 18px; }
+
+.history__action {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--strip-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+}
+
+.history__list {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.history__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 6px 16px;
+  border-bottom: 1px solid var(--strip-border);
+}
+
+.history__play {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history__play:disabled { opacity: 0.4; cursor: default; }
+
+.history__cover {
+  flex: none;
+  width: 64px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--strip-bg);
+}
+
+.history__text { display: flex; flex-direction: column; min-width: 0; }
+.history__title, .history__sub { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.history__title { font-weight: 600; }
+.history__sub { color: var(--muted); font-size: 12px; }
+.history__flag[aria-pressed="true"] { color: var(--bad); }
+.history__link { flex: none; width: 80px; padding: 12px 8px; text-align: right; color: var(--muted); font-size: 12px; }
+.history__empty { padding: 24px 16px; color: var(--muted); text-align: center; }
