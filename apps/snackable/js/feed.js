@@ -15,16 +15,18 @@ export class FeedController {
   #strip;
   #config;
   #playLog;
+  #store;
   #index = 0;
   #busy = false;
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  constructor(catalog, pool, strip, config, playLog) {
+  constructor(catalog, pool, strip, config, playLog, store) {
     this.#catalog = catalog;
     this.#pool = pool;
     this.#strip = strip;
     this.#config = config;
     this.#playLog = playLog;
+    this.#store = store;
   }
 
   /** prev stays empty at index 0. @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -106,23 +108,27 @@ export class FeedController {
   }
 
   /**
-   * Marks the current game broken and moves on. Returns its id for the Undo toast, or null when
-   * nothing happened. If it was the last game that fits, it stays on screen.
+   * Marks and reports the current game broken in the current orientation and moves on. Returns
+   * { id, orientation } for the Undo toast, so Undo clears the orientation the mark was made in even
+   * after a rotation, or null when nothing happened. If it was the last game that fits, it stays on screen.
    * @created Claude (claude-opus-5-5) — 2026-10-05
    */
   markCurrentBroken() {
     const entry = this.#pool.current.entry;
     if (this.#busy || !entry) return null;
-    this.#playLog.setBroken(entry.id, true);
+    const orientation = this.#catalog.orientation;
+    this.#playLog.setBroken(entry.id, orientation, true);
+    this.#store.setReported(entry.id, orientation, true);
     this.#catalog.refilter();
     this.next();
     this.refreshAhead();
-    return entry.id;
+    return { id: entry.id, orientation };
   }
 
   /** Used by Undo and History's flag toggle; a game marked here keeps playing if it is current. @created Claude (claude-opus-5-5) — 2026-10-05 */
-  setBroken(id, isBroken) {
-    this.#playLog.setBroken(id, isBroken);
+  setBroken(id, orientation, isBroken) {
+    this.#playLog.setBroken(id, orientation, isBroken);
+    this.#store.setReported(id, orientation, isBroken);
     this.#catalog.refilter();
     this.refreshAhead();
   }

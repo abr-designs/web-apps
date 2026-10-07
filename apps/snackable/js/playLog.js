@@ -3,6 +3,7 @@
 
 const HISTORY_KEY = "snackable.history";
 const BROKEN_KEY = "snackable.broken";
+const ORIENTATIONS = ["portrait", "landscape"];
 
 /**
  * Remembers on this phone what was played and which games are marked broken. The only code that
@@ -12,7 +13,7 @@ const BROKEN_KEY = "snackable.broken";
  */
 export class PlayLog {
   #history = []; // [{ id, playedAt }] newest first
-  #broken = new Set();
+  #broken = { portrait: new Set(), landscape: new Set() }; // ids per orientation
   #maxHistory;
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -21,7 +22,13 @@ export class PlayLog {
     const history = read(HISTORY_KEY);
     if (Array.isArray(history)) this.#history = history.filter((row) => typeof row?.id === "string");
     const broken = read(BROKEN_KEY);
-    if (Array.isArray(broken)) this.#broken = new Set(broken.filter((id) => typeof id === "string"));
+    if (Array.isArray(broken)) {
+      for (const mark of broken) {
+        // Marks saved before reports were per orientation are plain ids and hide the game in both.
+        if (typeof mark === "string") ORIENTATIONS.forEach((o) => this.#broken[o].add(mark));
+        else if (typeof mark?.id === "string" && ORIENTATIONS.includes(mark.orientation)) this.#broken[mark.orientation].add(mark.id);
+      }
+    }
   }
 
   /** Moves the game to the top of the history. @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -36,21 +43,27 @@ export class PlayLog {
     return [...this.#history];
   }
 
-  /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  isBroken(id) {
-    return this.#broken.has(id);
+  /** True when the player marked this game broken in that orientation ("portrait" | "landscape"). @created Claude (claude-opus-5-5) — 2026-10-05 */
+  isBroken(id, orientation) {
+    return this.#broken[orientation].has(id);
   }
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  setBroken(id, isBroken) {
-    if (isBroken) this.#broken.add(id);
-    else this.#broken.delete(id);
-    write(BROKEN_KEY, [...this.#broken]);
+  setBroken(id, orientation, isBroken) {
+    if (isBroken) this.#broken[orientation].add(id);
+    else this.#broken[orientation].delete(id);
+    write(BROKEN_KEY, this.brokenMarks());
   }
 
-  /** Sorted, for "Copy broken list". @created Claude (claude-opus-5-5) — 2026-10-05 */
+  /** [{ id, orientation }] sorted by id, for SharedStore.sync(). @created Claude (claude-opus-5-5) — 2026-10-07 */
+  brokenMarks() {
+    return ORIENTATIONS.flatMap((orientation) => [...this.#broken[orientation]].map((id) => ({ id, orientation })))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  /** Ids marked in either orientation, sorted, for "Copy broken list". @created Claude (claude-opus-5-5) — 2026-10-05 */
   brokenIds() {
-    return [...this.#broken].sort();
+    return [...new Set(this.brokenMarks().map((m) => m.id))].sort();
   }
 }
 

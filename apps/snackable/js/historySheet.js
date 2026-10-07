@@ -74,8 +74,10 @@ export class HistorySheet {
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
   #renderRow(entry, ageMs) {
-    const isBroken = this.#playLog.isBroken(entry.id);
+    // Mark and flag are for the current orientation; the sheet re-renders on rotation.
+    const isBroken = this.#playLog.isBroken(entry.id, this.#catalog.orientation);
     const canPlay = !isBroken && this.#catalog.indexOf(entry) >= 0;
+    const unplayable = isBroken ? " · broken" : !this.#catalog.fits(entry) ? " · other orientation" : " · reported broken";
 
     const row = document.createElement("li");
     row.className = "history__row";
@@ -95,7 +97,7 @@ export class HistorySheet {
     const title = Object.assign(document.createElement("span"), { className: "history__title", textContent: entry.title });
     const sub = Object.assign(document.createElement("span"), {
       className: "history__sub",
-      textContent: `${entry.author} · ${timeAgo(ageMs)}${isBroken ? " · broken" : canPlay ? "" : " · other orientation"}`,
+      textContent: `${entry.author} · ${timeAgo(ageMs)}${canPlay ? "" : unplayable}`,
     });
     text.append(title, sub);
     play.append(cover, text);

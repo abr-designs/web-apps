@@ -16,11 +16,16 @@ export class GameCatalog {
   #squareTolerance;
   #playLog;
   #stats = new Map();
+  #reportHideCount;
 
-  /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  constructor(squareTolerance, playLog) {
+  /**
+   * reportHideCount: reports in one orientation that hide a game there for everyone unless its status is "keep".
+   * @created Claude (claude-opus-5-5) — 2026-10-05
+   */
+  constructor(squareTolerance, playLog, reportHideCount) {
     this.#squareTolerance = squareTolerance;
     this.#playLog = playLog;
+    this.#reportHideCount = reportHideCount;
   }
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -60,9 +65,26 @@ export class GameCatalog {
     this.refilter();
   }
 
+  /** "portrait" | "landscape", from the last setOrientation(). @created Claude (claude-opus-5-5) — 2026-10-07 */
+  get orientation() {
+    return this.#isPortrait ? "portrait" : "landscape";
+  }
+
   /** Rebuilds the filtered list after a broken mark changes. @created Claude (claude-opus-5-5) — 2026-10-05 */
   refilter() {
-    this.#games = this.#all.filter((g) => this.fits(g) && !this.#playLog.isBroken(g.id));
+    this.#games = this.#all.filter((g) => this.fits(g) && !this.isHidden(g));
+  }
+
+  /**
+   * True when the game is out of the feed in the current orientation: status "hidden", shared reports
+   * at the threshold (unless status "keep"), or the player's own broken mark.
+   * @created Claude (claude-opus-5-5) — 2026-10-07
+   */
+  isHidden(game) {
+    if (game.status === "hidden" || this.#playLog.isBroken(game.id, this.orientation)) return true;
+    const stats = this.stats(game.id);
+    const reports = this.#isPortrait ? stats.reportsPortrait : stats.reportsLandscape;
+    return reports >= this.#reportHideCount && game.status !== "keep";
   }
 
   /** Any entry by id, filtered or not; null when games.json no longer has it. @created Claude (claude-opus-5-5) — 2026-10-05 */

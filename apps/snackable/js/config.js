@@ -13,5 +13,6 @@ export const config = {
   gamesUrl: "data/games.json",
   supabaseUrl: "https://igsloliwkybcmpqqrjnc.supabase.co", // public; empty turns shared data off
   supabaseAnonKey: "sb_publishable_-1T_q2nzrTjnbe1ZSb9fNg_A5OY8fW0", // public publishable key, guarded by RLS
+  reportHideCount: 3, // reports in one orientation that hide a game there for everyone
   connectTimeoutMs: 8000, // after this the bundled games.json stays for the session
 };
