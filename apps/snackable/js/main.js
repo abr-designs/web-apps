@@ -87,6 +87,10 @@ document.getElementById("toast-undo").addEventListener("click", () => {
   if (undoId) feed?.setBroken(undoId, false);
   hideToast();
 });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) feed?.suspend();
+  else feed?.resume();
+});
 portraitQuery.addEventListener("change", () => {
   catalog.setOrientation(portraitQuery.matches);
   if (feed) feed.refreshAhead();

@@ -122,6 +122,20 @@ export class FeedController {
     this.refreshAhead();
   }
 
+  /**
+   * Stops the current game while the page is hidden, since a cross-origin game cannot be muted.
+   * The preloaded next game is left running.
+   * @created Claude (claude-opus-5-5) — 2026-10-07
+   */
+  suspend() {
+    this.#pool.current.park();
+  }
+
+  /** Restarts the current game when the page is shown again. @created Claude (claude-opus-5-5) — 2026-10-07 */
+  resume() {
+    this.#pool.current.activate();
+  }
+
   /** Ignores input until the slide animation ends. @created Claude (claude-opus-5-5) — 2026-10-05 */
   #lock() {
     this.#busy = true;
