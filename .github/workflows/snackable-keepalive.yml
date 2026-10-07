@@ -1,0 +1,26 @@
+# Created by Claude (claude-opus-5-5)
+# Date: 2026-10-07
+#
+# Reads one row from Snackable's Supabase project each week so the free tier does not pause it.
+# A failed run emails the repo owner, which doubles as an outage alert.
+# Needs repository variables SNACKABLE_SUPABASE_URL and SNACKABLE_SUPABASE_ANON_KEY (both public).
+
+name: Snackable keep-awake
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read one game
+        env:
+          SUPABASE_URL: ${{ vars.SNACKABLE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SNACKABLE_SUPABASE_ANON_KEY }}
+        run: curl --fail --silent --show-error "$SUPABASE_URL/rest/v1/games?select=id&limit=1" -H "apikey: $SUPABASE_ANON_KEY"
