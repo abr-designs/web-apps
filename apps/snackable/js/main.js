@@ -46,6 +46,8 @@ function startFeed() {
     nowLink: document.getElementById("now-link"),
     nowAuthor: document.getElementById("now-author"),
     nextTitle: document.getElementById("next-title"),
+    likeButton: document.getElementById("like-button"),
+    likeCount: document.getElementById("like-count"),
   }, config, playLog, store);
   feed.start();
 }
@@ -85,6 +87,7 @@ const historySheet = new HistorySheet(document.getElementById("history"), playLo
 });
 
 attachSwipe(stripEl, { onNext: () => feed?.next(), onPrev: () => feed?.prev(), thresholdPx: config.swipeThresholdPx });
+document.getElementById("like-button").addEventListener("click", () => feed?.toggleLikeCurrent());
 document.getElementById("flag-button").addEventListener("click", markBroken);
 document.getElementById("history-button").addEventListener("click", () => historySheet.open());
 document.getElementById("toast-undo").addEventListener("click", () => {
@@ -109,8 +112,12 @@ else showMessage("No games fit this orientation. Try rotating your phone.");
 const shared = await store.connect();
 if (shared) {
   catalog.merge(shared.games, shared.stats, feed?.lastLoaded ?? null);
+  // Likes changed before connect() are not in the server counts yet; sync() below sends them.
+  const liked = new Set(playLog.likedIds());
+  liked.forEach((id) => !shared.ownLikes.has(id) && catalog.bumpLikes(id, 1));
+  shared.ownLikes.forEach((id) => !liked.has(id) && catalog.bumpLikes(id, -1));
   if (feed) feed.refreshAhead();
   else if (catalog.size > 0) startFeed();
   if (historySheet.isOpen) historySheet.render();
-  store.sync(playLog.brokenMarks());
+  store.sync(() => playLog.brokenMarks(), () => playLog.likedIds());
 }

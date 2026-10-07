@@ -59,6 +59,12 @@ export class GameCatalog {
     return this.#stats.get(id) ?? { reportsPortrait: 0, reportsLandscape: 0, likes: 0 };
   }
 
+  /** Optimistic like count change for the strip, before the server answers. @created Claude (claude-opus-5-5) — 2026-10-07 */
+  bumpLikes(id, delta) {
+    const stats = this.stats(id);
+    this.#stats.set(id, { ...stats, likes: Math.max(0, stats.likes + delta) });
+  }
+
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
   setOrientation(isPortrait) {
     this.#isPortrait = isPortrait;

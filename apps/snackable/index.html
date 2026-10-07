@@ -17,6 +17,7 @@
       <a id="now-link" class="strip__title" target="_blank" rel="noopener"></a>
       <span id="now-author" class="strip__sub"></span>
     </div>
+    <button id="like-button" class="strip__button strip__like" type="button" aria-pressed="false" aria-label="Like this game">♥<span id="like-count" class="strip__count"></span></button>
     <button id="flag-button" class="strip__button" type="button" aria-label="Mark this game as broken">⚑</button>
     <button id="history-button" class="strip__button" type="button" aria-label="History">🕘</button>
     <div class="strip__next">
@@ -33,6 +34,10 @@
   <section id="history" class="history" aria-label="History" hidden>
     <header class="history__header">
       <h2 class="history__heading">History</h2>
+      <div class="history__views" role="group" aria-label="Show">
+        <button class="history__view" type="button" data-view="all" aria-pressed="true">All</button>
+        <button class="history__view" type="button" data-view="favorites" aria-pressed="false" aria-label="Favorites">♥</button>
+      </div>
       <button id="history-copy" class="history__action" type="button">Copy broken list</button>
       <button id="history-close" class="strip__button" type="button" aria-label="Close history">✕</button>
     </header>

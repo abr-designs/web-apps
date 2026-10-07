@@ -3,17 +3,19 @@
 
 const HISTORY_KEY = "snackable.history";
 const BROKEN_KEY = "snackable.broken";
+const LIKES_KEY = "snackable.likes";
 const ORIENTATIONS = ["portrait", "landscape"];
 
 /**
- * Remembers on this phone what was played and which games are marked broken. The only code that
- * touches localStorage; when storage throws (private window, blocked site data) it keeps working
- * in memory for the session.
+ * Remembers on this phone what was played, which games are marked broken and which are liked.
+ * The only code that touches localStorage; when storage throws (private window, blocked site data)
+ * it keeps working in memory for the session.
  * @created Claude (claude-opus-5-5) — 2026-10-05
  */
 export class PlayLog {
   #history = []; // [{ id, playedAt }] newest first
   #broken = { portrait: new Set(), landscape: new Set() }; // ids per orientation
+  #likes = new Set();
   #maxHistory;
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -29,6 +31,8 @@ export class PlayLog {
         else if (typeof mark?.id === "string" && ORIENTATIONS.includes(mark.orientation)) this.#broken[mark.orientation].add(mark.id);
       }
     }
+    const likes = read(LIKES_KEY);
+    if (Array.isArray(likes)) this.#likes = new Set(likes.filter((id) => typeof id === "string"));
   }
 
   /** Moves the game to the top of the history. @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -59,6 +63,23 @@ export class PlayLog {
   brokenMarks() {
     return ORIENTATIONS.flatMap((orientation) => [...this.#broken[orientation]].map((id) => ({ id, orientation })))
       .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  /** @created Claude (claude-opus-5-5) — 2026-10-07 */
+  isLiked(id) {
+    return this.#likes.has(id);
+  }
+
+  /** @created Claude (claude-opus-5-5) — 2026-10-07 */
+  setLiked(id, isLiked) {
+    if (isLiked) this.#likes.add(id);
+    else this.#likes.delete(id);
+    write(LIKES_KEY, this.likedIds());
+  }
+
+  /** Sorted, for SharedStore.sync() and the Favorites list. @created Claude (claude-opus-5-5) — 2026-10-07 */
+  likedIds() {
+    return [...this.#likes].sort();
   }
 
   /** Ids marked in either orientation, sorted, for "Copy broken list". @created Claude (claude-opus-5-5) — 2026-10-05 */

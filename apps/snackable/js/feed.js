@@ -134,6 +134,22 @@ export class FeedController {
   }
 
   /**
+   * Likes or unlikes the current game: local mark, shown count and server row. Returns the new
+   * state, or null when no game is on screen.
+   * @created Claude (claude-opus-5-5) — 2026-10-07
+   */
+  toggleLikeCurrent() {
+    const entry = this.#pool.current.entry;
+    if (!entry) return null;
+    const isLiked = !this.#playLog.isLiked(entry.id);
+    this.#playLog.setLiked(entry.id, isLiked);
+    this.#catalog.bumpLikes(entry.id, isLiked ? 1 : -1);
+    this.#store.setLiked(entry.id, isLiked);
+    this.#updateStrip();
+    return isLiked;
+  }
+
+  /**
    * Stops the current game while the page is hidden, since a cross-origin game cannot be muted.
    * The preloaded next game is left running.
    * @created Claude (claude-opus-5-5) — 2026-10-07
@@ -160,6 +176,11 @@ export class FeedController {
     this.#strip.nowLink.textContent = now?.title ?? "";
     this.#strip.nowLink.href = now?.pageUrl ?? "#";
     this.#strip.nowAuthor.textContent = now ? `by ${now.author} · ${SOURCE_LABEL[now.source]}` : "";
+    const isLiked = now ? this.#playLog.isLiked(now.id) : false;
+    const likes = now ? this.#catalog.stats(now.id).likes : 0;
+    this.#strip.likeButton.setAttribute("aria-pressed", String(isLiked));
+    this.#strip.likeButton.setAttribute("aria-label", `Like this game, ${likes} ${likes === 1 ? "like" : "likes"}`);
+    this.#strip.likeCount.textContent = likes > 0 ? String(likes) : "";
     this.#strip.nextTitle.textContent = next?.title ?? (this.#catalog.size === 0 ? "None fit this orientation" : "");
   }
 }

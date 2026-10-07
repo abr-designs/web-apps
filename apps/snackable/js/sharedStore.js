@@ -25,9 +25,9 @@ export class SharedStore {
   }
 
   /**
-   * Anonymous sign-in (reusing a saved session), then games and game_stats.
-   * Returns { games, stats } with stats as Map<id, { reportsPortrait, reportsLandscape, likes }>,
-   * or null on error or timeout.
+   * Anonymous sign-in (reusing a saved session), then games, game_stats and the player's own likes.
+   * Returns { games, stats, ownLikes } with stats as Map<id, { reportsPortrait, reportsLandscape, likes }>
+   * and ownLikes as Set<id>, or null on error or timeout.
    * @created Claude (claude-opus-5-5) — 2026-10-07
    */
   async connect() {
@@ -49,44 +49,64 @@ export class SharedStore {
   }
 
   /**
-   * Inserts and deletes the player's own report rows until they match brokenMarks ([{ id, orientation }]).
-   * Errors are swallowed; the next start retries.
+   * Inserts and deletes the player's own report and like rows until they match PlayLog.
+   * getBrokenMarks() returns [{ id, orientation }], getLikedIds() returns ids. They are read after the
+   * server rows arrive, so a tap during sync is not undone. Errors are swallowed; the next start retries.
    * @created Claude (claude-opus-5-5) — 2026-10-07
    */
-  async sync(brokenMarks) {
+  async sync(getBrokenMarks, getLikedIds) {
     if (!this.#client) return;
-    try {
-      const { data, error } = await this.#client.from("reports").select("game_id, orientation").eq("player_id", this.#playerId);
-      if (error) throw error;
-      const key = (id, orientation) => `${orientation} ${id}`;
-      const wanted = new Map(brokenMarks.filter((m) => this.#gameIds.has(m.id)).map((m) => [key(m.id, m.orientation), m]));
-      const existing = new Set(data.map((row) => key(row.game_id, row.orientation)));
-      const sends = [
-        ...[...wanted].filter(([k]) => !existing.has(k)).map(([, m]) => this.#sendReport(m.id, m.orientation, true)),
-        ...data.filter((row) => !wanted.has(key(row.game_id, row.orientation)))
-          .map((row) => this.#sendReport(row.game_id, row.orientation, false)),
-      ];
-      await Promise.all(sends);
-    } catch (err) {
-      console.warn(`Report sync failed (${err.message})`);
-    }
+    await Promise.all([
+      this.#syncTable("reports", ["game_id", "orientation"], () =>
+        getBrokenMarks().map((m) => ({ game_id: m.id, orientation: m.orientation })),
+      ),
+      this.#syncTable("likes", ["game_id"], () => getLikedIds().map((id) => ({ game_id: id }))),
+    ]);
   }
 
   /** Inserts or deletes the player's report row for one orientation. Not awaited by callers. @created Claude (claude-opus-5-5) — 2026-10-07 */
   setReported(id, orientation, isReported) {
-    if (!this.#client || !this.#gameIds.has(id)) return;
-    this.#sendReport(id, orientation, isReported).catch((err) => console.warn(`Report not sent (${err.message})`));
+    this.#sendOne("reports", { game_id: id, orientation }, isReported);
+  }
+
+  /** Inserts or deletes the player's like row. Not awaited by callers. @created Claude (claude-opus-5-5) — 2026-10-07 */
+  setLiked(id, isLiked) {
+    this.#sendOne("likes", { game_id: id }, isLiked);
   }
 
   /** @created Claude (claude-opus-5-5) — 2026-10-07 */
-  async #sendReport(id, orientation, isReported) {
-    const reports = this.#client.from("reports");
-    const { error } = isReported
-      ? await reports.upsert(
-          { game_id: id, player_id: this.#playerId, orientation },
-          { onConflict: "game_id,player_id,orientation", ignoreDuplicates: true },
-        )
-      : await reports.delete().match({ game_id: id, player_id: this.#playerId, orientation });
+  #sendOne(table, row, isOn) {
+    if (!this.#client || !this.#gameIds.has(row.game_id)) return;
+    this.#send(table, row, isOn).catch((err) => console.warn(`${table} row not sent (${err.message})`));
+  }
+
+  /** Makes the player's rows in table match getWanted(); skips games the table does not list. @created Claude (claude-opus-5-5) — 2026-10-07 */
+  async #syncTable(table, columns, getWanted) {
+    const key = (row) => columns.map((c) => row[c]).join(" ");
+    try {
+      const { data, error } = await this.#client.from(table).select(columns.join(", ")).eq("player_id", this.#playerId);
+      if (error) throw error;
+      const wantedByKey = new Map(getWanted().filter((row) => this.#gameIds.has(row.game_id)).map((row) => [key(row), row]));
+      const existing = new Set(data.map(key));
+      await Promise.all([
+        ...[...wantedByKey].filter(([k]) => !existing.has(k)).map(([, row]) => this.#send(table, row, true)),
+        ...data.filter((row) => !wantedByKey.has(key(row))).map((row) => this.#send(table, row, false)),
+      ]);
+    } catch (err) {
+      console.warn(`${table} sync failed (${err.message})`);
+    }
+  }
+
+  /**
+   * Inserts (ignoring an existing copy) or deletes one of the player's rows. Quick on/off sends are not
+   * ordered; a pair arriving reversed leaves the server one step behind until the next sync().
+   * @created Claude (claude-opus-5-5) — 2026-10-07
+   */
+  async #send(table, row, isOn) {
+    const own = { ...row, player_id: this.#playerId };
+    const { error } = isOn
+      ? await this.#client.from(table).upsert(own, { onConflict: Object.keys(own).join(","), ignoreDuplicates: true })
+      : await this.#client.from(table).delete().match(own);
     if (error) throw error;
   }
 
@@ -107,12 +127,12 @@ export class SharedStore {
       user = data.user;
     }
 
-    const [gamesRes, statsRes] = await Promise.all([
+    const [gamesRes, statsRes, likesRes] = await Promise.all([
       client.from("games").select("id, source, title, author, embed_url, page_url, cover_image, width, height, status"),
       client.from("game_stats").select("*"),
+      client.from("likes").select("game_id").eq("player_id", user.id),
     ]);
-    if (gamesRes.error) throw gamesRes.error;
-    if (statsRes.error) throw statsRes.error;
+    for (const res of [gamesRes, statsRes, likesRes]) if (res.error) throw res.error;
 
     this.#client = client;
     this.#playerId = user.id;
@@ -136,6 +156,7 @@ export class SharedStore {
           { reportsPortrait: row.reports_portrait, reportsLandscape: row.reports_landscape, likes: row.likes },
         ]),
       ),
+      ownLikes: new Set(likesRes.data.map((row) => row.game_id)),
     };
   }
 }

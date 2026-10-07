@@ -18,6 +18,8 @@ export class HistorySheet {
   #catalog;
   #onPick;
   #onToggleBroken;
+  #viewButtons;
+  #view = "all"; // "all" | "favorites"
 
   /**
    * onPick(entry) plays a game; onToggleBroken(id, isBroken) changes a mark.
@@ -33,6 +35,14 @@ export class HistorySheet {
     this.#onToggleBroken = onToggleBroken;
     el.querySelector("#history-close").addEventListener("click", () => this.close());
     this.#copyButton.addEventListener("click", () => this.#copyBroken());
+    this.#viewButtons = [...el.querySelectorAll(".history__view")];
+    this.#viewButtons.forEach((button) =>
+      button.addEventListener("click", () => {
+        this.#view = button.dataset.view;
+        this.#viewButtons.forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+        this.render();
+      }),
+    );
     // open() pushes a history entry, so back (button or gesture) lands here.
     window.addEventListener("popstate", () => (this.#el.hidden = true));
   }
@@ -55,18 +65,25 @@ export class HistorySheet {
     if (this.isOpen) history.back();
   }
 
-  /** Rows from the play log, skipping ids games.json no longer has. @created Claude (claude-opus-5-5) — 2026-10-05 */
+  /**
+   * All: rows from the play log. Favorites: every liked game by title, beyond the play log.
+   * Ids the catalog no longer has are skipped.
+   * @created Claude (claude-opus-5-5) — 2026-10-05
+   */
   render() {
     const now = Date.now();
-    const rows = this.#playLog
-      .recent()
-      .map((row) => ({ entry: this.#catalog.find(row.id), playedAt: row.playedAt }))
-      .filter((row) => row.entry)
-      .map(({ entry, playedAt }) => this.#renderRow(entry, now - playedAt));
+    const recent = this.#playLog.recent();
+    const isFavorites = this.#view === "favorites";
+    const source = isFavorites
+      ? this.#playLog.likedIds().map((id) => ({ id, playedAt: recent.find((row) => row.id === id)?.playedAt ?? null }))
+      : recent;
+    const found = source.map((row) => ({ entry: this.#catalog.find(row.id), playedAt: row.playedAt })).filter((row) => row.entry);
+    if (isFavorites) found.sort((a, b) => a.entry.title.localeCompare(b.entry.title));
+    const rows = found.map(({ entry, playedAt }) => this.#renderRow(entry, playedAt === null ? null : now - playedAt));
     if (rows.length === 0) {
       const empty = document.createElement("li");
       empty.className = "history__empty";
-      empty.textContent = "Nothing played yet.";
+      empty.textContent = isFavorites ? "No favorites yet. Tap ♥ on a game you like." : "Nothing played yet.";
       rows.push(empty);
     }
     this.#list.replaceChildren(...rows);
@@ -77,6 +94,7 @@ export class HistorySheet {
     // Mark and flag are for the current orientation; the sheet re-renders on rotation.
     const isBroken = this.#playLog.isBroken(entry.id, this.#catalog.orientation);
     const canPlay = !isBroken && this.#catalog.indexOf(entry) >= 0;
+    const likes = this.#catalog.stats(entry.id).likes;
     const unplayable = isBroken ? " · broken" : !this.#catalog.fits(entry) ? " · other orientation" : " · reported broken";
 
     const row = document.createElement("li");
@@ -97,7 +115,11 @@ export class HistorySheet {
     const title = Object.assign(document.createElement("span"), { className: "history__title", textContent: entry.title });
     const sub = Object.assign(document.createElement("span"), {
       className: "history__sub",
-      textContent: `${entry.author} · ${timeAgo(ageMs)}${canPlay ? "" : unplayable}`,
+      textContent: [
+        entry.author,
+        ageMs === null ? null : timeAgo(ageMs),
+        likes > 0 ? `♥ ${likes}` : null,
+      ].filter(Boolean).join(" · ") + (canPlay ? "" : unplayable),
     });
     text.append(title, sub);
     play.append(cover, text);
