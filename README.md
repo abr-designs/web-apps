@@ -43,4 +43,8 @@ npx http-server _site -p 8080
 
 Run the build script tests with `node --test scripts/*.test.mjs` (Node 22 or newer).
 
+## License
+
+The code in this repository is MIT licensed; see [LICENSE](LICENSE). Third-party content shown by the apps is not covered: the games in Snackable, with their titles and cover art, belong to their creators and are embedded from itch.io and Lexaloffle, not redistributed.
+
 Test test test
