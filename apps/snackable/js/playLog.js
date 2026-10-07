@@ -81,11 +81,6 @@ export class PlayLog {
   likedIds() {
     return [...this.#likes].sort();
   }
-
-  /** Ids marked in either orientation, sorted, for "Copy broken list". @created Claude (claude-opus-5-5) — 2026-10-05 */
-  brokenIds() {
-    return [...new Set(this.brokenMarks().map((m) => m.id))].sort();
-  }
 }
 
 /** null when the key is missing, unreadable or not JSON. @created Claude (claude-opus-5-5) — 2026-10-05 */

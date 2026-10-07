@@ -3,8 +3,6 @@
 
 import { SOURCE_LABEL } from "./catalog.js";
 
-const COPY_FEEDBACK_MS = 2000;
-
 /**
  * Full-screen list of recently played games over the feed. Tap a row to play it again; rows that
  * do not fit the orientation or are marked broken are greyed out. The Android back gesture closes it.
@@ -13,7 +11,6 @@ const COPY_FEEDBACK_MS = 2000;
 export class HistorySheet {
   #el;
   #list;
-  #copyButton;
   #playLog;
   #catalog;
   #onPick;
@@ -28,13 +25,11 @@ export class HistorySheet {
   constructor(el, playLog, catalog, { onPick, onToggleBroken }) {
     this.#el = el;
     this.#list = el.querySelector("#history-list");
-    this.#copyButton = el.querySelector("#history-copy");
     this.#playLog = playLog;
     this.#catalog = catalog;
     this.#onPick = onPick;
     this.#onToggleBroken = onToggleBroken;
     el.querySelector("#history-close").addEventListener("click", () => this.close());
-    this.#copyButton.addEventListener("click", () => this.#copyBroken());
     this.#viewButtons = [...el.querySelectorAll(".history__view")];
     this.#viewButtons.forEach((button) =>
       button.addEventListener("click", () => {
@@ -145,22 +140,6 @@ export class HistorySheet {
 
     row.append(play, flag, link);
     return row;
-  }
-
-  /** Ids one per line, ready to paste into tools/blocklist.txt. @created Claude (claude-opus-5-5) — 2026-10-05 */
-  async #copyBroken() {
-    const ids = this.#playLog.brokenIds();
-    let label = "Nothing marked";
-    if (ids.length > 0) {
-      try {
-        await navigator.clipboard.writeText(ids.join("\n") + "\n");
-        label = `Copied ${ids.length}`;
-      } catch {
-        label = "Copy failed";
-      }
-    }
-    this.#copyButton.textContent = label;
-    setTimeout(() => (this.#copyButton.textContent = "Copy broken list"), COPY_FEEDBACK_MS);
   }
 }
 

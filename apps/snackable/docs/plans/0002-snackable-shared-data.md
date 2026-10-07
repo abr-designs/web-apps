@@ -5,12 +5,12 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Implemented |
 | Created | 2026-10-05 |
-| Updated | 2026-10-05 |
+| Updated | 2026-10-07 |
 | Proficiency | 3/10 |
 | Engine | HTML / CSS / vanilla JS (ES modules) on GitHub Pages, Supabase (Postgres) as the hosted database |
-| Revisions | 1 (latest: U-001) |
+| Revisions | 2 (latest: U-002) |
 | Summary | One game list, broken reports and like counts shared by every player through Supabase, with the bundled `games.json` as the offline fallback. Designs the database and likes todos from plan 0001. |
 
 ## Revision Log
@@ -18,6 +18,7 @@
 | ID | Date | Type | Change |
 |---|---|---|---|
 | U-001 | 2026-10-05 | Update | Open questions answered. Reports and own ⚑ marks apply per orientation. Likes weight the shuffle of games not yet loaded. A weekly GitHub Action keeps the free project awake. CAPTCHA waits until abuse appears. The `game_stats` view bypassing RLS is accepted. |
+| U-002 | 2026-10-07 | Update | Built steps 1-7. Schema grants table access explicitly. `connect()` also returns the player's own likes so likes made before it finishes stay counted. `sync()` takes getters read after the server rows arrive. Keep-awake variables are prefixed `SNACKABLE_`. "Copy broken list" and `brokenIds()` are removed. |
 
 ---
 

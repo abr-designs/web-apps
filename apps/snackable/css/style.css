@@ -206,16 +206,6 @@ html, body {
 .history__view[aria-pressed="true"] { background: var(--strip-border); color: var(--fg); }
 .history__view[data-view="favorites"][aria-pressed="true"] { color: var(--like); }
 
-.history__action {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--strip-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--fg);
-  font: inherit;
-}
-
 .history__list {
   flex: 1;
   margin: 0;

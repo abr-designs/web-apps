@@ -10,7 +10,6 @@
 // Reads each listing's RSS feed (listing URL + ".xml?page=N"). If no feed can be read
 // (429 / Cloudflare), falls back to tools/sources.txt. Each new game page is then fetched
 // to find its HTML5 upload. PICO-8 post URLs come from tools/sources-pico8.txt.
-// Ids listed in tools/blocklist.txt (History's "Copy broken list") are left out.
 
 import { readFile, writeFile } from "node:fs/promises";
 
@@ -22,7 +21,6 @@ const DEFAULT_LISTINGS = [
 const DEFAULT_PAGES = 3;
 const SOURCES_PATH = new URL("./sources.txt", import.meta.url);
 const PICO8_SOURCES_PATH = new URL("./sources-pico8.txt", import.meta.url);
-const BLOCKLIST_PATH = new URL("./blocklist.txt", import.meta.url);
 const PICO8_SIZE = 128;
 const OUTPUT_PATH = new URL("../data/games.json", import.meta.url);
 const REQUEST_DELAY_MS = 600;
@@ -210,7 +208,6 @@ if (args.push && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY
 }
 const itchUrls = await getSourceUrls(args.listings, args.pages);
 const pico8Urls = await readLines(PICO8_SOURCES_PATH);
-const blocklist = new Set(await readLines(BLOCKLIST_PATH));
 const existing = args.refresh ? new Map() : await loadExisting();
 const games = [];
 const sources = [
@@ -240,14 +237,11 @@ for (const { url, curate, skipReason } of sources) {
   await sleep(REQUEST_DELAY_MS);
 }
 
-const kept = games.filter((g) => !blocklist.has(g.id));
-if (kept.length < games.length) console.log(`Dropped ${games.length - kept.length} games listed in blocklist.txt`);
-
-await writeFile(OUTPUT_PATH, JSON.stringify(kept, null, 2) + "\n");
+await writeFile(OUTPUT_PATH, JSON.stringify(games, null, 2) + "\n");
 const counts = { portrait: 0, square: 0, landscape: 0 };
-kept.forEach((g) => counts[orientationOf(g)]++);
+games.forEach((g) => counts[orientationOf(g)]++);
 console.log(
-  `Wrote ${kept.length} games to data/games.json ` +
+  `Wrote ${games.length} games to data/games.json ` +
     `(portrait ${counts.portrait}, square ${counts.square}, landscape ${counts.landscape})`,
 );
-if (args.push) await pushGames(kept);
+if (args.push) await pushGames(games);
