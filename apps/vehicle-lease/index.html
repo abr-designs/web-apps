@@ -565,11 +565,13 @@ const BENCH = [
   ["Subaru", "2026 Forester Convenience AWD", 34195, 2.49, 548.15, 3.49, 529.4],
   ["Subaru", "2026 Impreza Touring AWD", 31625, 1.99, 492.15, 3.49, 479.5],
   ["Subaru", "2026 Crosstrek Hybrid Limited", 40595, 2.49, 638.1, 3.49, 622.4],
+  ["Subaru", "2027 Uncharted FWD", 40995, 6.49, 727.39, 6.49, 650.68],  // [Claude 2026-10-07] see BENCH_EXTRA
   ["Toyota", "2026 Corolla Cross LE AWD", 35047, 6.49, 684.5, 6.99, 634.5],
   ["Toyota", "2026 RAV4 LE AWD", 37500, 6.49, 729.8, 6.79, 678.1],
   ["Toyota", "2027 Corolla Hatchback SE", 27630, 6.49, 544.1, 6.99, 501.2],
   ["Toyota", "2026 Corolla Cross Hybrid SE AWD", 36160, 6.99, 712.5, 6.99, 662.3],
   ["Toyota", "2026 Corolla Sedan LE", 27250, 6.49, 539.0, 6.99, 494.6],
+  ["Toyota", "2027 C-HR SE FWD", 44895, 6.99, 819.84, 6.99, 733.31],  // [Claude 2026-10-07] see BENCH_EXTRA
   ["Honda", "2027 HR-V LX AWD", 33100, 5.49, 615.59, 5.99, 571.45],
   ["Honda", "2026 CR-V LX 2WD", 37075, 4.99, 689.5, 5.49, 638.25],
   ["Honda", "2026 Civic Hatchback Sport", 32300, 4.99, 598.6, 5.49, 556.1],
@@ -610,9 +612,16 @@ const BENCH = [
    $5,000 federal EVAP incentive; the China-built Model 3 does not.
    [Claude 2026-10-04] Fees include Tesla's $250 order fee. Energy use from the NRCan 2026 Fuel Consumption Guide.
    EVAP is applied after tax and prorated to term / 48 on leases (Transport Canada Q&A). */
+/* [Claude 2026-10-07] Uncharted and C-HR: BC dealer offers read 2026-10-07. Lease payments are $0 down, pre-tax, before
+   EVAP, with freight in the cap cost, at residuals of 58.5% (36 mo) and 50.5% (48 mo). 58.5% is backed out of Docksteader
+   Subaru's Uncharted quote ($132.72/wk, 36 mo, 6.49%, $5,000 EVAP applied); 50.5% follows the drop to the 40.2% implied by
+   Toyota BC's 64-month C-HR offer ($128/wk, 6.99%, $5,688 down). Finance rates are the dealers' longest-term offers.
+   Fees are freight, PDI and levies. Energy: Uncharted is NRCan 1.7 Le/100 km; C-HR is scaled from its 77 kWh, 496 km range. */
 const BENCH_EXTRA = {
-  "2026 Model 3 Premium RWD": { finApr: 5.21, finFees: 2876, leaseFees: 376, incentive: 0, power: "electric", fuel: 15, maint: 350, insurance: 220, deprPct: 15, km48: 16000 },
-  "2026 Model Y RWD": { finApr: 5.21, finFees: 2876, leaseFees: 376, incentive: 5000, power: "electric", fuel: 15.4, maint: 350, insurance: 230, deprPct: 15, km48: 16000 }
+  "2026 Model 3 Premium RWD": { src: "Tesla configurator", finApr: 5.21, finNote: "at every term", finFees: 2876, leaseFees: 376, incentive: 0, power: "electric", fuel: 15, maint: 350, insurance: 220, deprPct: 15, km48: 16000 },
+  "2026 Model Y RWD": { src: "Tesla configurator", finApr: 5.21, finNote: "at every term", finFees: 2876, leaseFees: 376, incentive: 5000, power: "electric", fuel: 15.4, maint: 350, insurance: 230, deprPct: 15, km48: 16000 },
+  "2027 Uncharted FWD": { src: "Docksteader Subaru rate, payment estimated", finApr: 6.49, finNote: "over 84 months", finFees: 3126, incentive: 5000, power: "electric", fuel: 15.1, maint: 350, insurance: 220, deprPct: 15 },
+  "2027 C-HR SE FWD": { src: "Toyota BC rate, payment estimated", finApr: 5.39, finNote: "over 64 months", finFees: 3097, incentive: 5000, power: "electric", fuel: 16.1, maint: 350, insurance: 220, deprPct: 15 }
 };
 
 /* [Claude 2026-10-03] Used hybrid and electric dealer listings near Vancouver (CarGurus.ca, read 2026-10-03).
@@ -1419,7 +1428,7 @@ function renderOffers() {
   document.getElementById("offers").innerHTML = state.offers.map((o, i) => {
     const fin = o.kind !== "lease";  // [Claude 2026-10-03]
     const b = fin ? null : benchFor(findBench(o.model), o.termMonths);
-    const tesla = !!BENCH_EXTRA[o.model];  // [Claude 2026-10-03]
+    const x = BENCH_EXTRA[o.model];  // [Claude 2026-10-07] dealer or configurator data, not the survey
     const list = o.kind === "used"
       ? USED.map(u => '<option value="' + escapeHtml(u.label) + '">' + escapeHtml(u.label + " · " + fmt(u.price)) + "</option>").join("") + '<option value="other">Other used vehicle</option>'
       : models;
@@ -1455,9 +1464,9 @@ function renderOffers() {
             offerField(o, "incentive", "Incentive ($)", 500)) +  // [Claude 2026-10-03]
       "</div>" +
       (fin ? "" : '<label class="tick"><input type="checkbox" id="of-' + o.id + '-tax" data-offer="' + o.id + '" data-key="inclTax"' + (o.inclTax ? " checked" : "") + "> Payment already includes tax</label>") +
-      (b ? '<p class="hint">' + (tesla ? "Tesla configurator" : "BC survey") + ": " + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + "." + (tesla ? "" : " " + SURVEY_HIGH) + "</p>" : "") +  // [Claude 2026-10-04] survey caveat
-      (tesla ? '<p class="hint">Tesla finance is ' + pct(BENCH_EXTRA[o.model].finApr) + " at every term. " +
-        (BENCH_EXTRA[o.model].incentive ? "The " + fmt(BENCH_EXTRA[o.model].incentive) + " federal EVAP incentive is applied after tax, prorated to term / 48 on a lease; set Incentive to 0 if you do not qualify." : "The Model 3 does not qualify for the federal EVAP incentive.") + "</p>" : "") +
+      (b ? '<p class="hint">' + (x ? x.src : "BC survey") + ": " + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + "." + (x ? "" : " " + SURVEY_HIGH) + "</p>" : "") +  // [Claude 2026-10-07]
+      (x ? '<p class="hint">' + escapeHtml(findBench(o.model)[0]) + " finance is " + pct(x.finApr) + " " + x.finNote + ". " +
+        (x.incentive ? "The " + fmt(x.incentive) + " federal EVAP incentive is applied after tax, prorated to term / 48 on a lease; set Incentive to 0 if you do not qualify." : "The " + escapeHtml(o.model) + " does not qualify for the federal EVAP incentive.") + "</p>" : "") +
       (o.kind === "used" ? '<p class="hint">Dealer listing price. The used-car loan rate and depreciation are estimates; ask the dealer for their rate.</p>' : "") +
       '<div class="derived"><span>' + (fin ? "Loan" : "Payment") + '</span><b data-payout="' + o.id + '">-</b></div>' +
       '<div class="grid2">' +  // [Claude 2026-10-03] running costs
