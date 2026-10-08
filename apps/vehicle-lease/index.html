@@ -487,6 +487,13 @@ svg .now { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
       <span class="hint" id="kmHint"></span>
       <div class="derived"><span>Mileage adjustment today</span><b id="outKmAdj">-</b></div>
       <div class="derived"><span>Private sale value today</span><b id="outValNow">-</b></div>
+      <!-- [Claude 2026-10-08] Dealer trade-in -->
+      <div class="field">
+        <label for="dealerCut">Dealer wholesale cut (% off dealer asking)</label>
+        <input id="dealerCut" type="number" inputmode="decimal" step="1" data-bind="market.dealerCutPct">
+      </div>
+      <div class="derived"><span>Dealer trade-in today</span><b id="outTradeNow">-</b></div>
+      <span class="hint">Private sales carry no tax for the seller, so the private value is already what you pocket. A dealer pays wholesale: your car's dealer asking price, from the listings, less their cut. Trading in toward a vehicle you buy from that dealer also takes the trade value off its taxable price. On a lease the saving is smaller, since tax applies only to the payments.</span>
       <label class="tick"><input type="checkbox" id="mvOn" data-bind="market.useOverride"> Use my own private sale value today</label>
       <div class="field">
         <label for="mvVal">Private sale value today ($)</label>
@@ -565,6 +572,8 @@ const BENCH = [
   ["Subaru", "2026 Forester Convenience AWD", 34195, 2.49, 548.15, 3.49, 529.4],
   ["Subaru", "2026 Impreza Touring AWD", 31625, 1.99, 492.15, 3.49, 479.5],
   ["Subaru", "2026 Crosstrek Hybrid Limited", 40595, 2.49, 638.1, 3.49, 622.4],
+  ["Subaru", "2027 Crosstrek Hybrid Onyx", 36995, 5.49, 553.1, 5.99, 558.88],  // [Claude 2026-10-08] see BENCH_EXTRA
+  ["Subaru", "2027 Crosstrek Hybrid Limited", 40495, 5.49, 631.62, 5.99, 622.04],
   ["Subaru", "2027 Uncharted FWD", 40995, 6.49, 727.39, 6.49, 650.68],  // [Claude 2026-10-07] see BENCH_EXTRA
   ["Toyota", "2026 Corolla Cross LE AWD", 35047, 6.49, 684.5, 6.99, 634.5],
   ["Toyota", "2026 RAV4 LE AWD", 37500, 6.49, 729.8, 6.79, 678.1],
@@ -617,7 +626,13 @@ const BENCH = [
    Subaru's Uncharted quote ($132.72/wk, 36 mo, 6.49%, $5,000 EVAP applied); 50.5% follows the drop to the 40.2% implied by
    Toyota BC's 64-month C-HR offer ($128/wk, 6.99%, $5,688 down). Finance rates are the dealers' longest-term offers.
    Fees are freight, PDI and levies. Energy: Uncharted is NRCan 1.7 Le/100 km; C-HR is scaled from its 77 kWh, 496 km range. */
+/* [Claude 2026-10-08] 2027 Crosstrek hybrids: Subaru Canada BC configurator, read 2026-10-08. Its lease payments include
+   12% tax (its 60-month finance payment matches the tax-in price), so they are divided by 1.12 here. Implied residuals
+   with freight in the cap: Onyx 68.9% (36 mo) and 55.2% (48 mo), Limited 65.6% and 53.0%. Fees are $2,495 freight and PDI
+   plus $531 levies. Energy is the NRCan 6.3 L/100 km combined rating. */
 const BENCH_EXTRA = {
+  "2027 Crosstrek Hybrid Onyx": { src: "Subaru Canada configurator, tax removed", finApr: 5.99, finNote: "over 60 months", finFees: 3026, incentive: 0, power: "hybrid", fuel: 6.3, maint: 550 },
+  "2027 Crosstrek Hybrid Limited": { src: "Subaru Canada configurator, tax removed", finApr: 5.99, finNote: "over 60 months", finFees: 3026, incentive: 0, power: "hybrid", fuel: 6.3, maint: 550 },
   "2026 Model 3 Premium RWD": { src: "Tesla configurator", finApr: 5.21, finNote: "at every term", finFees: 2876, leaseFees: 376, incentive: 0, power: "electric", fuel: 15, maint: 350, insurance: 220, deprPct: 15, km48: 16000 },
   "2026 Model Y RWD": { src: "Tesla configurator", finApr: 5.21, finNote: "at every term", finFees: 2876, leaseFees: 376, incentive: 5000, power: "electric", fuel: 15.4, maint: 350, insurance: 230, deprPct: 15, km48: 16000 },
   "2027 Uncharted FWD": { src: "Docksteader Subaru rate, payment estimated", finApr: 6.49, finNote: "over 84 months", finFees: 3126, incentive: 5000, power: "electric", fuel: 15.1, maint: 350, insurance: 220, deprPct: 15 },
@@ -706,6 +721,9 @@ function applyVehicle(o, resetTerm) {
     if (resetTerm) o.termMonths = 36;
     const b = benchFor(bench, o.termMonths);
     if (b) Object.assign(o, { apr: b.rate, payment: b.pay, inclTax: false });
+    if (bench) o.price = bench[2];  // [Claude 2026-10-08] survey payments assume MSRP
+    o.residual = surveyResidual(o);  // survey residual for the term bucket, priced at this offer's term
+    if (o.residual == null) initLease(o); else repriceLease(o);
     o.fees = x.leaseFees || 595;
     if (bench) o.incentive = leaseIncentive(o);  // [Claude 2026-10-04]
     if (bench) o.kmAllowance = x.km48 && o.termMonths >= 42 ? x.km48 : 20000;  // [Claude 2026-10-04]
@@ -737,7 +755,7 @@ function defaultState() {
       odometer: 0, kmPerYear: 20000, overageRate: 0.12, dispositionFee: 400
     },
     tax: { rate: 12, docFee: 595 },
-    market: { haircutPct: 4, deprPct: 12, useDeprOverride: false, kmValue: 0.10, useOverride: false, override: 26000, comps: DEFAULT_COMPS.map(c => Object.assign({}, c)) },
+    market: { haircutPct: 4, dealerCutPct: 15, deprPct: 12, useDeprOverride: false, kmValue: 0.10, useOverride: false, override: 26000, comps: DEFAULT_COMPS.map(c => Object.assign({}, c)) },  // [Claude 2026-10-08] dealerCutPct: wholesale discount off dealer asking
     money: { cashRatePct: 3, goodRatePct: 4 },
     keep: { apr: 4.99, termMonths: 60, down: 0, lenderFee: 0, sellMonth: 36, power: "gas", insurance: 160, fuel: 8.0, maint: 800, repairs: 600 },  // [Claude 2026-10-03]
     running: { kmPerYear: 20000, gasPrice: 1.95, kwhPrice: 0.14 },  // [Claude 2026-10-03]
@@ -814,6 +832,52 @@ function leasePretax(o) {
   const quote = o.inclTax ? o.payment / (1 + state.tax.rate / 100) : o.payment;
   return Math.max(0, quote - o.down * (1 / term + o.apr / 2400));
 }
+/* [Claude 2026-10-08] Lease pricing: vehicle price, residual, rate and term drive the $0-down payment.
+   Cap cost is the price plus freight and fees. Pre-tax payment = (cap - res)/n + (cap + res) * apr/2400.
+   Typing a payment backs the residual out instead. Survey payments assume the vehicle is priced at MSRP. */
+function leaseFees(o) { return (BENCH_EXTRA[o.model] || {}).finFees || NEW_FIN_FEES; }
+function canReprice(o) { return o.kind === "lease" && o.price > 0 && Math.round(o.termMonths) >= 12; }
+function leaseTaxK(o) { return o.inclTax ? 1 + state.tax.rate / 100 : 1; }
+/* Residual implied by a pre-tax payment on a vehicle priced at base, or null when the inputs cannot produce one. */
+function backOutResidual(o, base, pay, apr, n) {
+  const cap = base + leaseFees(o), a = apr / 2400, div = a - 1 / n;
+  if (!(pay > 0) || Math.abs(div) < 1e-9) return null;
+  const res = (pay - cap * (1 / n + a)) / div;
+  return isFinite(res) && res >= 0 && res <= cap ? Math.round(res * 100) / 100 : null;
+}
+/* Residual from the survey quote for the offer's term bucket, priced at MSRP over the survey's own term. */
+function surveyResidual(o) {
+  const b = benchFor(findBench(o.model), o.termMonths);
+  return b && o.msrp > 0 ? backOutResidual(o, o.msrp, b.pay, b.rate, b.term) : null;
+}
+/* Residual from the offer's own payment, at the rate and price that payment was quoted on. */
+function paymentResidual(o, apr, price) {
+  return backOutResidual(o, price == null ? o.price : price, o.payment / leaseTaxK(o), apr, Math.round(o.termMonths));
+}
+function repriceLease(o) {
+  if (!canReprice(o) || o.residual == null) return false;
+  const n = Math.round(o.termMonths), cap = o.price + leaseFees(o), a = o.apr / 2400;
+  o.payment = Math.max(0, Math.round((cap * (1 / n + a) + o.residual * (a - 1 / n)) * leaseTaxK(o) * 100) / 100);
+  return true;
+}
+/* Price and residual against MSRP, for the hint under a lease offer. */
+function leasePriceNote(o) {
+  const bench = findBench(o.model);
+  const msrp = bench ? bench[2] : 0;
+  const gap = o.price - msrp;
+  return (msrp > 0
+      ? "Price is " + (Math.abs(gap) < 1 ? "MSRP " + fmt(msrp) : fmt(Math.abs(gap)) + (gap < 0 ? " below" : " above") + " the " + fmt(msrp) + " MSRP (" + pct(Math.abs(gap) / msrp * 100) + ")") + ". " +
+        (o.residual != null ? "Residual is " + pct(o.residual / msrp * 100) + " of MSRP. " : "")
+      : "") +
+    "Cap cost is the price plus " + fmt(leaseFees(o)) + " freight and fees. Price, residual, rate and term set the payment; typing a payment works out the residual.";
+}
+/* Fills price and residual on a lease offer that lacks them (new offers and older saved state). */
+function initLease(o) {
+  if (o.kind !== "lease") return;
+  if (!(o.price > 0)) o.price = o.msrp;
+  if (o.residual == null && canReprice(o)) o.residual = paymentResidual(o, o.apr);
+  if (o.residual == null) o.residual = surveyResidual(o);
+}
 /* [Claude 2026-10-04] Incentive is a cap reduction applied after tax, so it comes off the tax-in payment. */
 function leaseIncentiveCut(o) {
   const term = Math.max(1, Math.round(o.termMonths));
@@ -868,6 +932,11 @@ function derive() {
   };
   const valueEnd = valueAt(0);
 
+  /* [Claude 2026-10-08] Dealer trade-in: a private value scaled up to dealer asking by the listings, less the dealer's wholesale cut. */
+  const privSold = privMedian * (1 - state.market.haircutPct / 100);
+  const retailRatio = privSold > 0 && dealerMedian > 0 ? clamp(dealerMedian / privSold, 1, 1.5) : 1;
+  const tradeRatio = retailRatio * (1 - clamp(state.market.dealerCutPct, 0, 100) / 100);
+
   const buyoutAllIn = (L.residual + state.tax.docFee) * (1 + tax);
 
   const projectedKm = L.odometer > 0 ? L.odometer + (L.odometer / monthsElapsed) * Math.max(0, L.termMonths - monthsElapsed) : 0;
@@ -879,7 +948,7 @@ function derive() {
     tax, r: state.money.cashRatePct / 100 / 12, monthsToEnd, daysToEnd, end,
     privMedian, dealerMedian, baseNow, valueNow, valueAt, valueEnd, ageYears, derivedDep,
     compsKm, yourKmNow, kmEstimated, kmAdjNow, yourPace, compsPace,
-    buyoutAllIn, projectedKm, overageKm, overageCost
+    buyoutAllIn, projectedKm, overageKm, overageCost, tradeRatio
   };
 }
 
@@ -921,7 +990,7 @@ function keepPath(d, financed, sellMonth) {
     if (balance > 0.5) add("Loan payoff at sale", "Balance still owed after " + paid + " payments", balance, N);
   }
   const sale = d.valueAt(N);
-  add("Private sale", "Sold after " + N + " months (estimate)", -sale, N, true);
+  add("Private sale", "Sold after " + N + " months (estimate)" + tradeNote(sale, d), -sale, N, true);  // [Claude 2026-10-08]
   const r = addRunning(lines, run, N, d.r);  // [Claude 2026-10-03]
   nominal += r.nominal;
   netPv += r.pv;
@@ -935,7 +1004,7 @@ function keepPath(d, financed, sellMonth) {
     pmt, balance, interest, run, runPv: r.pv,  // [Claude 2026-10-04] runPv
     kept: { monthly: keptMonthly + run.total, months: financed ? term : N },  // [Claude 2026-10-04]
     resale: { value: sale, base: state.lease.residual, months: N },  // [Claude 2026-10-03]
-    cmp: { price: state.lease.residual, exit: 0, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale }  // [Claude 2026-10-04]
+    cmp: { price: state.lease.residual, exit: 0, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale, trade: sale * d.tradeRatio }  // [Claude 2026-10-08] trade
   };
 }
 
@@ -949,6 +1018,12 @@ function vehicleName(o) {
 function shortName(o) {
   if (o.model === "other") return "other vehicle";
   return (o.kind === "used" ? o.model.split(",")[0] : o.model).replace(/^\d{4}\s/, "");
+}
+
+/* [Claude 2026-10-08] Dealer trade-in beside a private sale. A trade-in also comes off the taxable price of the next vehicle bought from a dealer. */
+function tradeNote(sale, d) {
+  const t = sale * d.tradeRatio;
+  return ". Dealer trade-in about " + fmt(t) + ", worth " + fmt(t * (1 + d.tax)) + " if you buy the next vehicle from that dealer";
 }
 
 /* [Claude 2026-10-03] Adds the running-cost line for months 1..N and returns its nominal and PV totals. */
@@ -992,7 +1067,7 @@ function financePath(offer, d, index, sellMonth) {
     nominal += balance;
     netPv += pv(balance, N);
   }
-  lines.push({ label: "Private sale", sub: "Sold after " + N + " months at " + offer.deprPct + "%/yr depreciation" + (privRatio < 1 ? ", from " + pct(privRatio * 100) + " of the dealer price" : ""), amount: -sale, credit: true });  // [Claude 2026-10-04]
+  lines.push({ label: "Private sale", sub: "Sold after " + N + " months at " + offer.deprPct + "%/yr depreciation" + (privRatio < 1 ? ", from " + pct(privRatio * 100) + " of the dealer price" : "") + tradeNote(sale, d), amount: -sale, credit: true });  // [Claude 2026-10-08] trade-in note
   nominal -= sale;
   netPv -= pv(sale, N);
   const rc = addRunning(lines, run, N, d.r);
@@ -1009,7 +1084,7 @@ function financePath(offer, d, index, sellMonth) {
     pmt, balance, interest, run, runPv: rc.pv, offerIndex: index, kind: offer.kind,  // [Claude 2026-10-04] runPv
     kept: { monthly: pmt + run.total, months: term },
     resale: { value: sale, base: offer.msrp, months: N },
-    cmp: { price: offer.msrp, exit: exit.cost, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale }  // [Claude 2026-10-04]
+    cmp: { price: offer.msrp, exit: exit.cost, upfront: down, pmt, paid, payments: pmt * paid, interest, payoff: balance, handback: 0, resale: sale, trade: sale * d.tradeRatio }  // [Claude 2026-10-08] trade
   };
 }
 
@@ -1064,7 +1139,7 @@ function leasePath(offer, d, index) {
     sub: term + " months at " + offer.apr + "%, " + exit.name.toLowerCase(),
     months: term, lines, nominal, netPv, monthly: netPv / term,
     payment, exits, run, runPv: rc.pv, offerIndex: index, kind: "lease",  // [Claude 2026-10-04] runPv
-    cmp: { price: offer.msrp, exit: exit.cost, upfront, pmt: payment, paid: term, payments: payment * term, interest: null, payoff: 0, handback, resale: 0 }  // [Claude 2026-10-04]
+    cmp: { price: offer.price, exit: exit.cost, upfront, pmt: payment, paid: term, payments: payment * term, interest: null, payoff: 0, handback, resale: 0 }  // [Claude 2026-10-08] price is what the lease is based on
   };
 }
 
@@ -1153,6 +1228,8 @@ const COMPARE_ROWS = [
   { label: "Hand-back", sub: "Fee and km over the allowance", get: p => p.cmp.handback, best: "low" },
   { label: "Resale value", sub: "Credit when sold", get: p => p.kind === "lease" ? null : p.cmp.resale, best: "high",
     math: p => "After " + p.months + " mo" },
+  { label: "Dealer trade-in", sub: "What a dealer would pay instead", get: p => p.kind === "lease" ? null : p.cmp.trade, best: "high",  // [Claude 2026-10-08]
+    math: p => fmt(p.cmp.trade * (1 + state.tax.rate / 100)) + " with the tax saved on a dealer purchase" },
   { label: "Net vehicle cost", sub: "One-offs and payments, less resale, before discounting", get: p => vehicleTerms(p).reduce((a, b) => a + b, 0), best: "low",
     math: p => sumMath(vehicleTerms(p)) },
   { head: "Vehicle" },
@@ -1234,7 +1311,8 @@ function renderChecks(res) {
   const drop = annualDrop(cash.resale.base, cash.resale.value, cash.resale.months);
   items.push([chip(drop <= 15 ? "info" : "ok", pct(drop) + "/yr"),
     "Sold after " + cash.resale.months + " months your Crosstrek should fetch <b>" + fmt(cash.resale.value) + "</b>, " +
-    fmt(cash.resale.base - cash.resale.value) + " below the " + fmt(cash.resale.base) + " residual. Most compact SUVs lose 10 to 15% a year after year three."]);
+    fmt(cash.resale.base - cash.resale.value) + " below the " + fmt(cash.resale.base) + " residual. Most compact SUVs lose 10 to 15% a year after year three. " +
+    "A dealer would pay about <b>" + fmt(cash.cmp.trade) + "</b> on trade-in, or " + fmt(cash.cmp.trade * (1 + res.d.tax)) + " counting the tax saved if you buy the next vehicle from that dealer."]);  // [Claude 2026-10-08]
 
   /* New vehicle offers: survey check for leases, rate check for loans, running costs against your Crosstrek */
   res.paths.filter(p => p.offerIndex != null).forEach(p => {
@@ -1375,6 +1453,7 @@ function renderDerived(res) {
   set("outPrivMed", fmt(d.privMedian));
   set("outDealMed", fmt(d.dealerMedian));
   set("outValNow", fmt(d.valueNow));
+  set("outTradeNow", fmt(d.valueNow * d.tradeRatio) + " (" + fmt(d.valueNow * d.tradeRatio * (1 + d.tax)) + " on a purchase)");  // [Claude 2026-10-08]
   set("outValEnd", fmt(d.valueEnd));
   set("outDeprDerived", pct(d.derivedDep * 100) + " / yr");
   set("outKm", num(d.yourKmNow) + " vs " + num(d.compsKm) + " km");
@@ -1417,7 +1496,7 @@ function render() {
 function offerField(o, key, label, step, mode) {
   const id = "of-" + o.id + "-" + key;
   return '<div class="field"><label for="' + id + '">' + label + "</label>" +
-    '<input id="' + id + '" type="number" inputmode="' + (mode || "decimal") + '" step="' + step + '" value="' + o[key] + '" data-offer="' + o.id + '" data-key="' + key + '"></div>';
+    '<input id="' + id + '" type="number" inputmode="' + (mode || "decimal") + '" step="' + step + '" value="' + (o[key] == null ? "" : o[key]) + '" data-offer="' + o.id + '" data-key="' + key + '"></div>';
 }
 
 function renderOffers() {
@@ -1453,7 +1532,9 @@ function renderOffers() {
             offerField(o, "fees", "Doc and dealer fees ($)", 25) +
             offerField(o, "deprPct", "Depreciation (% / yr)", 0.5) +
             (o.kind === "used" ? "" : offerField(o, "incentive", "Incentive ($)", 500))  // [Claude 2026-10-03]
-          : offerField(o, "payment", "$0-down monthly payment ($)", 1) +
+          : offerField(o, "price", "Vehicle price ($)", 100) +  // [Claude 2026-10-08]
+            offerField(o, "residual", "Residual at lease end ($)", 100) +
+            offerField(o, "payment", "$0-down monthly payment ($)", 1) +
             offerField(o, "apr", "Lease rate (%)", 0.01) +
             offerField(o, "termMonths", "Term (months)", 12, "numeric") +
             offerField(o, "down", "Down payment ($)", 500) +
@@ -1464,6 +1545,7 @@ function renderOffers() {
             offerField(o, "incentive", "Incentive ($)", 500)) +  // [Claude 2026-10-03]
       "</div>" +
       (fin ? "" : '<label class="tick"><input type="checkbox" id="of-' + o.id + '-tax" data-offer="' + o.id + '" data-key="inclTax"' + (o.inclTax ? " checked" : "") + "> Payment already includes tax</label>") +
+      (fin ? "" : '<p class="hint" id="of-' + o.id + '-note">' + leasePriceNote(o) + "</p>") +  // [Claude 2026-10-08]
       (b ? '<p class="hint">' + (x ? x.src : "BC survey") + ": " + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + "." + (x ? "" : " " + SURVEY_HIGH) + "</p>" : "") +  // [Claude 2026-10-07]
       (x ? '<p class="hint">' + escapeHtml(findBench(o.model)[0]) + " finance is " + pct(x.finApr) + " " + x.finNote + ". " +
         (x.incentive ? "The " + fmt(x.incentive) + " federal EVAP incentive is applied after tax, prorated to term / 48 on a lease; set Incentive to 0 if you do not qualify." : "The " + escapeHtml(o.model) + " does not qualify for the federal EVAP incentive.") + "</p>" : "") +
@@ -1529,7 +1611,31 @@ function onEdit(e) {
     const o = state.offers.find(x => x.id === oid);
     const key = el.getAttribute("data-key");
     if (!o) return;
+    if ((key === "price" || key === "residual") && el.value === "") {  // [Claude 2026-10-08] blank mid-edit keeps the last value
+      if (e.type === "change") el.value = o[key] == null ? "" : o[key];
+      return;
+    }
+    if ((key === "price" || key === "residual") && e.type === "change") return;  // input events already applied it
+    const oldApr = o.apr, oldPrice = o.price;  // [Claude 2026-10-08]
     o[key] = readValue(el);
+    /* [Claude 2026-10-08] A typed payment or tax toggle sets the residual; price, residual and rate edits reprice the payment. */
+    const setField = (k, v) => { const f = document.getElementById("of-" + o.id + "-" + k); if (f) f.value = v == null ? "" : v; };
+    if ((key === "payment" || key === "inclTax") && canReprice(o)) {
+      o.residual = paymentResidual(o, o.apr);
+      setField("residual", o.residual);
+    }
+    if ((key === "price" || key === "residual" || key === "apr" && o.apr !== oldApr) && canReprice(o)) {
+      if (o.residual == null) o.residual = paymentResidual(o, oldApr, oldPrice);
+      if (repriceLease(o)) setField("payment", o.payment);
+    }
+    if (key === "termMonths" && e.type === "change" && canReprice(o)) {  // [Claude 2026-10-08] new term takes the survey residual for its bucket
+      o.residual = surveyResidual(o) ?? o.residual;
+      if (repriceLease(o)) renderOffers();
+    }
+    if (["price", "residual", "payment", "inclTax"].includes(key)) {  // [Claude 2026-10-08] refresh the MSRP comparison in place
+      const note = document.getElementById("of-" + o.id + "-note");
+      if (note && o.kind === "lease") note.textContent = leasePriceNote(o);
+    }
     if (key === "model" && e.type === "change") {  // [Claude 2026-10-03]
       applyVehicle(o, false);
       renderOffers();
@@ -1555,7 +1661,7 @@ function onEdit(e) {
 function bindEvents() {
   document.addEventListener("input", onEdit);
   document.addEventListener("change", e => {
-    if (e.target.getAttribute && ["model", "kind", "power", "termMonths"].includes(e.target.getAttribute("data-key"))) onEdit(e);  // [Claude 2026-10-04] termMonths
+    if (e.target.getAttribute && ["model", "kind", "power", "termMonths", "price", "residual"].includes(e.target.getAttribute("data-key"))) onEdit(e);  // [Claude 2026-10-08] price and residual restore a blank on blur
   });
 
   document.addEventListener("toggle", e => {  // [Claude 2026-10-03] remember folded offers
@@ -1621,7 +1727,11 @@ function loadSaved() {
     const s = JSON.parse(raw);
     const base = defaultState();
     ["lease", "tax", "market", "money", "keep", "running", "trade"].forEach(k => { base[k] = Object.assign(base[k], s[k] || {}); });  // [Claude 2026-10-03]
-    if (Array.isArray(s.offers) && s.offers.length) base.offers = s.offers.map(o => Object.assign(defaultOffer(o.kind), powerFor(o.model || ""), o));  // [Claude 2026-10-03]
+    if (Array.isArray(s.offers) && s.offers.length) base.offers = s.offers.map(o => {  // [Claude 2026-10-03]
+      const n = Object.assign(defaultOffer(o.kind), powerFor(o.model || ""), o);
+      if (n.kind === "lease" && !("price" in o)) { delete n.price; delete n.residual; initLease(n); }  // [Claude 2026-10-08] older saves: drop the default model's price
+      return n;
+    });
     return base;
   } catch (err) {
     return null;
