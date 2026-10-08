@@ -218,6 +218,7 @@ details.group > summary .sum-note { font-weight: 400; font-size: 12px; color: va
 }
 .field input:focus-visible, .field select:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
 .hint { font-size: 12px; color: var(--muted); }
+.hint.flag { color: var(--warn); }  /* [Claude 2026-10-08] lease figure check */
 .tick { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .tick input { width: 18px; height: 18px; }
 .derived {
@@ -639,6 +640,54 @@ const BENCH_EXTRA = {
   "2027 C-HR SE FWD": { src: "Toyota BC rate, payment estimated", finApr: 5.39, finNote: "over 64 months", finFees: 3097, incentive: 5000, power: "electric", fuel: 16.1, maint: 350, insurance: 220, deprPct: 15 }
 };
 
+/* [Claude 2026-10-08] Used-market retention, % of original price, read 2026-10-08. US data: no free Canadian per-model
+   figures exist (Canadian Black Book publishes category winners only). The low end is CarEdge's projection for a new
+   vehicle at 13,500 mi/yr (36 and 48 months); the high end is iSeeCars at 36 months, which compares used asking prices
+   and runs 6 to 25 points higher. Both are noisy, so treat the range as indicative. First matching pattern wins.
+   [pattern, CarEdge 36 mo, CarEdge 48 mo, iSeeCars 36 mo, stand-in] */
+const RETAIN = [
+  [/Crosstrek Hybrid/, 76.2, 71.5, 88.4, "gas Crosstrek"],
+  [/Crosstrek/, 76.2, 71.5, 88.4],
+  [/Forester/, 76.3, 66.2, 86.7],
+  [/Impreza/, 75.8, 72.6, 89.4],
+  [/Uncharted/, 46.4, 42.9, 52.7, "Solterra"],
+  [/Corolla Cross Hybrid/, 87.9, 72.9, 91.6, "gas Corolla Cross for CarEdge"],
+  [/Corolla Cross/, 87.9, 72.9, 95.4],
+  [/Corolla/, 75.3, 68.8, 90.7],
+  [/RAV4/, 81.1, 76.5, 94.6],
+  [/C-HR/, 48.7, 45.0, 60.9, "bZ4X"],
+  [/HR-V/, 76.8, 70.3, 90.1],
+  [/CR-V/, 76.6, 71.8, 86.3],
+  [/Civic.*Hybrid/, 80.5, 72.5, 80.3, "gas Civic for CarEdge"],
+  [/Civic/, 80.5, 72.5, 90.6],
+  [/Taos/, 64.4, 49.3, 72.5],
+  [/Jetta/, 75.0, 67.2, 81.0],
+  [/Kona/, 68.3, 61.4, 78.7],
+  [/Tucson/, 64.3, 58.6, 75.2],
+  [/Elantra.*Hybrid/, 68.0, 64.8, 74.6, "KBB 2023 at 36 months, gas Elantra at 48"],
+  [/Elantra/, 74.1, 64.8, 83.4],
+  [/Venue/, 75.3, 65.8, 82.4],
+  [/Kicks/, 72.1, 65.7, 80.4],
+  [/Rogue/, 55.0, 53.5, 70.8],
+  [/Sentra/, 68.3, 66.8, 84.7],
+  [/CX-30/, 67.4, 65.7, 82.1],
+  [/CX-5/, 70.0, 65.0, 80.0],
+  [/Mazda3/, 68.2, 63.4, 81.8],
+  [/Seltos/, 67.9, 63.1, 81.3],
+  [/Sportage/, 60.0, 54.6, 78.6],
+  [/K4/, 70.8, 67.0, null, "Forte"],
+  [/Soul/, 64.2, 59.6, 82.5],
+  [/Eclipse Cross/, 61.1, 53.5, 70.1],
+  [/RVR/, 61.1, 53.5, 72.0, "Outlander Sport"],
+  [/Bronco Sport/, 67.5, 62.4, 77.7],
+  [/Escape/, 55.0, 50.8, 70.5],
+  [/Trax/, 62.1, 61.2, 79.0],
+  [/Trailblazer/, 74.0, 69.3, 83.0],
+  [/Envista/, 59.3, 55.6, 71.5],
+  [/Model 3/, 42.2, 40.7, 56.8],
+  [/Model Y/, 41.9, 40.4, 55.9]
+];
+
 /* [Claude 2026-10-03] Used hybrid and electric dealer listings near Vancouver (CarGurus.ca, read 2026-10-03).
    [label, price, power, energy per 100 km (L or kWh), maintenance $/yr] */
 const USED = [
@@ -860,16 +909,55 @@ function repriceLease(o) {
   o.payment = Math.max(0, Math.round((cap * (1 / n + a) + o.residual * (a - 1 / n)) * leaseTaxK(o) * 100) / 100);
   return true;
 }
-/* Price and residual against MSRP, for the hint under a lease offer. */
+/* [Claude 2026-10-08] Used-market retention range (% of MSRP) at the offer's term, from RETAIN. CarEdge is linear from
+   new to 36 months and on its 36 to 48-month slope past that; the iSeeCars 36-month gap carries to every term. */
+function marketBand(o) {
+  const r = RETAIN.find(x => x[0].test(o.model));
+  if (!r) return null;
+  const n = Math.round(o.termMonths), [, c36, c48, s36, standIn] = r;
+  const lo = n <= 36 ? 100 - (100 - c36) * n / 36 : c36 + (c48 - c36) * (n - 36) / 12;
+  return { lo: Math.max(0, lo), hi: Math.max(0, lo + (s36 == null ? 0 : s36 - c36)), standIn: standIn || null };
+}
+/* Price and residual against MSRP, the lender program and the used market, for the hint under a lease offer.
+   [Claude 2026-10-08] flag is set when a figure looks wrong: price above MSRP, a residual 2+ points off the lender
+   program at its own term, or a residual above the market range. */
 function leasePriceNote(o) {
   const bench = findBench(o.model);
   const msrp = bench ? bench[2] : 0;
   const gap = o.price - msrp;
-  return (msrp > 0
+  let flag = msrp > 0 && gap >= 1, checks = "";
+  if (msrp > 0 && o.residual != null) {
+    const resPct = o.residual / msrp * 100, n = Math.round(o.termMonths), b = benchFor(bench, n), lender = surveyResidual(o);
+    if (lender != null && n === b.term) {
+      const diff = resPct - lender / msrp * 100, off = Math.abs(diff) >= 2;
+      flag = flag || off;
+      checks += "Lender program residual for " + n + " months is " + pct(lender / msrp * 100) + " of MSRP" +
+        (off ? ", " + Math.round(Math.abs(diff) * 10) / 10 + " points " + (diff > 0 ? "below" : "above") + " yours: ask the dealer which program they used. " : ". ");
+    }
+    const m = marketBand(o);
+    if (m) {
+      const above = resPct > m.hi + 0.5;
+      flag = flag || above;
+      checks += "Similar vehicles keep " + Math.round(m.lo) + "% to " + Math.round(m.hi) + "% of their price after " + n + " months (US data" + (m.standIn ? ", " + m.standIn + " figures" : "") + "). " +
+        (above ? "Your residual is above that, so check the figure; a buyout would likely cost more than the car is worth. "
+          : resPct < m.lo ? "Your residual is below that, so buying it out at lease end could be good value. "
+          : "Your residual is inside that range. ");
+    }
+  }
+  return { flag, text: (msrp > 0
       ? "Price is " + (Math.abs(gap) < 1 ? "MSRP " + fmt(msrp) : fmt(Math.abs(gap)) + (gap < 0 ? " below" : " above") + " the " + fmt(msrp) + " MSRP (" + pct(Math.abs(gap) / msrp * 100) + ")") + ". " +
         (o.residual != null ? "Residual is " + pct(o.residual / msrp * 100) + " of MSRP. " : "")
-      : "") +
-    "Cap cost is the price plus " + fmt(leaseFees(o)) + " freight and fees. Price, residual, rate and term set the payment; typing a payment works out the residual.";
+      : "") + checks +
+    "Cap cost is the price plus " + fmt(leaseFees(o)) + " freight and fees. Price, residual, rate and term set the payment; typing a payment works out the residual." };
+}
+/* [Claude 2026-10-08] Refreshes a lease offer's hint and header check chip without rebuilding the form. */
+function paintLeaseNote(o) {
+  const note = document.getElementById("of-" + o.id + "-note"), chip = document.getElementById("of-" + o.id + "-flag");
+  if (!note || o.kind !== "lease") return;
+  const r = leasePriceNote(o);
+  note.textContent = r.text;
+  note.classList.toggle("flag", r.flag);
+  if (chip) chip.hidden = !r.flag;
 }
 /* Fills price and residual on a lease offer that lacks them (new offers and older saved state). */
 function initLease(o) {
@@ -1508,11 +1596,13 @@ function renderOffers() {
     const fin = o.kind !== "lease";  // [Claude 2026-10-03]
     const b = fin ? null : benchFor(findBench(o.model), o.termMonths);
     const x = BENCH_EXTRA[o.model];  // [Claude 2026-10-07] dealer or configurator data, not the survey
+    const note = fin ? null : leasePriceNote(o);  // [Claude 2026-10-08]
     const list = o.kind === "used"
       ? USED.map(u => '<option value="' + escapeHtml(u.label) + '">' + escapeHtml(u.label + " · " + fmt(u.price)) + "</option>").join("") + '<option value="other">Other used vehicle</option>'
       : models;
     return '<details class="offer" data-fold="' + o.id + '"' + (o.folded ? "" : " open") + ">" +  // [Claude 2026-10-03] foldable card
       '<summary class="offer-head"><span class="offer-title"><b>Offer ' + (i + 1) + " - " + { lease: "Lease", finance: "Finance new", used: "Finance used" }[o.kind] + " " + escapeHtml(vehicleName(o)) + "</b>" +
+        (fin ? "" : ' <span class="chip ok" id="of-' + o.id + '-flag"' + (note.flag ? "" : " hidden") + ">Check</span>") +  // [Claude 2026-10-08]
         '<span class="offer-sum" data-payout="' + o.id + '"></span></span>' +
         (state.offers.length > 1 ? '<button class="btn ghost sm" type="button" data-kill-offer="' + o.id + '">Remove</button>' : "") + "</summary>" +
       '<div class="offer-body">' +
@@ -1545,7 +1635,7 @@ function renderOffers() {
             offerField(o, "incentive", "Incentive ($)", 500)) +  // [Claude 2026-10-03]
       "</div>" +
       (fin ? "" : '<label class="tick"><input type="checkbox" id="of-' + o.id + '-tax" data-offer="' + o.id + '" data-key="inclTax"' + (o.inclTax ? " checked" : "") + "> Payment already includes tax</label>") +
-      (fin ? "" : '<p class="hint" id="of-' + o.id + '-note">' + leasePriceNote(o) + "</p>") +  // [Claude 2026-10-08]
+      (fin ? "" : '<p class="hint' + (note.flag ? " flag" : "") + '" id="of-' + o.id + '-note">' + note.text + "</p>") +  // [Claude 2026-10-08]
       (b ? '<p class="hint">' + (x ? x.src : "BC survey") + ": " + pct(b.rate) + " and " + fmt2(b.pay) + "/mo pre-tax for " + b.term + " months, MSRP " + fmt(findBench(o.model)[2]) + "." + (x ? "" : " " + SURVEY_HIGH) + "</p>" : "") +  // [Claude 2026-10-07]
       (x ? '<p class="hint">' + escapeHtml(findBench(o.model)[0]) + " finance is " + pct(x.finApr) + " " + x.finNote + ". " +
         (x.incentive ? "The " + fmt(x.incentive) + " federal EVAP incentive is applied after tax, prorated to term / 48 on a lease; set Incentive to 0 if you do not qualify." : "The " + escapeHtml(o.model) + " does not qualify for the federal EVAP incentive.") + "</p>" : "") +
@@ -1632,10 +1722,7 @@ function onEdit(e) {
       o.residual = surveyResidual(o) ?? o.residual;
       if (repriceLease(o)) renderOffers();
     }
-    if (["price", "residual", "payment", "inclTax"].includes(key)) {  // [Claude 2026-10-08] refresh the MSRP comparison in place
-      const note = document.getElementById("of-" + o.id + "-note");
-      if (note && o.kind === "lease") note.textContent = leasePriceNote(o);
-    }
+    if (["price", "residual", "payment", "inclTax", "termMonths"].includes(key)) paintLeaseNote(o);  // [Claude 2026-10-08] refresh the MSRP and residual checks in place
     if (key === "model" && e.type === "change") {  // [Claude 2026-10-03]
       applyVehicle(o, false);
       renderOffers();
