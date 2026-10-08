@@ -1,4 +1,0 @@
-# Created by Claude (claude-opus-5-5)
-# Date: 2026-10-05
-# Game ids left out of data/games.json by tools/curate.mjs, one per line.
-# Paste the output of History > "Copy broken list" here, then rerun the script.

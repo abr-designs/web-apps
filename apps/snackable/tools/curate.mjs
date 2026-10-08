@@ -2,13 +2,14 @@
 // Date: 2026-10-05
 //
 // Builds data/games.json from itch.io listings and hand-picked Lexaloffle BBS PICO-8 posts.
-// Usage: node tools/curate.mjs [--pages N] [--refresh] [listingUrl ...]
+// Usage: node tools/curate.mjs [--pages N] [--refresh] [--push] [listingUrl ...]
 //   --pages N   RSS pages to read per listing (36 games per page, default 3)
 //   --refresh   refetch every game, including ones already in data/games.json
+//   --push      then upsert every game into the Supabase games table; needs the SUPABASE_URL
+//               and SUPABASE_SERVICE_KEY environment variables. Never sends status, never deletes.
 // Reads each listing's RSS feed (listing URL + ".xml?page=N"). If no feed can be read
 // (429 / Cloudflare), falls back to tools/sources.txt. Each new game page is then fetched
 // to find its HTML5 upload. PICO-8 post URLs come from tools/sources-pico8.txt.
-// Ids listed in tools/blocklist.txt (History's "Copy broken list") are left out.
 
 import { readFile, writeFile } from "node:fs/promises";
 
@@ -20,7 +21,6 @@ const DEFAULT_LISTINGS = [
 const DEFAULT_PAGES = 3;
 const SOURCES_PATH = new URL("./sources.txt", import.meta.url);
 const PICO8_SOURCES_PATH = new URL("./sources-pico8.txt", import.meta.url);
-const BLOCKLIST_PATH = new URL("./blocklist.txt", import.meta.url);
 const PICO8_SIZE = 128;
 const OUTPUT_PATH = new URL("../data/games.json", import.meta.url);
 const REQUEST_DELAY_MS = 600;
@@ -45,10 +45,11 @@ async function fetchText(url, retries = 2) {
 
 /** @created Claude (claude-opus-5-5) — 2026-10-05 */
 function parseArgs(argv) {
-  const args = { pages: DEFAULT_PAGES, refresh: false, listings: [] };
+  const args = { pages: DEFAULT_PAGES, refresh: false, push: false, listings: [] };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--pages") args.pages = Number(argv[++i]);
     else if (argv[i] === "--refresh") args.refresh = true;
+    else if (argv[i] === "--push") args.push = true;
     else args.listings.push(argv[i]);
   }
   if (args.listings.length === 0) args.listings = DEFAULT_LISTINGS;
@@ -169,10 +170,44 @@ function orientationOf(game) {
   return ratio < 1 ? "portrait" : "landscape";
 }
 
+/**
+ * Upserts games into the Supabase games table with the service key. Leaves status and added_at
+ * untouched, so dashboard overrides survive a re-curate.
+ * @created Claude (claude-opus-5-5) — 2026-10-07
+ */
+async function pushGames(games) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  const rows = games.map((g) => ({
+    id: g.id,
+    source: g.source,
+    title: g.title,
+    author: g.author,
+    embed_url: g.embedUrl,
+    page_url: g.pageUrl,
+    cover_image: g.coverImage,
+    width: g.width,
+    height: g.height,
+  }));
+  const res = await fetch(`${url.replace(/\/+$/, "")}/rest/v1/games`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error(`push failed: ${res.status} ${await res.text()}`);
+  console.log(`Pushed ${rows.length} games to Supabase`);
+}
+
 const args = parseArgs(process.argv.slice(2));
+if (args.push && (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)) {
+  throw new Error("--push needs SUPABASE_URL and SUPABASE_SERVICE_KEY");
+}
 const itchUrls = await getSourceUrls(args.listings, args.pages);
 const pico8Urls = await readLines(PICO8_SOURCES_PATH);
-const blocklist = new Set(await readLines(BLOCKLIST_PATH));
 const existing = args.refresh ? new Map() : await loadExisting();
 const games = [];
 const sources = [
@@ -202,13 +237,11 @@ for (const { url, curate, skipReason } of sources) {
   await sleep(REQUEST_DELAY_MS);
 }
 
-const kept = games.filter((g) => !blocklist.has(g.id));
-if (kept.length < games.length) console.log(`Dropped ${games.length - kept.length} games listed in blocklist.txt`);
-
-await writeFile(OUTPUT_PATH, JSON.stringify(kept, null, 2) + "\n");
+await writeFile(OUTPUT_PATH, JSON.stringify(games, null, 2) + "\n");
 const counts = { portrait: 0, square: 0, landscape: 0 };
-kept.forEach((g) => counts[orientationOf(g)]++);
+games.forEach((g) => counts[orientationOf(g)]++);
 console.log(
-  `Wrote ${kept.length} games to data/games.json ` +
+  `Wrote ${games.length} games to data/games.json ` +
     `(portrait ${counts.portrait}, square ${counts.square}, landscape ${counts.landscape})`,
 );
+if (args.push) await pushGames(games);

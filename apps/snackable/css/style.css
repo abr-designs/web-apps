@@ -8,6 +8,7 @@
   --strip-bg: #1c1c1c;
   --strip-border: #2c2c2c;
   --bad: #e66;
+  --like: #f58fb4;
   --strip-height: 56px;
   --transition-ms: 250ms; /* overwritten from config.transitionMs */
 }
@@ -139,6 +140,9 @@ html, body {
 
 .strip__button:active { background: var(--strip-border); }
 
+.strip__like[aria-pressed="true"] { color: var(--like); }
+.strip__count { margin-left: 2px; color: var(--muted); font-size: 12px; }
+
 /* Undo toast, floating just above the strip. */
 .toast {
   position: fixed;
@@ -187,15 +191,20 @@ html, body {
 
 .history__heading { flex: 1; margin: 0; font-size: 18px; }
 
-.history__action {
+/* All / Favorites switch */
+.history__views { display: flex; border: 1px solid var(--strip-border); border-radius: 8px; overflow: hidden; }
+.history__view {
+  min-width: 44px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--strip-border);
-  border-radius: 8px;
+  padding: 0 10px;
+  border: 0;
   background: transparent;
-  color: var(--fg);
+  color: var(--muted);
   font: inherit;
+  cursor: pointer;
 }
+.history__view[aria-pressed="true"] { background: var(--strip-border); color: var(--fg); }
+.history__view[data-view="favorites"][aria-pressed="true"] { color: var(--like); }
 
 .history__list {
   flex: 1;
