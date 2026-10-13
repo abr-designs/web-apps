@@ -1,15 +1,16 @@
 /* Created by Claude (claude-opus-5-5) */
 /* Date: 2026-10-13 */
 
+/* Base palette: colorhunt.co/palette/f9f8f6efe9e3d9cfc7c9b59c. Text, link and lock shades are darker tones of the tan. */
 :root {
-  --bg: #16121f;
-  --panel: #221c30;
-  --panel-edge: #3a3150;
-  --fg: #f2eefa;
-  --muted: #a89fbd;
-  --accent: #ffcf4a;
-  --accent-ink: #2a1f00;
-  --link: #8fd3ff;
+  --bg: #f9f8f6;
+  --panel: #efe9e3;
+  --panel-edge: #d9cfc7;
+  --accent: #c9b59c;
+  --accent-deep: #8c7354;
+  --fg: #3d342b;
+  --muted: #6e6257;
+  --link: #7a5c3a;
   --reel-h: 9rem;
 }
 
@@ -35,7 +36,7 @@ a { color: var(--link); }
   margin: 0;
   font-size: 2rem;
   letter-spacing: 0.02em;
-  color: var(--accent);
+  color: var(--fg);
 }
 
 .top__sub { margin: 0.25rem 0 1rem; color: var(--muted); }
@@ -49,7 +50,7 @@ a { color: var(--link); }
 
 .chip {
   padding: 0.35rem 0.8rem;
-  border: 1px solid var(--panel-edge);
+  border: 1px solid var(--accent-deep);
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
@@ -76,7 +77,7 @@ a { color: var(--link); }
   overflow: hidden;
 }
 
-.reel--locked { border-color: var(--accent); }
+.reel--locked { border-color: var(--accent-deep); }
 
 .reel__header {
   display: flex;
@@ -165,7 +166,7 @@ a { color: var(--link); }
   border: 0;
   border-radius: 10px;
   background: var(--accent);
-  color: var(--accent-ink);
+  color: var(--fg);
   font: inherit;
   font-size: 1.2rem;
   font-weight: 800;
@@ -194,7 +195,7 @@ a { color: var(--link); }
   color: var(--muted);
 }
 
-.slider input { width: 220px; accent-color: var(--accent); }
+.slider input { width: 220px; accent-color: var(--accent-deep); }
 
 .foot {
   margin-top: 2rem;

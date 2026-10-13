@@ -3,6 +3,7 @@
 
 import { REELS } from "./reels.js";
 import { PALETTES } from "./palettes.js";
+import { LINKS } from "./links.js";
 
 const STORE_KEY = "jam-roulette:v1";
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -59,9 +60,11 @@ function el(tag, className, text) {
 }
 
 /** @created Claude (claude-opus-5-5) 2026-10-13 */
-function imageSearchLink(game) {
+function referenceLink(reel, game) {
   const a = el("a", "", game);
-  a.href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`${game} game`)}`;
+  a.href = reel.visual || !LINKS[game]
+    ? `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`${game} game`)}`
+    : LINKS[game];
   a.target = "_blank";
   a.rel = "noopener";
   return a;
@@ -97,7 +100,7 @@ function renderItem(reel, item) {
     const line = el("div", "item__refs", "like ");
     refs.forEach((game, i) => {
       if (i) line.append(", ");
-      line.append(imageSearchLink(game));
+      line.append(referenceLink(reel, game));
     });
     node.append(line);
   }

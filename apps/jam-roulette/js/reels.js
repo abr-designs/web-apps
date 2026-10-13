@@ -2,6 +2,7 @@
 // Date: 2026-10-13
 //
 // Curated reel entries. Each entry is [name, ...referenceGames].
+// References on a visual reel link to an image search; all others link through LINKS in links.js.
 
 export const REELS = [
   {
@@ -51,6 +52,7 @@ export const REELS = [
   {
     id: "art",
     label: "Art Style",
+    visual: true,
     entries: [
       ["1-bit pixel art", "Downwell", "Minit"],
       ["16-bit pixel art", "Chrono Trigger"],
