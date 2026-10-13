@@ -1,13 +1,13 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-13
 //
-// Builds js/palettes.js from Lospec's per-palette JSON (https://lospec.com/palette-list/<slug>.json).
-// Usage: node tools/fetch-palettes.mjs
-// Slugs that fail to load are reported and left out.
+// Builds js/palettes.js from Lospec: the most-downloaded palettes of up to 64 colors plus the hand-picked KEEP list.
+// Usage: node tools/fetch-palettes.mjs [--top N]   (default 200)
+// KEEP slugs stay in so existing share links keep resolving. KEEP slugs that fail to load are reported and left out.
 
 import { writeFile } from "node:fs/promises";
 
-const SLUGS = [
+const KEEP = [
   "1bit-monitor-glow", "paperback-2",
   "nintendo-gameboy-bgb", "ice-cream-gb", "kirokaze-gameboy", "2bit-demichrome", "mist-gb", "coldfire-gb", "fuzzyfour", "hollow",
   "ink", "blessing", "twilight-5", "oil-6", "midnight-ablaze", "slso8", "nyx8", "pollen8", "ammo-8", "rust-gold-8", "funkyfuture-8",
@@ -16,21 +16,42 @@ const SLUGS = [
   "rosy-42", "apollo", "aap-64", "resurrect-64", "endesga-64",
 ];
 
-const palettes = [];
-for (const slug of SLUGS) {
+// Matches the max of the colors slider in index.html.
+const MAX_COLORS = 64;
+
+const topIndex = process.argv.indexOf("--top");
+const top = topIndex > -1 ? Number(process.argv[topIndex + 1]) : 200;
+
+const bySlug = new Map();
+
+for (let page = 0; bySlug.size < top; page++) {
+  const url = `https://lospec.com/palette-list/load?colorNumberFilterType=any&colorNumber=8&page=${page}&tag=&sortingType=downloads`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`list page ${page}: HTTP ${res.status}`);
+  const { palettes } = await res.json();
+  if (!palettes.length) break;
+  for (const p of palettes) {
+    if (bySlug.size >= top) break;
+    if (p.colors.length > MAX_COLORS) continue;
+    bySlug.set(p.slug, { slug: p.slug, name: p.title, author: (p.user?.name || "").trim(), colors: p.colors });
+  }
+}
+console.log(`top ${bySlug.size} by downloads`);
+
+for (const slug of KEEP.filter((s) => !bySlug.has(s))) {
   try {
     const res = await fetch(`https://lospec.com/palette-list/${slug}.json`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { name, author, colors } = await res.json();
     if (!Array.isArray(colors) || colors.length === 0) throw new Error("no colors");
-    palettes.push({ slug, name, author: (author || "").trim(), colors });
-    console.log(`ok   ${slug} (${colors.length})`);
+    bySlug.set(slug, { slug, name, author: (author || "").trim(), colors });
+    console.log(`keep ${slug} (${colors.length})`);
   } catch (err) {
     console.warn(`skip ${slug}: ${err.message}`);
   }
 }
 
-palettes.sort((a, b) => a.colors.length - b.colors.length);
+const palettes = [...bySlug.values()].sort((a, b) => a.colors.length - b.colors.length || a.name.localeCompare(b.name));
 const body = palettes.map((p) => `  ${JSON.stringify(p)},`).join("\n");
 await writeFile(
   new URL("../js/palettes.js", import.meta.url),
