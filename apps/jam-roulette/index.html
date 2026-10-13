@@ -1,0 +1,36 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-13 -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#16121f">
+  <title>Jam Roulette</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Jam Roulette</h1>
+    <p class="top__sub">Spin a mechanic, art style, twist and palette for your next game jam.</p>
+  </header>
+
+  <nav id="toggles" class="toggles" aria-label="Reels in play"></nav>
+
+  <main id="reels" class="reels"></main>
+  <p id="status" class="visually-hidden" role="status"></p>
+
+  <div class="controls">
+    <button id="spin" class="spin" type="button">Spin</button>
+    <button id="copy" class="secondary" type="button">Copy link</button>
+    <label class="slider">
+      <span>Max palette colors: <output id="max-colors-out"></output></span>
+      <input id="max-colors" type="range" min="2" max="64" step="1">
+    </label>
+  </div>
+
+  <footer class="foot">Palettes from <a href="https://lospec.com/palette-list" target="_blank" rel="noopener">Lospec</a>. Game links open an image search.</footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
