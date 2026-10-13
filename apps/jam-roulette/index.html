@@ -20,6 +20,17 @@
   <main id="reels" class="reels"></main>
   <p id="status" class="visually-hidden" role="status"></p>
 
+  <section class="prompt">
+    <div class="prompt__header">
+      <div class="view-tabs" role="group" aria-label="Show the result as">
+        <button id="view-prompt" class="chip" type="button">See as prompt</button>
+        <button id="view-pitch" class="chip" type="button">See as description</button>
+      </div>
+      <button id="copy-prompt" class="secondary" type="button">Copy text</button>
+    </div>
+    <div id="prompt" class="prompt__text" role="region" aria-label="Rolled result as text"></div>
+  </section>
+
   <div class="controls">
     <button id="spin" class="spin" type="button">Spin</button>
     <button id="copy" class="secondary" type="button">Copy link</button>

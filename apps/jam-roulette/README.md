@@ -3,7 +3,7 @@
 
 # Jam Roulette
 
-Spin slot-machine reels for a game jam prompt: Mechanic, Art Style, Input, Character, Setting and a Lospec colour palette. Lock a reel to keep it on the next spin, toggle reels on or off, and copy a link that reproduces the result. Static HTML, CSS and JS; settings live in `localStorage`, the result lives in the URL hash.
+Spin slot-machine reels for a game jam prompt: Mechanic, Art Style, Input, Character, Setting and a Lospec colour palette. Lock a reel to keep it on the next spin, toggle reels on or off, copy the result as a written prompt (palette as hex codes) or an elevator-pitch description, and copy a link that reproduces the result. Static HTML, CSS and JS; settings live in `localStorage`, the result lives in the URL hash.
 
 ## Run
 
@@ -17,9 +17,9 @@ npx --yes http-server . -p 8082 -c-1
 
 | File | What it holds |
 |---|---|
-| `index.html` | Page shell: reel toggles, reel grid, Spin, Copy link, colour slider |
+| `index.html` | Page shell: reel toggles, reel grid, prompt box, Spin, Copy link, colour slider |
 | `css/style.css` | Theme tokens on `:root` (Color Hunt palette) and all styles |
-| `js/main.js` | Spin animation, locks, toggles, share link, `localStorage` |
+| `js/main.js` | Spin animation, locks, toggles, prompt and description text (`buildPrompt()`, `buildPitch()`), share link, `localStorage` |
 | `js/reels.js` | Curated reel entries. Edit by hand |
 | `js/links.js` | Steam or Wikipedia page per reference game. Generated |
 | `js/palettes.js` | Lospec palettes. Generated |

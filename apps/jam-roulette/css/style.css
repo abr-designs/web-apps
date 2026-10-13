@@ -149,6 +149,64 @@ a { color: var(--link); }
   overflow: hidden;
 }
 
+.prompt {
+  max-width: 1100px;
+  margin: 1.25rem auto 0;
+}
+
+.prompt__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.prompt__text {
+  min-height: 8rem;
+  padding: 0.75rem 0.9rem;
+  border: 2px solid var(--panel-edge);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--fg);
+  font: 0.95rem/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.prompt__text--plain { white-space: pre-wrap; }
+
+.prompt__text p { margin: 0 0 0.75rem; }
+
+.hex-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 9rem;
+}
+
+.hex-list li {
+  break-inside: avoid;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hex-list__swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 3px;
+  flex: none;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -186,6 +244,8 @@ a { color: var(--link); }
   font: inherit;
   cursor: pointer;
 }
+
+.secondary:disabled { opacity: 0.6; cursor: progress; }
 
 .slider {
   display: flex;

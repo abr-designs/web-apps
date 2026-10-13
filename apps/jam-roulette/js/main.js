@@ -9,7 +9,8 @@ const STORE_KEY = "jam-roulette:v1";
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
 const reels = [...REELS, { id: "palette", label: "Palette", palette: true }];
-const state = { active: {}, locked: {}, maxColors: 16, result: {} };
+const BUILT_IN = ["mechanic", "art", "input", "character", "setting"];
+const state = { active: {}, locked: {}, maxColors: 16, result: {}, view: "prompt" };
 const views = {};
 let spinning = false;
 // Reel on/off and locks from the user's own setup, kept aside while a shared link is shown.
@@ -22,6 +23,10 @@ const copyButton = document.getElementById("copy");
 const slider = document.getElementById("max-colors");
 const sliderOut = document.getElementById("max-colors-out");
 const statusEl = document.getElementById("status");
+const promptEl = document.getElementById("prompt");
+const copyPromptButton = document.getElementById("copy-prompt");
+const viewPromptButton = document.getElementById("view-prompt");
+const viewPitchButton = document.getElementById("view-pitch");
 
 /** @created Claude (claude-opus-5-5) 2026-10-13 */
 function slug(text) {
@@ -87,7 +92,7 @@ function renderItem(reel, item) {
       swatches.append(swatch);
     }
     const name = el("a", "item__name", item.name);
-    name.href = `https://lospec.com/palette-list/${item.slug}`;
+    name.href = paletteUrl(item);
     name.target = "_blank";
     name.rel = "noopener";
     const meta = `${item.colors.length} colors${item.author ? ` · by ${item.author}` : ""}`;
@@ -151,15 +156,139 @@ function spinReel(reel, order) {
 }
 
 /** @created Claude (claude-opus-5-5) 2026-10-13 */
+function midSentence(name) {
+  // Lowercase a leading word like "Gravity" or "The" but keep names such as "ASCII", "PS1" or "Game Boy".
+  const words = name.split(" ");
+  const article = ["A", "An", "The"].includes(words[0]);
+  const keep = !article && (/[A-Z]/.test(words[0].slice(1)) || /^[A-Z]/.test(words[1] || ""));
+  return keep ? name : name[0].toLowerCase() + name.slice(1);
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function rolledItem(id) {
+  return state.active[id] && findItem(reels.find((r) => r.id === id), state.result[id]);
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function extraReels() {
+  return REELS.filter((r) => !BUILT_IN.includes(r.id));
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function buildPrompt() {
+  const like = (refs) => (refs.length ? ` (like ${refs.join(" or ")})` : "");
+  const [mechanic, art, input, character, setting, palette] = [...BUILT_IN, "palette"].map(rolledItem);
+  const lines = [];
+
+  if (mechanic || art) {
+    const parts = [];
+    if (mechanic) parts.push(`where the core mechanic is ${midSentence(mechanic[0])}${like(mechanic.slice(1))}`);
+    if (art) parts.push(`with ${midSentence(art[0])} visuals${like(art.slice(1))}`);
+    lines.push(`Make a game ${parts.join(", ")}.`);
+  }
+  if (input) lines.push(`Input: ${midSentence(input[0])}${like(input.slice(1))}.`);
+  if (character) lines.push(`Character: ${midSentence(character[0])}${like(character.slice(1))}.`);
+  if (setting) lines.push(`Setting: ${midSentence(setting[0])}${like(setting.slice(1))}.`);
+  for (const reel of extraReels()) {
+    const item = rolledItem(reel.id);
+    if (item) lines.push(`${reel.label}: ${midSentence(item[0])}${like(item.slice(1))}.`);
+  }
+  if (palette) {
+    const by = palette.author ? ` by ${palette.author}` : "";
+    lines.push(`Use only the ${palette.name} palette${by} (${palette.colors.length} colors):`);
+    lines.push(...palette.colors.map((hex) => `- #${hex.toUpperCase()}`));
+  }
+  return lines.join("\n");
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function buildPitch() {
+  const [mechanic, art, input, character, setting] = BUILT_IN.map(rolledItem);
+  const extras = extraReels().map((reel) => [reel, rolledItem(reel.id)]).filter(([, item]) => item);
+  if (![mechanic, art, input, character, setting].some(Boolean) && !extras.length) return "";
+  const sentences = [];
+
+  let opening = art ? `${/^[aeiou]/i.test(art[0]) ? "An" : "A"} ${midSentence(art[0])} game` : "A game";
+  if (mechanic) opening += ` built around ${midSentence(mechanic[0])}`;
+  if (setting) {
+    const place = midSentence(setting[0]);
+    opening += /^(inside|in|on|underwater)\b/.test(place) ? `, set ${place}` : `, set in ${place}`;
+  }
+  sentences.push(`${opening}.`);
+
+  const refs = [...new Set([mechanic, art, character].filter(Boolean).map((item) => item[1]).filter(Boolean))];
+  if (refs.length) sentences.push(`Think ${refs.slice(0, 2).join(" meets ")}.`);
+  if (character) sentences.push(`${character[0]}.`);
+  if (input) sentences.push(`The catch: ${midSentence(input[0])}.`);
+  for (const [reel, item] of extras) sentences.push(`${reel.label}: ${midSentence(item[0])}.`);
+  return sentences.join(" ");
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function paletteUrl(palette) {
+  return `https://lospec.com/palette-list/${palette.slug}`;
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function renderPitch() {
+  const palette = rolledItem("palette");
+  const pitch = buildPitch();
+  const nodes = pitch ? [el("p", "", pitch)] : [];
+  if (!palette) return nodes;
+
+  const line = el("p", "", `Everything is drawn in the ${palette.colors.length}-color `);
+  const link = el("a", "", palette.name);
+  link.href = paletteUrl(palette);
+  link.target = "_blank";
+  link.rel = "noopener";
+  line.append(link, " palette:");
+
+  const list = el("ul", "hex-list");
+  for (const hex of palette.colors) {
+    const item = el("li");
+    const swatch = el("span", "hex-list__swatch");
+    swatch.style.background = `#${hex}`;
+    item.append(swatch, `#${hex.toUpperCase()}`);
+    list.append(item);
+  }
+  return [...nodes, line, list];
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function pitchText() {
+  const palette = rolledItem("palette");
+  const parts = [buildPitch()];
+  if (palette) {
+    const colors = palette.colors.map((hex) => `- #${hex.toUpperCase()}`).join("\n");
+    parts.push(`Everything is drawn in the ${palette.colors.length}-color ${palette.name} palette (${paletteUrl(palette)}):\n${colors}`);
+  }
+  return parts.filter(Boolean).join("\n\n");
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+function renderText() {
+  const pitch = state.view === "pitch";
+  viewPromptButton.setAttribute("aria-pressed", String(!pitch));
+  viewPitchButton.setAttribute("aria-pressed", String(pitch));
+  // Results are set when a spin starts, so the text waits for the reels to stop.
+  if (spinning) return;
+  promptEl.classList.toggle("prompt__text--plain", !pitch);
+  if (pitch) promptEl.replaceChildren(...renderPitch());
+  else promptEl.textContent = buildPrompt();
+}
+
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
 async function spin() {
   if (spinning) return;
   const targets = reels.filter((r) => state.active[r.id] && (!state.locked[r.id] || !findItem(r, state.result[r.id])));
   if (!targets.length) return;
   spinning = true;
   spinButton.disabled = true;
+  copyPromptButton.disabled = true;
   await Promise.all(targets.map((reel, i) => spinReel(reel, i)));
   spinning = false;
   spinButton.disabled = false;
+  copyPromptButton.disabled = false;
   statusEl.textContent = reels.filter((r) => state.active[r.id]).map((r) => {
     const item = findItem(r, state.result[r.id]);
     return `${r.label}: ${r.palette ? item.name : item[0]}`;
@@ -174,6 +303,7 @@ function save() {
     if (state.active[reel.id] && state.result[reel.id]) params.set(reel.id, state.result[reel.id]);
   }
   history.replaceState(null, "", params.size ? `#${params}` : location.pathname + location.search);
+  renderText();
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({ ...state, ...storedSetup }));
   } catch { /* storage unavailable: settings just won't persist */ }
@@ -189,6 +319,7 @@ function load() {
       Object.assign(state.locked, saved.locked);
       Object.assign(state.result, saved.result);
       if (Number.isInteger(saved.maxColors) && saved.maxColors >= 2 && saved.maxColors <= 64) state.maxColors = saved.maxColors;
+      if (saved.view === "pitch") state.view = "pitch";
     }
   } catch { /* ignore unreadable storage */ }
 
@@ -272,15 +403,29 @@ slider.addEventListener("input", () => {
   syncSlider();
   save();
 });
-copyButton.addEventListener("click", async () => {
+/** @created Claude (claude-opus-5-5) 2026-10-13 */
+async function copyText(button, text) {
+  // Keep the original label so a second click within the timeout restores it, not "Copied!".
+  button.dataset.label ??= button.textContent;
+  const label = button.dataset.label;
   try {
-    await navigator.clipboard.writeText(location.href);
-    copyButton.textContent = "Copied!";
+    await navigator.clipboard.writeText(text);
+    button.textContent = "Copied!";
   } catch {
-    copyButton.textContent = "Copy failed";
+    button.textContent = "Copy failed";
   }
-  setTimeout(() => { copyButton.textContent = "Copy link"; }, 1500);
-});
+  setTimeout(() => { button.textContent = label; }, 1500);
+}
+
+copyButton.addEventListener("click", () => copyText(copyButton, location.href));
+copyPromptButton.addEventListener("click", () =>
+  copyText(copyPromptButton, state.view === "pitch" ? pitchText() : buildPrompt()));
+for (const [button, view] of [[viewPromptButton, "prompt"], [viewPitchButton, "pitch"]]) {
+  button.addEventListener("click", () => {
+    state.view = view;
+    save();
+  });
+}
 addEventListener("hashchange", () => location.reload());
 document.addEventListener("keydown", (e) => {
   if (e.code === "Space" && e.target === document.body) {
