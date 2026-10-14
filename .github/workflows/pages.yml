@@ -36,6 +36,9 @@ jobs:
       - name: Validate apps
         run: node scripts/build-directory.mjs
 
+      - name: Check app logos
+        run: node scripts/sync-logo.mjs --check
+
   build:
     needs: test
     # Fork PRs cannot deploy, so their runs stop after the tests.
