@@ -88,6 +88,7 @@ test('buildIndex sorts newest first, null last', () => {
 test('assembleSite copies shell and apps', () => {
   const root = makeTree({
     'index.html': '', 'directory.css': '', 'directory.js': '',
+    'assets/logo/logo.css': '', 'assets/logo/senor_claude.png': '',
     'apps/x/index.html': '', 'apps/x/js/app.js': '', 'apps/x/js/docs/keep.txt': '',
     'apps/x/docs/a.md': '', 'apps/x/tests/t.js': '', 'apps/x/tools/t.mjs': '',
     'apps/x/.claude/s.md': '', 'apps/x/.kanban/b.json': '',
@@ -96,6 +97,7 @@ test('assembleSite copies shell and apps', () => {
   const entry = { ...meta('x'), updated: null, url: 'x/' };
   assembleSite(root, out, [entry]);
   for (const rel of ['index.html', 'directory.css', 'directory.js', 'apps.json', '.nojekyll',
+    'assets/logo/logo.css', 'assets/logo/senor_claude.png',
     'x/index.html', 'x/js/app.js', 'x/js/docs/keep.txt']) {
     assert.ok(fs.existsSync(path.join(out, rel)), `expected ${rel}`);
   }
@@ -219,7 +221,7 @@ test('collectDev warns and continues when git fails for a PR', () => {
 });
 
 test('assembleSite writes dev.json and filtered dev copies', () => {
-  const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '' });
+  const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '', 'assets/logo/logo.css': '' });
   const workDir = makeTree({ 'pr-4/apps/new/index.html': '', 'pr-4/apps/new/docs/a.md': '', 'pr-4/apps/new/.claude/x': '' });
   const out = path.join(root, '_site');
   const dev = [{ ...meta('new'), updated: '2026-10-03T00:00:00Z', url: 'dev/pr-4/new/', pr: { number: 4, title: 'T', url: 'u' } }];
@@ -231,7 +233,7 @@ test('assembleSite writes dev.json and filtered dev copies', () => {
 });
 
 test('assembleSite writes empty dev.json without dev entries', () => {
-  const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '' });
+  const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '', 'assets/logo/logo.css': '' });
   const out = path.join(root, '_site');
   assembleSite(root, out, []);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'dev.json'), 'utf8')), []);

@@ -12,6 +12,7 @@ import { pathToFileURL } from 'node:url';
 
 export const COLORS = ['teal', 'purple', 'coral', 'pink', 'amber', 'blue', 'gray'];
 const SHELL_FILES = ['index.html', 'directory.css', 'directory.js'];
+const LOGO_DIR = 'assets/logo'; // [Claude 2026-10-14]
 const STRIPPED_DIRS = ['docs', 'tests', 'tools'];
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -191,6 +192,7 @@ function copyApp(appDir, dest) {
 export function assembleSite(rootDir, outDir, entries, devEntries = [], workDir = null) {
   fs.mkdirSync(outDir, { recursive: true });
   for (const file of SHELL_FILES) fs.copyFileSync(path.join(rootDir, file), path.join(outDir, file));
+  fs.cpSync(path.join(rootDir, LOGO_DIR), path.join(outDir, LOGO_DIR), { recursive: true }); // [Claude 2026-10-14]
   fs.writeFileSync(path.join(outDir, 'apps.json'), JSON.stringify(entries, null, 2));
   fs.writeFileSync(path.join(outDir, 'dev.json'), JSON.stringify(devEntries, null, 2));
   fs.writeFileSync(path.join(outDir, '.nojekyll'), '');
