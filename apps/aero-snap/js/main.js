@@ -17,7 +17,9 @@ import { createCritters } from './critters/critters.js';
 import { capturePhoto, toJpeg } from './photo/capture.js';
 import { analyzeShot } from './photo/analyze.js';
 import { REQUESTS, matchRequests } from './requests.js';
-import { showPolaroid } from './ui/polaroid.js';
+import { showPolaroid, chooseAll } from './ui/polaroid.js';
+import { openStore, loadProgress, saveProgress } from './save.js';
+import { applyMatch, defaultKeep, pushToRoll } from './progress.js';
 import { unlockAudio, startAmbient, playShutter } from './audio.js';
 import { createInput } from './input.js';
 import { createPlayer } from './player/controller.js';
@@ -55,6 +57,17 @@ const rig = createCameraRig(camera, colliders);
 const occluders = [...island.meshes, ...landmarks.meshes, ...critters.objects];
 const requestText = new Map(REQUESTS.map((r) => [r.id, r.text]));
 const flashEl = document.getElementById('flash');
+const storeReady = openStore();
+let progress = loadProgress();
+// Listeners notified whenever progress changes (gadget, scrapbook).
+const progressListeners = [];
+function setProgress(next) {
+  progress = next;
+  saveProgress(progress);
+  progressListeners.forEach((fn) => fn(progress));
+}
+input.onKey('KeyN', () => chooseAll('new'));
+input.onKey('KeyO', () => chooseAll('old'));
 
 window.addEventListener('mousedown', () => {
   unlockAudio();
@@ -79,7 +92,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-/** Snaps the aim camera's view, grades it and shows the result card. Runs inside tick, before the frame renders. */
+/** Snaps the aim camera's view, grades it, saves it and shows the result card. Runs inside tick, before the frame renders. */
 function takePhoto() {
   const shot = capturePhoto({ renderer, composer, renderPass, camera, hidden: [player.object] });
   playShutter();
@@ -88,11 +101,35 @@ function takePhoto() {
   flashEl.classList.add('is-on');
   const subjects = analyzeShot(shot.camera, getSubjects(), occluders);
   const matches = matchRequests({ subjects, phase: sky.phase() });
-  return toJpeg(shot.canvas).then((blob) => {
-    const url = URL.createObjectURL(blob);
-    showPolaroid({ url, matches: matches.map((m) => ({ ...m, text: requestText.get(m.requestId) })) });
-    return { blob, subjects, matches };
+  return finishPhoto(shot.canvas, subjects, matches);
+}
+
+async function finishPhoto(canvas, subjects, matches) {
+  const blob = await toJpeg(canvas);
+  const store = await storeReady;
+  const id = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  await store.putPhoto({ id, blob, takenAt: Date.now(), matches: matches.map(({ requestId, stars }) => ({ requestId, stars })) });
+
+  let { progress: next, dropped } = pushToRoll(progress, id);
+  dropped.forEach((d) => store.deletePhoto(d));
+  const entries = matches.map((m) => {
+    const existing = next.requests[m.requestId];
+    const choice = defaultKeep(existing?.stars, m.stars);
+    if (choice === 'new') next = applyMatch(next, m.requestId, id, m.stars);
+    return { ...m, text: requestText.get(m.requestId), existing, choice };
   });
+  setProgress(next);
+
+  showPolaroid({
+    url: URL.createObjectURL(blob),
+    matches: entries,
+    onChoice(requestId, choice) {
+      const e = entries.find((x) => x.requestId === requestId);
+      const keep = choice === 'new' ? { photoId: id, stars: e.stars } : e.existing;
+      setProgress(applyMatch(progress, requestId, keep.photoId, keep.stars));
+    },
+  });
+  return { id, blob, subjects, matches };
 }
 
 function tick(dt) {
@@ -121,7 +158,7 @@ requestAnimationFrame(frame);
 // Debug aid: ?debug exposes live game objects on window for the console.
 if (new URLSearchParams(location.search).has('debug')) {
   window.__game = { scene, landmarks, critters, sky, getSubjects, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
-    snap: takePhoto,
+    snap: takePhoto, getProgress: () => progress,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); },
   };
 }

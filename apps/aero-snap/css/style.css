@@ -87,3 +87,16 @@ html, body {
 .polaroid__list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .polaroid__stars { color: #f2a91d; letter-spacing: 1px; }
 .polaroid__none { color: rgba(11, 42, 74, 0.7); }
+.polaroid__keep { display: inline-flex; gap: 4px; margin-left: auto; }
+.polaroid__keep button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 42, 74, 0.25);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+.polaroid__keep button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.polaroid__hint { margin: 8px 0 0; font-size: 12px; color: rgba(11, 42, 74, 0.6); }
