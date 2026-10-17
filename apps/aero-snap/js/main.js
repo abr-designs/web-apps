@@ -13,6 +13,7 @@ import { applyEnvironment } from './world/materials.js';
 import { createIsland } from './world/island.js';
 import { createLandmarks } from './world/landmarks.js';
 import { getSubjects } from './subjects.js';
+import { createCritters } from './critters/critters.js';
 import { createInput } from './input.js';
 import { createPlayer } from './player/controller.js';
 import { createCameraRig } from './player/cameraRig.js';
@@ -39,6 +40,7 @@ const sky = createSky(scene);
 applyEnvironment(renderer, scene);
 const island = createIsland(scene);
 const landmarks = createLandmarks(scene);
+const critters = createCritters(scene, landmarks);
 const colliders = [...island.meshes, ...landmarks.meshes];
 const input = createInput(canvas);
 const player = createPlayer(scene);
@@ -47,6 +49,8 @@ const rig = createCameraRig(camera, colliders);
 
 let state = 'explore';
 let worldTime = 0;
+// Debug aid: ?fast runs the day cycle 10x so golden hour and dusk arrive quickly.
+const timeScale = new URLSearchParams(location.search).has('fast') ? 10 : 1;
 
 function resize() {
   const w = window.innerWidth;
@@ -63,10 +67,11 @@ resize();
 
 function tick(dt) {
   if (state !== 'scrapbook') {
-    worldTime += dt;
+    worldTime += dt * timeScale;
     sky.update(worldTime);
     island.update(dt);
     landmarks.update(dt);
+    critters.update(dt, sky.phase(), player);
     if (state === 'explore' || state === 'aim') state = input.aiming ? 'aim' : 'explore';
     player.update(dt, input, rig.yaw, state === 'aim');
     rig.update(dt, player, input, state);
@@ -84,7 +89,7 @@ requestAnimationFrame(frame);
 
 // Debug aid: ?debug exposes live game objects on window for the console.
 if (new URLSearchParams(location.search).has('debug')) {
-  window.__game = { scene, landmarks, getSubjects, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
+  window.__game = { scene, landmarks, critters, sky, getSubjects, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); },
   };
 }
