@@ -1,0 +1,110 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-10-16 */
+
+:root {
+  --page: #8C867C;
+  --floor: #2B2724;
+  --wall: #5E4A3C;
+  --ink: #E8E2D6;
+  --muted: #B8AC9C;
+  --health: #C9443F;
+  --armour: #5B8DB8;
+  --power: #81B29A;
+  --panel: rgba(30, 27, 24, 0.72);
+  --track: rgba(255, 255, 255, 0.12);
+  --button: #3A342F;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--page);
+  color: var(--ink);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+
+.crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  z-index: 4;
+  pointer-events: none;
+  border: 2px solid rgba(232, 226, 214, 0.85);
+  border-radius: 50%;
+}
+
+.hurt {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 120px 30px rgba(201, 68, 63, 0.8);
+}
+
+.hud, .debug, .top-center, .debug-toggle {
+  position: fixed;
+  z-index: 5;
+}
+
+.hud, .debug, .stats, .depot-timer, .debug-toggle {
+  background: var(--panel);
+  border: 0.5px solid var(--wall);
+  border-radius: 8px;
+}
+
+.hud { top: 12px; left: 12px; width: 240px; padding: 10px 12px; }
+.bar-row { display: grid; grid-template-columns: 52px 1fr 52px; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bar-row b { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+.bar { height: 10px; background: var(--track); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; border-radius: 3px; }
+#bar-health { background: var(--health); }
+#bar-armour { background: var(--armour); }
+#bar-scrap { background: var(--power); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.chips span { background: var(--track); border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+
+.top-center { top: 12px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.stats { padding: 4px 12px; font-variant-numeric: tabular-nums; }
+.depot-timer { padding: 4px 12px; border-left: 6px solid var(--wall); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.debug-toggle { top: 12px; right: 12px; padding: 4px 10px; color: var(--ink); font: inherit; cursor: pointer; }
+.debug { top: 44px; right: 12px; width: 270px; max-height: calc(100vh - 60px); overflow-y: auto; padding: 10px 12px; }
+.debug h3 { margin: 10px 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.debug h3:first-child { margin-top: 0; }
+.debug label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 3px 0; }
+.debug input[type="range"] { width: 110px; }
+.debug input[type="number"] { width: 56px; }
+.debug output { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+.debug .buttons { display: flex; gap: 6px; margin-top: 10px; }
+.debug button, .choices button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--button);
+  border: 0.5px solid var(--muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.overlay { position: fixed; inset: 0; z-index: 8; display: grid; place-items: center; background: rgba(20, 18, 16, 0.5); }
+.overlay[hidden] { display: none; }
+.card { background: var(--floor); border-radius: 12px; padding: 20px 24px; min-width: 300px; max-width: 560px; text-align: center; }
+.card h2 { margin: 0 0 6px; font-size: 20px; }
+.card p { margin: 0 0 12px; }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.choices button { padding: 10px; text-align: left; }
+.choices button b { display: block; margin-bottom: 2px; }
+.choices button:disabled { opacity: 0.45; cursor: default; }
+
+.help { position: fixed; left: 12px; bottom: 8px; margin: 0; z-index: 5; opacity: 0.75; }
