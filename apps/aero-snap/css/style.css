@@ -1,0 +1,35 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-10-16 */
+
+:root {
+  --sky-top: #1E6FE8;
+  --sky-horizon: #8FD3FF;
+  --chrome: #F4F8FB;
+  --glass: #BFF3FF;
+  --grass: #7ED957;
+  --accent: #00B8D9;
+  --highlight: #FF6B6B;
+  --text: #0B2A4A;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1.1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--sky-top);
+  color: var(--text);
+  font: 14px/1.35 "Segoe UI", "Trebuchet MS", system-ui, sans-serif;
+  user-select: none;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+}
