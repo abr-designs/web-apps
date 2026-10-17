@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A small paranormal investigation game about catching a room changing in the dark."
+    />
+    <title>Room 404 — Paranormal Survey</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="logo/logo.css"> <!-- [Claude 2026-10-16] -->
+  </head>
+  <body>
+    <img class="app-logo" src="logo/senor_claude.png" alt=""> <!-- [Claude 2026-10-16] -->
+    <main id="game" aria-label="Room 404 paranormal investigation game">
+      <div id="viewport" aria-hidden="true"></div>
+
+      <div class="screen-effects" aria-hidden="true">
+        <div class="vignette"></div>
+        <div class="scanlines"></div>
+        <div class="noise"></div>
+      </div>
+
+      <div id="flash" aria-hidden="true"></div>
+
+      <aside id="photo-viewer" aria-hidden="true">
+        <div class="photo-print">
+          <div class="photo-image-wrap">
+            <img id="captured-photo" alt="The room immediately before the anomaly appeared" />
+            <span class="photo-scan-mark">R-404 / BEFORE</span>
+          </div>
+          <div class="photo-caption">
+            <div>
+              <strong>FLASH EVIDENCE</strong>
+              <span>PRE-DISTURBANCE EXPOSURE</span>
+            </div>
+            <small>RELEASE <kbd>Q</kbd> TO LOWER PHOTO</small>
+          </div>
+        </div>
+      </aside>
+
+      <section id="hud" aria-live="polite">
+        <div class="hud-top">
+          <div class="brand plate">
+            <span class="brand-mark">R•404</span>
+            <span class="brand-sub">ANOMALY SURVEY UNIT</span>
+          </div>
+
+          <div class="status plate">
+            <span class="status-light" id="status-light"></span>
+            <span id="phase-label">STANDBY</span>
+            <span class="status-divider">/</span>
+            <span id="camera-label">FIRST PERSON</span>
+          </div>
+
+          <div class="counters plate">
+            <div>
+              <span class="counter-label">CLEARED</span>
+              <strong><span id="score">0</span>/5</strong>
+            </div>
+            <div>
+              <span class="counter-label">STRIKES</span>
+              <strong id="strikes">○ ○ ○</strong>
+            </div>
+          </div>
+        </div>
+
+        <div id="reticle" aria-hidden="true"><span></span><span></span></div>
+        <div id="target-label" aria-hidden="true"></div>
+        <div id="photo-indicator" class="photo-indicator plate" aria-hidden="true">
+          <span>PHOTO READY</span>
+          <strong>HOLD <kbd>Q</kbd> TO COMPARE</strong>
+        </div>
+
+        <div class="hud-bottom">
+          <div id="objective" class="objective plate">Inspect the room. Memorize what you see.</div>
+          <div class="controls plate">
+            <span><kbd>WASD</kbd> MOVE</span>
+            <span><kbd>MOUSE</kbd> LOOK</span>
+            <span><kbd>SPACE</kbd> FLASH</span>
+            <span><kbd>Q</kbd> PHOTO</span>
+            <span><kbd>C</kbd> VIEW</span>
+            <span><kbd>F2</kbd> LIGHTS</span>
+            <span><kbd>LMB</kbd> REPORT</span>
+          </div>
+        </div>
+      </section>
+
+      <div id="toast" role="status" aria-live="assertive"></div>
+
+      <aside id="debug-panel" aria-labelledby="debug-title">
+        <div class="debug-header">
+          <div>
+            <span>R-404 DEVELOPMENT TOOL</span>
+            <strong id="debug-title">LIGHTING DEBUG</strong>
+          </div>
+          <button id="debug-close" type="button" aria-label="Close lighting debug panel">×</button>
+        </div>
+        <label class="debug-control" for="room-brightness">
+          <span>ROOM BRIGHTNESS <output id="room-brightness-value">100%</output></span>
+          <input id="room-brightness" type="range" min="0.4" max="1.8" step="0.05" value="1" />
+        </label>
+        <label class="debug-control" for="flash-brightness">
+          <span>FLASH BRIGHTNESS <output id="flash-brightness-value">10%</output></span>
+          <input id="flash-brightness" type="range" min="0.1" max="1.5" step="0.05" value="0.1" />
+        </label>
+        <p>Press <kbd>F2</kbd> to close and resume mouse look.</p>
+      </aside>
+
+      <section id="intro" class="modal-layer active" aria-labelledby="intro-title">
+        <div class="case-file">
+          <div class="case-stamp">CASE #R-404</div>
+          <p class="eyebrow">PARANORMAL PROPERTY DIVISION</p>
+          <h1 id="intro-title">Something in this room<br /><em>will not stay put.</em></h1>
+          <div class="divider"></div>
+          <p class="briefing">
+            Study the room. Fire the camera flash. While your eyes recover, one object may move.
+            Compare the photograph with the live room and file your report before three mistakes.
+          </p>
+          <div class="mission-stats">
+            <div><span>OBJECTIVE</span><strong>5 ANOMALIES</strong></div>
+            <div><span>TOLERANCE</span><strong>3 STRIKES</strong></div>
+            <div><span>EQUIPMENT</span><strong>FLASH CAMERA</strong></div>
+          </div>
+          <button id="start-button" class="primary-button" type="button">
+            <span>ENTER ROOM 404</span>
+            <small>CLICK TO ENABLE MOUSE LOOK</small>
+          </button>
+          <p class="fine-print">Headphones recommended • Desktop keyboard and mouse required</p>
+        </div>
+      </section>
+
+      <section id="pause" class="modal-layer" aria-labelledby="pause-title">
+        <div class="pause-card">
+          <p class="eyebrow">CAMERA DISCONNECTED</p>
+          <h2 id="pause-title">Investigation paused</h2>
+          <p>Your case is still waiting in the room.</p>
+          <button id="resume-button" class="primary-button compact" type="button">RESUME</button>
+        </div>
+      </section>
+
+      <section id="ending" class="modal-layer" aria-labelledby="ending-title">
+        <div class="case-file ending-card">
+          <p class="eyebrow" id="ending-kicker">CASE CLOSED</p>
+          <h2 id="ending-title">Room cleared.</h2>
+          <p id="ending-copy">Five disturbances documented. Whatever is here knows you saw it.</p>
+          <button id="restart-button" class="primary-button" type="button">RUN ANOTHER SURVEY</button>
+        </div>
+      </section>
+
+      <section id="webgl-error" class="modal-layer" aria-labelledby="error-title">
+        <div class="pause-card">
+          <p class="eyebrow">EQUIPMENT FAILURE</p>
+          <h2 id="error-title">WebGL is unavailable</h2>
+          <p>This investigation needs a browser with hardware-accelerated WebGL enabled.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
