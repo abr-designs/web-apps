@@ -1,6 +1,8 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-16
 
+import * as THREE from '../vendor/three.module.min.js';
+
 // ---------- World ----------
 
 const MAP = [
@@ -30,10 +32,13 @@ const TILE = 50;
 const WORLD = GRID * TILE;
 const SPAWNS = [[75, 75], [925, 75], [75, 925], [925, 925], [500, 75], [500, 925]];
 
+// Rust-and-haze wasteland: grey-brown fog, muddy ground, rusted junk, a dark-coated player.
 const COLORS = {
-  page: '#E8DFD2', floor: '#F4EFE6', wall: '#B9AA98', ink: '#2E4057',
-  chaser: '#E07A5F', shooter: '#E9B44C', brute: '#8E7DBE',
-  health: '#D1495B', armour: '#5B8DB8', power: '#81B29A',
+  fog: '#8C867C', ground: '#4A4038', wall: '#5E4A3C', coat: '#2F3D49', hair: '#3A2E26',
+  chaser: '#B5532F', shooter: '#C9A04A', brute: '#6A5578',
+  health: '#C9443F', armour: '#5B8DB8', power: '#81B29A', special: '#9A7FC9',
+  bullet: '#F2E3B3', dome: '#3E342C',
+  junk: ['#3B312A', '#6B4A35', '#7A3B2A', '#2F3A44', '#5C5148', '#4E3B2E'],
 };
 
 const ENEMY_TYPES = {
@@ -50,7 +55,7 @@ const DEPOT_SPOTS = [[500, 500], [100, 100], [900, 100], [100, 900], [900, 900],
 const DEPOT_TYPES = {
   player: { name: 'Player', color: COLORS.armour },
   weapon: { name: 'Weapon', color: COLORS.health },
-  special: { name: 'Specials', color: COLORS.brute },
+  special: { name: 'Specials', color: COLORS.special },
 };
 const DASH_TIME = 0.15; // seconds a dash lasts; the player is invulnerable for this long
 const SHOP = {
@@ -93,6 +98,7 @@ const DEFAULT_DEBUG = {
   dashDistance: 180,
   waveTime: 40,
   depotTime: 20,
+  mouseSens: 0.25,
   pool: Object.fromEntries(Object.keys(UPGRADES).map((k) => [k, true])),
 };
 
@@ -227,25 +233,27 @@ function newGame() {
     enemyBullets: [],
     pickups: [],
     swings: [],
-    texts: [],
   };
   flowTile = -1;
   hideOverlay();
   renderChips();
   syncUpgradeInputs();
+  lockPointer();
 }
 
 // ---------- Input ----------
 
 const keys = new Set();
-const mouse = { x: 0, y: 0, down: false };
+const mouse = { down: false };
+// Camera heading on the ground plane (radians, same convention as atan2(dy, dx)) and downward tilt.
+const look = { yaw: -Math.PI / 2, pitch: 0.3 };
 
 addEventListener('keydown', (ev) => {
   if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLSelectElement) return;
   const k = ev.key.toLowerCase();
   keys.add(k);
   if (k === '`') toggleDebug();
-  if (k === 'p' || k === 'escape') togglePause();
+  if (k === 'p') togglePause();
   if (k === 'r' && state.mode === 'over') newGame();
   if (k === ' ') ev.preventDefault();
   if (k === 'escape' && state.mode === 'shop') closeShop();
@@ -258,9 +266,24 @@ addEventListener('keyup', (ev) => keys.delete(ev.key.toLowerCase()));
 addEventListener('blur', () => { keys.clear(); mouse.down = false; });
 
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-canvas.addEventListener('mousemove', (ev) => { mouse.x = ev.clientX; mouse.y = ev.clientY; });
-canvas.addEventListener('mousedown', (ev) => { if (ev.button === 0) mouse.down = true; });
+const locked = () => document.pointerLockElement === canvas;
+function lockPointer() {
+  if (locked()) return;
+  lockPending = true;
+  canvas.requestPointerLock()?.catch?.(() => { lockPending = false; });
+}
+
+addEventListener('mousemove', (ev) => {
+  if (!locked()) return;
+  const sens = debug.mouseSens / 100;
+  look.yaw += ev.movementX * sens;
+  look.pitch = clamp(look.pitch + ev.movementY * sens, -0.35, 1.1);
+});
+canvas.addEventListener('mousedown', (ev) => {
+  if (ev.button !== 0) return;
+  if (locked()) mouse.down = true;
+  else if (state.mode === 'playing') lockPointer();
+});
 addEventListener('mouseup', (ev) => { if (ev.button === 0) mouse.down = false; });
 canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
@@ -290,17 +313,29 @@ function rollDamage(base) {
   return { dmg: base * weaponPower() * (crit ? critMultiplier() : 1), crit };
 }
 
+/** Ground-plane point under the crosshair, so shots from the player's shoulder converge on it. */
 function aimWorld() {
-  return { x: (mouse.x - view.ox) / view.scale, y: (mouse.y - view.oy) / view.scale };
+  const p = state.player;
+  const dir = aimDir; // set by updateCamera()
+  const t = dir.y < -0.01 ? (AIM_HEIGHT - camera.position.y) / dir.y : Infinity;
+  if (t > 0 && t < 1500) {
+    const x = camera.position.x + dir.x * t, y = camera.position.z + dir.z * t;
+    // Ignore points so close that the aim would swing behind the player.
+    if (Math.hypot(x - p.x, y - p.y) > 40) return { x, y };
+  }
+  return { x: p.x + Math.cos(look.yaw) * 1000, y: p.y + Math.sin(look.yaw) * 1000 };
 }
 
 function updatePlayer(dt) {
   const p = state.player;
-  let mx = 0, my = 0;
-  if (keys.has('w') || keys.has('arrowup')) my -= 1;
-  if (keys.has('s') || keys.has('arrowdown')) my += 1;
-  if (keys.has('a') || keys.has('arrowleft')) mx -= 1;
-  if (keys.has('d') || keys.has('arrowright')) mx += 1;
+  // Movement is relative to the camera: W walks where the camera looks, A/D strafe.
+  let fwd = 0, side = 0;
+  if (keys.has('w') || keys.has('arrowup')) fwd += 1;
+  if (keys.has('s') || keys.has('arrowdown')) fwd -= 1;
+  if (keys.has('a') || keys.has('arrowleft')) side -= 1;
+  if (keys.has('d') || keys.has('arrowright')) side += 1;
+  const cos = Math.cos(look.yaw), sin = Math.sin(look.yaw);
+  const mx = cos * fwd - sin * side, my = sin * fwd + cos * side;
   const len = Math.hypot(mx, my);
   p.dashCd -= dt;
   if (keys.has(' ') && debug.dashEnabled && p.dashCd <= 0 && p.dashTime <= 0) startDash();
@@ -434,8 +469,7 @@ function spawnEnemy() {
 
 function damageEnemy(e, dmg, crit) {
   e.hp -= dmg;
-  e.flash = 0.08;
-  if (crit) state.texts.push({ x: e.x, y: e.y - e.r, text: Math.round(dmg), life: 0.6 });
+  e.flash = crit ? 0.16 : 0.08;
 }
 
 function updateEnemies(dt) {
@@ -544,8 +578,6 @@ function updateProjectiles(dt) {
 
   for (const s of state.swings) s.life -= dt;
   state.swings = state.swings.filter((s) => s.life > 0);
-  for (const t of state.texts) { t.life -= dt; t.y -= 30 * dt; }
-  state.texts = state.texts.filter((t) => t.life > 0);
 }
 
 // ---------- Loop ----------
@@ -603,175 +635,286 @@ function update(dt) {
 }
 
 let last = performance.now();
+let lockPending = false;
+document.addEventListener('pointerlockchange', () => { lockPending = false; });
+document.addEventListener('pointerlockerror', () => { lockPending = false; });
+
 function frame(now) {
   const dt = Math.min(1 / 30, (now - last) / 1000);
   last = now;
+  // Play needs the mouse captured; losing it (Esc, alt-tab, opening debug) pauses the run.
+  if (state.mode === 'playing' && !locked() && !lockPending) pause();
   if (state.mode === 'playing') update(dt);
   render();
   updateHud();
   requestAnimationFrame(frame);
 }
 
-// ---------- Rendering ----------
+// ---------- Rendering (Three.js: game x/y map to scene x/z, scene y is height) ----------
 
-const view = { ox: 0, oy: 0, scale: 1 };
+const AIM_HEIGHT = 20; // bullets fly at this height, and the crosshair ray aims on this plane
+const CAM = { distance: 130, shoulder: 24, height: 56 };
+const aimDir = new THREE.Vector3();
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COLORS.fog);
+scene.fog = new THREE.FogExp2(COLORS.fog, 0.0011);
+const camera = new THREE.PerspectiveCamera(65, 1, 1, 4000);
 
 function resize() {
-  const dpr = devicePixelRatio || 1;
-  canvas.width = innerWidth * dpr;
-  canvas.height = innerHeight * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const size = Math.min(innerWidth, innerHeight) - 24;
-  view.scale = size / WORLD;
-  view.ox = (innerWidth - size) / 2;
-  view.oy = (innerHeight - size) / 2;
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
 
-function circle(x, y, r, fill) {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fillStyle = fill;
-  ctx.fill();
+const lambert = (color) => new THREE.MeshLambertMaterial({ color });
+const basic = (color, extra) => new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, ...extra });
+/** Scene rotation.y that points an object's local +z along a ground-plane angle. */
+const facing = (a) => Math.PI / 2 - a;
+
+function buildWorld() {
+  scene.add(new THREE.HemisphereLight('#BDB4A6', '#3A3029', 1.4));
+  const sun = new THREE.DirectionalLight('#E8D9C0', 1.3);
+  sun.position.set(WORLD / 2 + 300, 700, WORLD / 2 - 400);
+  sun.target.position.set(WORLD / 2, 0, WORLD / 2);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -700, right: 700, top: 700, bottom: -700, near: 100, far: 2000 });
+  scene.add(sun, sun.target);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), lambert(COLORS.ground));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(WORLD / 2, 0, WORLD / 2);
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Walls are junk heaps: a few tilted slabs per tile, low inside the arena and tall on the outer ring.
+  const PIECES = 3;
+  const tiles = [];
+  for (let ty = 0; ty < GRID; ty++) {
+    for (let tx = 0; tx < GRID; tx++) if (MAP[ty][tx] === '#') tiles.push([tx, ty]);
+  }
+  const walls = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lambert('#ffffff'), tiles.length * PIECES);
+  const m = new THREE.Object3D(), c = new THREE.Color();
+  tiles.forEach(([tx, ty], i) => {
+    const edge = tx === 0 || ty === 0 || tx === GRID - 1 || ty === GRID - 1;
+    for (let j = 0; j < PIECES; j++) {
+      const h = edge ? rand(50, 110) : rand(16, 40);
+      m.position.set((tx + rand(0.3, 0.7)) * TILE, h * 0.4, (ty + rand(0.3, 0.7)) * TILE);
+      m.rotation.set(rand(-0.25, 0.25), rand(0, Math.PI), rand(-0.25, 0.25));
+      m.scale.set(TILE * rand(0.7, 1.1), h, TILE * rand(0.5, 0.9));
+      m.updateMatrix();
+      walls.setMatrixAt(i * PIECES + j, m.matrix);
+      const tint = j === 0 ? COLORS.wall : COLORS.junk[Math.floor(rand(0, COLORS.junk.length))];
+      walls.setColorAt(i * PIECES + j, c.set(tint).offsetHSL(0, rand(-0.05, 0.05), rand(-0.06, 0.05)));
+    }
+  });
+  walls.castShadow = walls.receiveShadow = true;
+  scene.add(walls);
+
+  // Low debris on the arena floor (cosmetic, no collision), bigger junk across the wasteland outside.
+  scatterJunk(200, 12, () => {
+    for (;;) {
+      const x = rand(TILE, WORLD - TILE), y = rand(TILE, WORLD - TILE);
+      if (!wallAt(x, y)) return [x, y];
+    }
+  });
+  scatterJunk(700, 70, () => {
+    const a = rand(0, Math.PI * 2), d = rand(760, 2200);
+    return [WORLD / 2 + Math.cos(a) * d, WORLD / 2 + Math.sin(a) * d];
+  });
+
+  // Collapsed lattice domes on the horizon, half lost in the haze.
+  for (const [a, d, r] of [[0.3, 1500, 260], [1.4, 1300, 180], [2.2, 1700, 320], [3.6, 1400, 220], [4.6, 1600, 280], [5.5, 1250, 160]]) {
+    const missingTop = rand(0, 0.5);
+    const geometry = new THREE.SphereGeometry(r, 20, 8, 0, Math.PI * 2, missingTop, Math.PI / 2 - missingTop);
+    const x = WORLD / 2 + Math.cos(a) * d, z = WORLD / 2 + Math.sin(a) * d;
+    const lattice = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: COLORS.dome, wireframe: true }));
+    const shell = new THREE.Mesh(geometry, basic(COLORS.dome, { opacity: 0.35, side: THREE.DoubleSide }));
+    for (const mesh of [lattice, shell]) {
+      mesh.position.set(x, -r * 0.15, z);
+      scene.add(mesh);
+    }
+  }
+}
+
+function scatterJunk(count, size, place) {
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lambert('#ffffff'), count);
+  const m = new THREE.Object3D(), c = new THREE.Color();
+  for (let i = 0; i < count; i++) {
+    const [x, y] = place();
+    const h = rand(size * 0.05, size * 0.35);
+    m.position.set(x, h * 0.3, y);
+    m.rotation.set(rand(-0.4, 0.4), rand(0, Math.PI), rand(-0.4, 0.4));
+    m.scale.set(rand(size * 0.2, size), h, rand(size * 0.1, size * 0.6));
+    m.updateMatrix();
+    mesh.setMatrixAt(i, m.matrix);
+    mesh.setColorAt(i, c.set(COLORS.junk[i % COLORS.junk.length]));
+  }
+  mesh.castShadow = mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+const GEO = {
+  body: new THREE.CylinderGeometry(10, 12, 38, 10),
+  head: new THREE.SphereGeometry(7, 10, 8),
+  gun: new THREE.BoxGeometry(4, 4, 16),
+  chaser: new THREE.IcosahedronGeometry(ENEMY_TYPES.chaser.r, 0),
+  shooter: new THREE.BoxGeometry(24, 28, 24),
+  brute: new THREE.CylinderGeometry(ENEMY_TYPES.brute.r, ENEMY_TYPES.brute.r * 1.15, 44, 8),
+  ball: new THREE.SphereGeometry(1, 8, 6),
+  pickup: new THREE.OctahedronGeometry(7),
+};
+const ENEMY_Y = { chaser: 12, shooter: 14, brute: 22 }; // half of each shape's height, so it stands on the ground
+const gunMat = lambert('#1E1E1E');
+
+// Player: dark coat, head, a gun on the right, an armour shell that fades with armour, a dash afterimage.
+const coatMat = lambert(COLORS.coat);
+const playerMesh = new THREE.Group();
+const body = new THREE.Mesh(GEO.body, coatMat);
+body.position.y = 19;
+const head = new THREE.Mesh(GEO.head, lambert(COLORS.hair));
+head.position.y = 44;
+const gun = new THREE.Mesh(GEO.gun, gunMat);
+gun.position.set(-9, 26, 12);
+const shell = new THREE.Mesh(new THREE.CylinderGeometry(17, 17, 46, 16, 1, true), basic(COLORS.armour, { side: THREE.DoubleSide }));
+shell.position.y = 23;
+for (const part of [body, head, gun]) part.castShadow = true;
+playerMesh.add(body, head, gun, shell);
+const ghost = new THREE.Mesh(GEO.body, basic(COLORS.coat, { opacity: 0.3 }));
+scene.add(playerMesh, ghost);
+
+// Depot: a pad on the ground and a tall beam that ignores fog, so it reads from anywhere on the map.
+const depotMesh = new THREE.Group();
+const pad = new THREE.Mesh(new THREE.CylinderGeometry(DEPOT_R, DEPOT_R, 3, 32), basic('#ffffff'));
+pad.position.y = 1.5;
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 600, 10, 1, true), basic('#ffffff', { fog: false }));
+beam.position.y = 300;
+depotMesh.add(pad, beam);
+scene.add(depotMesh);
+
+// Enemies, bullets, pickups and swings get a mesh on first sight; meshes whose object is gone are swept.
+let frameNo = 0;
+const live = new Set();
+
+function track(obj, make) {
+  if (!obj.mesh) {
+    obj.mesh = make();
+    scene.add(obj.mesh);
+    live.add(obj.mesh);
+  }
+  obj.mesh.userData.seen = frameNo;
+  return obj.mesh;
+}
+
+function sweep() {
+  for (const m of live) {
+    if (m.userData.seen === frameNo) continue;
+    scene.remove(m);
+    m.material.dispose();
+    if (m.userData.ownGeometry) m.geometry.dispose();
+    live.delete(m);
+  }
+}
+
+function makeEnemy(e) {
+  const mesh = new THREE.Mesh(GEO[e.type], lambert(COLORS[e.type]));
+  mesh.castShadow = true;
+  if (e.type === 'shooter') {
+    const barrel = new THREE.Mesh(GEO.gun, gunMat);
+    barrel.position.set(0, 4, 18);
+    mesh.add(barrel);
+  }
+  return mesh;
+}
+
+function makeBall(r, color) {
+  const mesh = new THREE.Mesh(GEO.ball, new THREE.MeshBasicMaterial({ color }));
+  mesh.scale.setScalar(r);
+  return mesh;
+}
+
+/** Over-the-shoulder camera: pivot right of the player, pulled back along the view, pulled in when blocked. */
+function updateCamera() {
+  const p = state.player;
+  const cos = Math.cos(look.yaw), sin = Math.sin(look.yaw);
+  const sx = p.x - sin * CAM.shoulder, sy = p.y + cos * CAM.shoulder;
+  const back = Math.cos(look.pitch) * CAM.distance;
+  const rise = Math.sin(look.pitch) * CAM.distance;
+  let reach = 0.1;
+  for (let t = 0.2; t <= 1.001; t += 0.1) {
+    const x = sx - cos * back * t, y = sy - sin * back * t;
+    const outside = x < TILE || y < TILE || x > WORLD - TILE || y > WORLD - TILE;
+    if (outside || (wallAt(x, y) && CAM.height + rise * t < 45)) break;
+    reach = t;
+  }
+  camera.position.set(sx - cos * back * reach, Math.max(8, CAM.height + rise * reach), sy - sin * back * reach);
+  aimDir.set(cos * Math.cos(look.pitch), -Math.sin(look.pitch), sin * Math.cos(look.pitch));
+  camera.lookAt(camera.position.x + aimDir.x, camera.position.y + aimDir.y, camera.position.z + aimDir.z);
 }
 
 function render() {
-  const dpr = devicePixelRatio || 1;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = COLORS.page;
-  ctx.fillRect(0, 0, innerWidth, innerHeight);
-
-  ctx.translate(view.ox, view.oy);
-  ctx.scale(view.scale, view.scale);
-
-  ctx.fillStyle = COLORS.floor;
-  ctx.fillRect(0, 0, WORLD, WORLD);
-  ctx.fillStyle = COLORS.wall;
-  for (let ty = 0; ty < GRID; ty++) {
-    for (let tx = 0; tx < GRID; tx++) {
-      if (MAP[ty][tx] === '#') ctx.fillRect(tx * TILE, ty * TILE, TILE + 0.5, TILE + 0.5);
-    }
-  }
+  frameNo++;
+  updateCamera();
+  const p = state.player;
+  const aim = aimWorld();
+  playerMesh.position.set(p.x, 0, p.y);
+  playerMesh.rotation.y = facing(Math.atan2(aim.y - p.y, aim.x - p.x));
+  coatMat.emissive.set(p.hurtFlash > 0 ? '#6A1010' : '#000000');
+  shell.visible = p.armour > 0;
+  shell.material.opacity = 0.12 + 0.3 * p.armour / PLAYER.armourMax;
+  ghost.visible = p.dashTime > 0;
+  ghost.position.set(p.x - p.dashVx * 0.05, 19, p.y - p.dashVy * 0.05);
 
   const d = state.depot;
+  depotMesh.visible = !!d;
   if (d) {
-    const type = DEPOT_TYPES[d.type];
     // Blinks in the last 3 seconds before it leaves.
     const blink = state.phaseTimer < 3 ? 0.4 + 0.6 * Math.abs(Math.sin(state.time * 6)) : 1;
-    ctx.beginPath();
-    ctx.arc(d.x, d.y, DEPOT_R, 0, Math.PI * 2);
-    ctx.globalAlpha = 0.45 * blink;
-    ctx.fillStyle = type.color;
-    ctx.fill();
-    ctx.globalAlpha = blink;
-    ctx.setLineDash([6, 5]);
-    ctx.strokeStyle = type.color;
-    ctx.lineWidth = 4;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = COLORS.ink;
-    ctx.font = '600 11px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(type.name.toUpperCase(), d.x, d.y + DEPOT_R + 13);
-    ctx.globalAlpha = 1;
+    const color = DEPOT_TYPES[d.type].color;
+    depotMesh.position.set(d.x, 0, d.y);
+    pad.material.color.set(color);
+    pad.material.opacity = 0.7 * blink;
+    beam.material.color.set(color);
+    beam.material.opacity = 0.45 * blink;
   }
+
+  for (const e of state.enemies) {
+    const mesh = track(e, () => makeEnemy(e));
+    mesh.position.set(e.x, ENEMY_Y[e.type], e.y);
+    mesh.material.emissive.set(e.flash > 0 ? '#FFFFFF' : '#000000');
+    if (e.type === 'chaser') mesh.rotation.y += 0.08;
+    else mesh.rotation.y = facing(Math.atan2(p.y - e.y, p.x - e.x));
+  }
+  for (const b of state.bullets) track(b, () => makeBall(b.r, b.crit ? COLORS.health : COLORS.bullet)).position.set(b.x, AIM_HEIGHT, b.y);
+  for (const b of state.enemyBullets) track(b, () => makeBall(b.r, COLORS.shooter)).position.set(b.x, AIM_HEIGHT, b.y);
 
   for (const s of state.pickups) {
+    const mesh = track(s, () => new THREE.Mesh(GEO.pickup, basic(COLORS.power)));
+    mesh.position.set(s.x, 12 + 3 * Math.sin(state.time * 3 + s.x), s.y);
+    mesh.rotation.y += 0.04;
     // Faded while not yet collectable, blinking in the last 3 seconds before it expires.
-    ctx.globalAlpha = s.wait > 0 ? 0.3 : s.life < 3 ? 0.6 + 0.4 * Math.sin(state.time * 12) : 1;
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = COLORS.power;
-    ctx.fillRect(-6, -6, 12, 12);
-    ctx.restore();
+    mesh.material.opacity = s.wait > 0 ? 0.3 : s.life < 3 ? 0.6 + 0.4 * Math.sin(state.time * 12) : 1;
   }
-  ctx.globalAlpha = 1;
-
-  const p = state.player;
-  for (const e of state.enemies) drawEnemy(e, p);
-
-  for (const b of state.enemyBullets) {
-    circle(b.x, b.y, b.r + 1.5, COLORS.ink);
-    circle(b.x, b.y, b.r, COLORS.shooter);
-  }
-  for (const b of state.bullets) circle(b.x, b.y, b.r, b.crit ? COLORS.health : COLORS.ink);
 
   for (const s of state.swings) {
-    ctx.globalAlpha = s.life / 0.12 * 0.35;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.arc(p.x, p.y, WEAPONS.melee.range + p.r, s.angle - s.arc / 2, s.angle + s.arc / 2);
-    ctx.closePath();
-    ctx.fillStyle = COLORS.ink;
-    ctx.fill();
+    const mesh = track(s, () => {
+      const geometry = new THREE.CircleGeometry(WEAPONS.melee.range + p.r, 24, -(s.angle + s.arc / 2), s.arc);
+      const m = new THREE.Mesh(geometry, basic(COLORS.bullet, { side: THREE.DoubleSide }));
+      m.rotation.x = -Math.PI / 2;
+      m.userData.ownGeometry = true;
+      return m;
+    });
+    mesh.position.set(p.x, 18, p.y);
+    mesh.material.opacity = s.life / 0.12 * 0.4;
   }
-  ctx.globalAlpha = 1;
 
-  drawPlayer(p);
-
-  ctx.fillStyle = COLORS.health;
-  ctx.font = '600 16px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  for (const t of state.texts) {
-    ctx.globalAlpha = Math.min(1, t.life * 3);
-    ctx.fillText(t.text, t.x, t.y);
-  }
-  ctx.globalAlpha = 1;
-
-  if (p.hurtFlash > 0) {
-    ctx.globalAlpha = p.hurtFlash * 1.2;
-    ctx.strokeStyle = COLORS.health;
-    ctx.lineWidth = 24;
-    ctx.strokeRect(0, 0, WORLD, WORLD);
-    ctx.globalAlpha = 1;
-  }
-}
-
-function drawEnemy(e, p) {
-  const color = e.flash > 0 ? '#FFFFFF' : COLORS[e.type];
-  if (e.type === 'shooter') {
-    ctx.save();
-    ctx.translate(e.x, e.y);
-    ctx.rotate(Math.atan2(p.y - e.y, p.x - e.x));
-    ctx.fillStyle = color;
-    ctx.fillRect(-e.r, -e.r, e.r * 2, e.r * 2);
-    ctx.fillStyle = COLORS.ink;
-    ctx.fillRect(e.r - 2, -2, 8, 4);
-    ctx.restore();
-  } else {
-    circle(e.x, e.y, e.r, color);
-    if (e.type === 'brute') {
-      ctx.strokeStyle = COLORS.ink;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-  }
-  if (e.hp < e.maxHp) {
-    ctx.fillStyle = 'rgba(46,64,87,0.25)';
-    ctx.fillRect(e.x - e.r, e.y - e.r - 8, e.r * 2, 3);
-    ctx.fillStyle = COLORS.health;
-    ctx.fillRect(e.x - e.r, e.y - e.r - 8, e.r * 2 * Math.max(0, e.hp / e.maxHp), 3);
-  }
-}
-
-function drawPlayer(p) {
-  const aim = aimWorld();
-  const a = Math.atan2(aim.y - p.y, aim.x - p.x);
-  if (p.armour > 0) {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r + 2 + 6 * (p.armour / PLAYER.armourMax), 0, Math.PI * 2);
-    ctx.fillStyle = COLORS.armour;
-    ctx.fill();
-  }
-  if (p.dashTime > 0) {
-    ctx.globalAlpha = 0.3;
-    circle(p.x - p.dashVx * 0.04, p.y - p.dashVy * 0.04, p.r, COLORS.ink);
-    circle(p.x - p.dashVx * 0.08, p.y - p.dashVy * 0.08, p.r * 0.8, COLORS.ink);
-    ctx.globalAlpha = 1;
-  }
-  circle(p.x, p.y, p.r, p.hurtFlash > 0 ? COLORS.health : COLORS.ink);
-  circle(p.x + Math.cos(a) * (p.r + 4), p.y + Math.sin(a) * (p.r + 4), 4, COLORS.ink);
+  sweep();
+  renderer.render(scene, camera);
 }
 
 // ---------- HUD ----------
@@ -780,7 +923,7 @@ const $ = (id) => document.getElementById(id);
 const hud = {
   health: $('bar-health'), armour: $('bar-armour'), scrap: $('bar-scrap'),
   healthVal: $('val-health'), armourVal: $('val-armour'), scrapVal: $('val-scrap'),
-  chips: $('chips'), stats: $('stats'), depot: $('depot-timer'),
+  chips: $('chips'), stats: $('stats'), depot: $('depot-timer'), hurt: $('hurt'),
 };
 
 function updateHud() {
@@ -801,6 +944,7 @@ function updateHud() {
   const left = Math.ceil(state.phaseTimer);
   hud.depot.style.borderLeftColor = type.color;
   hud.depot.textContent = open ? `${type.name} depot open · leaves in ${left}s` : `${type.name} depot arrives in ${left}s`;
+  hud.hurt.style.opacity = Math.min(1, p.hurtFlash * 4);
 }
 
 function renderChips() {
@@ -833,6 +977,7 @@ function openShop() {
   const p = state.player;
   const type = DEPOT_TYPES[state.depot.type];
   state.mode = 'shop';
+  document.exitPointerLock();
   showOverlay(`${type.name} depot`, `Bank ${Math.floor(p.bank)} scrap. Buy with the number keys, leave with Esc.`);
   $('overlay-title').style.color = type.color;
   // Basics count purchases in p.bought; upgrades count levels in p.upgrades.
@@ -871,21 +1016,35 @@ function openShop() {
 function closeShop() {
   hideOverlay();
   state.mode = 'playing';
+  lockPointer();
+}
+
+function pause(title = 'Paused') {
+  state.mode = 'paused';
+  document.exitPointerLock();
+  showOverlay(title, 'Mouse looks, click attacks, WASD moves, Space dashes. P pauses.');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = title === 'Paused' ? 'Resume' : 'Play';
+  btn.addEventListener('click', resume);
+  choicesEl.append(btn);
+}
+
+function resume() {
+  state.mode = 'playing';
+  hideOverlay();
+  lockPointer();
 }
 
 function togglePause() {
-  if (state.mode === 'playing') {
-    state.mode = 'paused';
-    showOverlay('Paused', 'Press P to resume');
-  } else if (state.mode === 'paused') {
-    state.mode = 'playing';
-    hideOverlay();
-  }
+  if (state.mode === 'playing') pause();
+  else if (state.mode === 'paused') resume();
 }
 
 const BEST_KEY = 'ironclad.best';
 function gameOver() {
   state.mode = 'over';
+  document.exitPointerLock();
   let best = 0;
   try { best = Number(localStorage.getItem(BEST_KEY)) || 0; } catch { /* storage unavailable */ }
   if (state.time > best) {
@@ -906,7 +1065,11 @@ const debugEl = $('debug');
 const upgradeInputs = {};
 $('debug-toggle').addEventListener('click', toggleDebug);
 
-function toggleDebug() { debugEl.hidden = !debugEl.hidden; }
+function toggleDebug() {
+  debugEl.hidden = !debugEl.hidden;
+  // The panel needs a free cursor; releasing it pauses the run.
+  if (!debugEl.hidden) document.exitPointerLock();
+}
 
 function row(labelText, input, out) {
   const label = document.createElement('label');
@@ -963,6 +1126,8 @@ function buildDebug() {
   buttons.append(restart, reset);
 
   debugEl.replaceChildren(
+    heading('Camera'),
+    row('Mouse sensitivity', ...slider('mouseSens', 0.05, 1, 0.05, '')),
     heading('Base attack'),
     row('Weapon', select),
     row('Damage per kill', ...slider('damagePerKillPercent', 0, 10, 0.5, '%')),
@@ -1002,6 +1167,8 @@ function syncUpgradeInputs() {
 // ---------- Boot ----------
 
 resize();
+buildWorld();
 newGame();
 buildDebug();
+pause('Ironclad');
 requestAnimationFrame(frame);
