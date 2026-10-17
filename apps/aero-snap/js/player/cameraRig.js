@@ -14,7 +14,7 @@ const ZOOM_STEP = 1.15;
 const ZOOM_MAX = 4;
 
 const EXPLORE = { dist: 6, height: 1.6, shoulder: 0.6 };
-const AIM = { dist: 1.6, height: 1.55, shoulder: 0.45 };
+const AIM = { dist: 2, height: 1.75, shoulder: 0.95 };
 
 /**
  * @param {THREE.PerspectiveCamera} camera

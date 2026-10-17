@@ -14,6 +14,11 @@ import { createIsland } from './world/island.js';
 import { createLandmarks } from './world/landmarks.js';
 import { getSubjects } from './subjects.js';
 import { createCritters } from './critters/critters.js';
+import { capturePhoto, toJpeg } from './photo/capture.js';
+import { analyzeShot } from './photo/analyze.js';
+import { REQUESTS, matchRequests } from './requests.js';
+import { showPolaroid } from './ui/polaroid.js';
+import { unlockAudio, startAmbient, playShutter } from './audio.js';
 import { createInput } from './input.js';
 import { createPlayer } from './player/controller.js';
 import { createCameraRig } from './player/cameraRig.js';
@@ -31,7 +36,8 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 900);
 
 const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.35, 0.4, 0.92);
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
@@ -46,6 +52,14 @@ const input = createInput(canvas);
 const player = createPlayer(scene);
 player.blockers.push(...landmarks.blockers);
 const rig = createCameraRig(camera, colliders);
+const occluders = [...island.meshes, ...landmarks.meshes, ...critters.objects];
+const requestText = new Map(REQUESTS.map((r) => [r.id, r.text]));
+const flashEl = document.getElementById('flash');
+
+window.addEventListener('mousedown', () => {
+  unlockAudio();
+  startAmbient();
+});
 
 let state = 'explore';
 let worldTime = 0;
@@ -65,6 +79,22 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+/** Snaps the aim camera's view, grades it and shows the result card. Runs inside tick, before the frame renders. */
+function takePhoto() {
+  const shot = capturePhoto({ renderer, composer, renderPass, camera, hidden: [player.object] });
+  playShutter();
+  flashEl.classList.remove('is-on');
+  void flashEl.offsetWidth;
+  flashEl.classList.add('is-on');
+  const subjects = analyzeShot(shot.camera, getSubjects(), occluders);
+  const matches = matchRequests({ subjects, phase: sky.phase() });
+  return toJpeg(shot.canvas).then((blob) => {
+    const url = URL.createObjectURL(blob);
+    showPolaroid({ url, matches: matches.map((m) => ({ ...m, text: requestText.get(m.requestId) })) });
+    return { blob, subjects, matches };
+  });
+}
+
 function tick(dt) {
   if (state !== 'scrapbook') {
     worldTime += dt * timeScale;
@@ -75,6 +105,7 @@ function tick(dt) {
     if (state === 'explore' || state === 'aim') state = input.aiming ? 'aim' : 'explore';
     player.update(dt, input, rig.yaw, state === 'aim');
     rig.update(dt, player, input, state);
+    if (input.consumeClick() && state === 'aim') takePhoto();
   }
   composer.render(dt);
 }
@@ -90,6 +121,7 @@ requestAnimationFrame(frame);
 // Debug aid: ?debug exposes live game objects on window for the console.
 if (new URLSearchParams(location.search).has('debug')) {
   window.__game = { scene, landmarks, critters, sky, getSubjects, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
+    snap: takePhoto,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); },
   };
 }
