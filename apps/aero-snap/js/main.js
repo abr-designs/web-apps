@@ -11,6 +11,9 @@ import { clampDt } from './world/dayCycle.js';
 import { createSky } from './world/sky.js';
 import { applyEnvironment } from './world/materials.js';
 import { createIsland } from './world/island.js';
+import { createInput } from './input.js';
+import { createPlayer } from './player/controller.js';
+import { createCameraRig } from './player/cameraRig.js';
 
 const canvas = document.getElementById('game');
 
@@ -23,8 +26,6 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 900);
-camera.position.set(0, 40, 105);
-camera.lookAt(0, -4, 0);
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
@@ -35,6 +36,10 @@ composer.addPass(new OutputPass());
 const sky = createSky(scene);
 applyEnvironment(renderer, scene);
 const island = createIsland(scene);
+const colliders = [...island.meshes];
+const input = createInput(canvas);
+const player = createPlayer(scene);
+const rig = createCameraRig(camera, colliders);
 
 let state = 'explore';
 let worldTime = 0;
@@ -42,6 +47,7 @@ let worldTime = 0;
 function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
+  if (w === 0 || h === 0) return; // minimized or hidden: keep the last size
   renderer.setSize(w, h, false);
   composer.setSize(w, h);
   bloomPass.resolution.set(w / 2, h / 2);
@@ -51,16 +57,29 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-let last = performance.now();
-function frame(now) {
-  const dt = clampDt((now - last) / 1000);
-  last = now;
+function tick(dt) {
   if (state !== 'scrapbook') {
     worldTime += dt;
     sky.update(worldTime);
     island.update(dt);
+    if (state === 'explore' || state === 'aim') state = input.aiming ? 'aim' : 'explore';
+    player.update(dt, input, rig.yaw, state === 'aim');
+    rig.update(dt, player, input, state);
   }
   composer.render(dt);
+}
+
+let last = performance.now();
+function frame(now) {
+  tick(clampDt((now - last) / 1000));
+  last = now;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// Debug aid: ?debug exposes live game objects on window for the console.
+if (new URLSearchParams(location.search).has('debug')) {
+  window.__game = { scene, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
+    step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); },
+  };
+}

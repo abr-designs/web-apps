@@ -1,0 +1,82 @@
+// Created by Claude (claude-opus-5-5)
+// Date: 2026-10-16
+// Keyboard, mouse and pointer lock state, read once per frame by the game loop.
+
+const MOVE_KEYS = { KeyW: 'f', KeyS: 'b', KeyA: 'l', KeyD: 'r', ArrowUp: 'f', ArrowDown: 'b', ArrowLeft: 'l', ArrowRight: 'r' };
+
+export function createInput(canvas) {
+  const keys = { f: false, b: false, l: false, r: false };
+  const handlers = new Map();
+  let slow = false;
+  let aiming = false;
+  let click = false;
+  let jump = false;
+  let wheel = 0;
+  let dx = 0;
+  let dy = 0;
+
+  const locked = () => document.pointerLockElement === canvas;
+
+  function clearHeld() {
+    keys.f = keys.b = keys.l = keys.r = false;
+    slow = aiming = click = jump = false;
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const handler = handlers.get(e.code);
+    if (handler) {
+      e.preventDefault();
+      if (!e.repeat) handler(e);
+      return;
+    }
+    if (MOVE_KEYS[e.code]) keys[MOVE_KEYS[e.code]] = true;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') slow = true;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!e.repeat) jump = true;
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (MOVE_KEYS[e.code]) keys[MOVE_KEYS[e.code]] = false;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') slow = false;
+  });
+  window.addEventListener('blur', clearHeld);
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (!locked()) {
+      canvas.requestPointerLock?.();
+      return;
+    }
+    if (e.button === 2) aiming = true;
+    if (e.button === 0) click = true;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 2) aiming = false;
+  });
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  window.addEventListener('mousemove', (e) => {
+    if (!locked()) return;
+    dx += e.movementX;
+    dy += e.movementY;
+  });
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    wheel += Math.sign(e.deltaY);
+  }, { passive: false });
+  document.addEventListener('pointerlockchange', () => {
+    if (!locked()) aiming = false;
+  });
+
+  return {
+    keys,
+    get slow() { return slow; },
+    get aiming() { return aiming; },
+    get locked() { return locked(); },
+    consumeClick() { const c = click; click = false; return c; },
+    consumeJump() { const j = jump; jump = false; return j; },
+    consumeWheel() { const w = wheel; wheel = 0; return w; },
+    lookDelta() { const d = { dx, dy }; dx = dy = 0; return d; },
+    onKey(code, fn) { handlers.set(code, fn); },
+    release() { if (locked()) document.exitPointerLock(); clearHeld(); },
+  };
+}
