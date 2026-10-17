@@ -139,6 +139,10 @@ input.onKey('KeyB', () => {
   if (state === 'scrapbook') scrapbook.close();
   else openScrapbook();
 });
+// Clicking the world with the gadget up dismisses it (the same click also takes the pointer lock).
+canvas.addEventListener('mousedown', () => {
+  if (gadget.isOpen()) closeGadget();
+});
 input.onKey('Tab', () => {
   if (state === 'scrapbook') return false;
   if (gadget.isOpen()) closeGadget();
@@ -219,6 +223,11 @@ function tick(dt) {
     if (active) state = input.aiming ? 'aim' : 'explore';
     player.update(dt, active ? input : IDLE_INPUT, rig.yaw, state === 'aim');
     rig.update(dt, player, input, state);
+    if (!active) {
+      // Menus open: drop look, zoom and clicks so nothing jumps when play resumes.
+      input.lookDelta();
+      input.consumeWheel();
+    }
     if (input.consumeClick() && state === 'aim') takePhoto();
     // Zoomed in, the head would fill the frame; step out of the shot like a viewfinder.
     player.object.visible = !(state === 'aim' && rig.zoom > 1.5);
