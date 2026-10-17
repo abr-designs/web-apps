@@ -14,6 +14,10 @@ export function stars(n) {
   return '★'.repeat(n) + '☆'.repeat(3 - n);
 }
 
+export function hidePolaroid() {
+  close();
+}
+
 function close() {
   clearTimeout(hideTimer);
   root.classList.remove('is-open');

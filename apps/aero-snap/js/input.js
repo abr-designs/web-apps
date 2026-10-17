@@ -22,11 +22,16 @@ export function createInput(canvas) {
     slow = aiming = click = jump = false;
   }
 
+  const typing = (e) => e.target instanceof Element && e.target.matches('input, textarea');
+
   window.addEventListener('keydown', (e) => {
+    // Typing a caption must not trigger shortcuts or walk the player; Escape still closes menus.
+    if (typing(e) && e.code !== 'Escape') return;
     const handler = handlers.get(e.code);
     if (handler) {
-      e.preventDefault();
-      if (!e.repeat) handler(e);
+      // A handler returns false to leave the browser default alone (Tab moving focus in a menu).
+      const handled = e.repeat ? true : handler(e);
+      if (handled !== false) e.preventDefault();
       return;
     }
     if (MOVE_KEYS[e.code]) keys[MOVE_KEYS[e.code]] = true;

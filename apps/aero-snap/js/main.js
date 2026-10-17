@@ -17,10 +17,11 @@ import { createCritters } from './critters/critters.js';
 import { capturePhoto, toJpeg } from './photo/capture.js';
 import { analyzeShot } from './photo/analyze.js';
 import { REQUESTS, matchRequests } from './requests.js';
-import { showPolaroid, chooseAll } from './ui/polaroid.js';
+import { showPolaroid, chooseAll, hidePolaroid } from './ui/polaroid.js';
 import { createHud } from './ui/hud.js';
 import { createGadget } from './ui/gadget.js';
-import { openStore, loadProgress, saveProgress } from './save.js';
+import { createScrapbook } from './ui/scrapbook.js';
+import { openStore, loadProgress, saveProgress, loadScrapbook, saveScrapbook } from './save.js';
 import { applyMatch, defaultKeep, pushToRoll } from './progress.js';
 import { unlockAudio, startAmbient, playShutter } from './audio.js';
 import { createInput } from './input.js';
@@ -108,14 +109,43 @@ function closeGadget() {
   state = 'explore';
   canvas.requestPointerLock?.();
 }
-function openScrapbook() {}
+let scrapbookData = loadScrapbook();
+const scrapbook = createScrapbook(document.getElementById('scrapbook'), {
+  store: storeReady,
+  getProgress: () => progress,
+  getScrapbook: () => scrapbookData,
+  onChange(next) {
+    scrapbookData = next;
+    saveScrapbook(scrapbookData);
+  },
+  onCover(photoId) {
+    setProgress({ ...progress, coverPhotoId: photoId });
+  },
+});
+scrapbook.onClose = () => {
+  state = 'explore';
+  hud.setVisible(true);
+};
+function openScrapbook() {
+  gadget.close();
+  hidePolaroid();
+  input.release();
+  state = 'scrapbook';
+  hud.setVisible(false);
+  scrapbook.open();
+}
+input.onKey('KeyB', () => {
+  if (state === 'scrapbook') scrapbook.close();
+  else openScrapbook();
+});
 input.onKey('Tab', () => {
-  if (state === 'scrapbook') return;
+  if (state === 'scrapbook') return false;
   if (gadget.isOpen()) closeGadget();
   else openGadget();
 });
 input.onKey('Escape', () => {
-  if (gadget.isOpen()) closeGadget();
+  if (scrapbook.isOpen()) scrapbook.close();
+  else if (gadget.isOpen()) closeGadget();
 });
 // Losing pointer lock (Esc, alt-tab) drops out of aiming.
 document.addEventListener('pointerlockchange', () => {
@@ -195,7 +225,8 @@ function tick(dt) {
     hud.setCompass(landmarks.nearestNamed(player.position, rig.yaw));
     hud.setHint(active && !input.locked ? 'Click to look around' : null);
   }
-  composer.render(dt);
+  // The scrapbook covers the screen and pauses the world, so skip drawing behind it.
+  if (state !== 'scrapbook') composer.render(dt);
 }
 
 let last = performance.now();
@@ -209,7 +240,7 @@ requestAnimationFrame(frame);
 // Debug aid: ?debug exposes live game objects on window for the console.
 if (new URLSearchParams(location.search).has('debug')) {
   window.__game = { scene, landmarks, critters, sky, getSubjects, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
-    snap: takePhoto, getProgress: () => progress, gadget, openGadget, closeGadget,
+    snap: takePhoto, getProgress: () => progress, gadget, openGadget, closeGadget, scrapbook, openScrapbook, setProgress,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); },
   };
 }
