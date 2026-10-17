@@ -8,6 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clampDt } from './world/dayCycle.js';
+import { createFrameGuard } from './frameGuard.js';
 import { createSky } from './world/sky.js';
 import { applyEnvironment } from './world/materials.js';
 import { createIsland } from './world/island.js';
@@ -107,7 +108,7 @@ function openGadget() {
 function closeGadget() {
   gadget.close();
   state = 'explore';
-  canvas.requestPointerLock?.();
+  input.lock();
 }
 let scrapbookData = loadScrapbook();
 const scrapbook = createScrapbook(document.getElementById('scrapbook'), {
@@ -229,9 +230,13 @@ function tick(dt) {
   if (state !== 'scrapbook') composer.render(dt);
 }
 
+// Slow machines lose bloom for the session rather than the whole frame rate.
+const frameGuard = createFrameGuard();
 let last = performance.now();
 function frame(now) {
-  tick(clampDt((now - last) / 1000));
+  const dt = clampDt((now - last) / 1000);
+  if (state !== 'scrapbook' && frameGuard.push(dt)) bloomPass.enabled = false;
+  tick(dt);
   last = now;
   requestAnimationFrame(frame);
 }
@@ -240,7 +245,7 @@ requestAnimationFrame(frame);
 // Debug aid: ?debug exposes live game objects on window for the console.
 if (new URLSearchParams(location.search).has('debug')) {
   window.__game = { scene, landmarks, critters, sky, getSubjects, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
-    snap: takePhoto, getProgress: () => progress, gadget, openGadget, closeGadget, scrapbook, openScrapbook, setProgress,
+    snap: takePhoto, getProgress: () => progress, setTime: (t) => { worldTime = t; }, gadget, openGadget, closeGadget, scrapbook, openScrapbook, setProgress,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); },
   };
 }

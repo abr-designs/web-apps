@@ -16,6 +16,14 @@ export function createInput(canvas) {
   let dy = 0;
 
   const locked = () => document.pointerLockElement === canvas;
+  // Browsers refuse the lock without a fresh user gesture; the start hint covers that case.
+  const lock = () => {
+    try {
+      return Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
+    } catch {
+      return Promise.resolve();
+    }
+  };
 
   function clearHeld() {
     keys.f = keys.b = keys.l = keys.r = false;
@@ -49,7 +57,7 @@ export function createInput(canvas) {
 
   canvas.addEventListener('mousedown', (e) => {
     if (!locked()) {
-      canvas.requestPointerLock?.();
+      lock();
       return;
     }
     if (e.button === 2) aiming = true;
@@ -82,6 +90,7 @@ export function createInput(canvas) {
     consumeWheel() { const w = wheel; wheel = 0; return w; },
     lookDelta() { const d = { dx, dy }; dx = dy = 0; return d; },
     onKey(code, fn) { handlers.set(code, fn); },
+    lock,
     release() { if (locked()) document.exitPointerLock(); clearHeld(); },
   };
 }

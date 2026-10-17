@@ -7,6 +7,8 @@ import { heightAt } from '../world/islandShape.js';
 
 const SENSITIVITY = 0.0022;
 const PITCH_MIN = -0.6;
+// Aiming can tilt further up to frame tall subjects like the rocket nose or the tower top.
+const AIM_PITCH_MIN = -1.1;
 const PITCH_MAX = 0.9;
 const BASE_FOV = 60;
 const AIM_TIME = 0.25;
@@ -38,13 +40,15 @@ export function createCameraRig(camera, colliders) {
         const { dx, dy } = input.lookDelta();
         const slowLook = aiming ? 1 / rig.zoom : 1;
         rig.yaw -= dx * SENSITIVITY * slowLook;
-        rig.pitch = THREE.MathUtils.clamp(rig.pitch + dy * SENSITIVITY * slowLook, PITCH_MIN, PITCH_MAX);
+        rig.pitch = THREE.MathUtils.clamp(rig.pitch + dy * SENSITIVITY * slowLook, aiming ? AIM_PITCH_MIN : PITCH_MIN, PITCH_MAX);
         const notches = input.consumeWheel();
         if (aiming && notches) rig.zoom = THREE.MathUtils.clamp(rig.zoom * ZOOM_STEP ** -notches, 1, ZOOM_MAX);
       }
       if (!aiming) rig.zoom = 1;
 
       blend = THREE.MathUtils.clamp(blend + (aiming ? dt : -dt) / AIM_TIME, 0, 1);
+      // Ease back inside the explore range after aiming steeply up.
+      if (!aiming && rig.pitch < PITCH_MIN) rig.pitch = THREE.MathUtils.lerp(rig.pitch, PITCH_MIN, Math.min(dt * 8, 1));
       const k = blend * blend * (3 - 2 * blend);
       const dist = THREE.MathUtils.lerp(EXPLORE.dist, AIM.dist, k);
       const height = THREE.MathUtils.lerp(EXPLORE.height, AIM.height, k);
