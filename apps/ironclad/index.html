@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-16 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ironclad</title>
+  <link rel="stylesheet" href="logo/logo.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/game.js"></script>
+</head>
+<body>
+  <img class="app-logo" src="logo/senor_claude.png" alt="">
+  <canvas id="game"></canvas>
+
+  <section class="hud" aria-label="Player status">
+    <div class="bar-row"><span>Health</span><div class="bar"><i id="bar-health"></i></div><b id="val-health"></b></div>
+    <div class="bar-row"><span>Armour</span><div class="bar"><i id="bar-armour"></i></div><b id="val-armour"></b></div>
+    <div class="bar-row"><span>Scrap</span><div class="bar"><i id="bar-scrap"></i></div><b id="val-scrap"></b></div>
+    <div id="chips" class="chips"></div>
+  </section>
+
+  <div class="top-center">
+    <div id="stats" class="stats"></div>
+    <div id="depot-timer" class="depot-timer"></div>
+  </div>
+
+  <button id="debug-toggle" class="debug-toggle" type="button">Debug (`)</button>
+  <aside id="debug" class="debug" hidden></aside>
+
+  <div id="overlay" class="overlay" hidden>
+    <div class="card">
+      <h2 id="overlay-title"></h2>
+      <p id="overlay-text"></p>
+      <div id="choices" class="choices"></div>
+    </div>
+  </div>
+
+  <p class="help">WASD move · hold click to attack · Space dash · bank scrap at depots between waves · P pause · ` debug</p>
+</body>
+</html>
