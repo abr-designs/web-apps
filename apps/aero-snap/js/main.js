@@ -18,6 +18,8 @@ import { capturePhoto, toJpeg } from './photo/capture.js';
 import { analyzeShot } from './photo/analyze.js';
 import { REQUESTS, matchRequests } from './requests.js';
 import { showPolaroid, chooseAll } from './ui/polaroid.js';
+import { createHud } from './ui/hud.js';
+import { createGadget } from './ui/gadget.js';
 import { openStore, loadProgress, saveProgress } from './save.js';
 import { applyMatch, defaultKeep, pushToRoll } from './progress.js';
 import { unlockAudio, startAmbient, playShutter } from './audio.js';
@@ -78,6 +80,47 @@ let state = 'explore';
 let worldTime = 0;
 // Debug aid: ?fast runs the day cycle 10x so golden hour and dusk arrive quickly.
 const timeScale = new URLSearchParams(location.search).has('fast') ? 10 : 1;
+const FILM_ROLL = 24;
+let film = FILM_ROLL;
+let persistent = true;
+// Fed to the player while a menu is open so held keys don't walk them around.
+const IDLE_INPUT = { keys: { f: false, b: false, l: false, r: false }, slow: false, consumeJump: () => false };
+
+const hud = createHud(document.getElementById('hud'));
+const gadget = createGadget(document.getElementById('gadget'), { onScrapbook: () => openScrapbook() });
+function renderGadget() {
+  gadget.render(progress, film, persistent);
+}
+progressListeners.push(renderGadget);
+renderGadget();
+storeReady.then((store) => {
+  persistent = store.persistent;
+  renderGadget();
+});
+
+function openGadget() {
+  state = 'gadget';
+  input.release();
+  gadget.open();
+}
+function closeGadget() {
+  gadget.close();
+  state = 'explore';
+  canvas.requestPointerLock?.();
+}
+function openScrapbook() {}
+input.onKey('Tab', () => {
+  if (state === 'scrapbook') return;
+  if (gadget.isOpen()) closeGadget();
+  else openGadget();
+});
+input.onKey('Escape', () => {
+  if (gadget.isOpen()) closeGadget();
+});
+// Losing pointer lock (Esc, alt-tab) drops out of aiming.
+document.addEventListener('pointerlockchange', () => {
+  if (!input.locked && state === 'aim') state = 'explore';
+});
 
 function resize() {
   const w = window.innerWidth;
@@ -94,6 +137,8 @@ resize();
 
 /** Snaps the aim camera's view, grades it, saves it and shows the result card. Runs inside tick, before the frame renders. */
 function takePhoto() {
+  film = film > 1 ? film - 1 : FILM_ROLL;
+  renderGadget();
   const shot = capturePhoto({ renderer, composer, renderPass, camera, hidden: [player.object] });
   playShutter();
   flashEl.classList.remove('is-on');
@@ -139,10 +184,16 @@ function tick(dt) {
     island.update(dt);
     landmarks.update(dt);
     critters.update(dt, sky.phase(), player);
-    if (state === 'explore' || state === 'aim') state = input.aiming ? 'aim' : 'explore';
-    player.update(dt, input, rig.yaw, state === 'aim');
+    const active = state === 'explore' || state === 'aim';
+    if (active) state = input.aiming ? 'aim' : 'explore';
+    player.update(dt, active ? input : IDLE_INPUT, rig.yaw, state === 'aim');
     rig.update(dt, player, input, state);
     if (input.consumeClick() && state === 'aim') takePhoto();
+    // Zoomed in, the head would fill the frame; step out of the shot like a viewfinder.
+    player.object.visible = !(state === 'aim' && rig.zoom > 1.5);
+    hud.setAim(state === 'aim', rig.zoom);
+    hud.setCompass(landmarks.nearestNamed(player.position, rig.yaw));
+    hud.setHint(active && !input.locked ? 'Click to look around' : null);
   }
   composer.render(dt);
 }
@@ -158,7 +209,7 @@ requestAnimationFrame(frame);
 // Debug aid: ?debug exposes live game objects on window for the console.
 if (new URLSearchParams(location.search).has('debug')) {
   window.__game = { scene, landmarks, critters, sky, getSubjects, camera, player, rig, input, getState: () => state, getTime: () => worldTime,
-    snap: takePhoto, getProgress: () => progress,
+    snap: takePhoto, getProgress: () => progress, gadget, openGadget, closeGadget,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); },
   };
 }
