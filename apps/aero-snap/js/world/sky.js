@@ -7,9 +7,9 @@ import { DAY_LENGTH, dayPhaseAt } from './dayCycle.js';
 
 // Looks per phase. Keyframes below hold each look and crossfade between them.
 const LOOKS = {
-  day: { top: 0x1e6fe8, horizon: 0x8fd3ff, sun: 0xffffff, sunI: 2.6, hemiI: 1.1, elev: 1.05 },
-  golden: { top: 0x3d7bd9, horizon: 0xffc98a, sun: 0xffc07a, sunI: 2.0, hemiI: 0.8, elev: 0.32 },
-  dusk: { top: 0x3a3f8f, horizon: 0xf49ac2, sun: 0xf7a1c4, sunI: 0.7, hemiI: 0.45, elev: 0.12 },
+  day: { top: 0x1e6fe8, horizon: 0x8fd3ff, sun: 0xffffff, sunI: 2.2, hemiI: 0.5, elev: 1.05 },
+  golden: { top: 0x3d7bd9, horizon: 0xffc98a, sun: 0xffc07a, sunI: 1.8, hemiI: 0.4, elev: 0.32 },
+  dusk: { top: 0x3a3f8f, horizon: 0xf49ac2, sun: 0xf7a1c4, sunI: 0.6, hemiI: 0.25, elev: 0.12 },
 };
 const KEYS = [
   [0, 'day'], [280, 'day'], [320, 'golden'], [370, 'golden'],
@@ -66,7 +66,7 @@ export function createSky(scene) {
   const hemi = new THREE.HemisphereLight(0xbfe8ff, 0x7ed957, 1.1);
   scene.add(hemi);
 
-  scene.fog = new THREE.Fog(0x8fd3ff, 140, 420);
+  scene.fog = new THREE.Fog(0x8fd3ff, 180, 460);
 
   const ca = new THREE.Color();
   const cb = new THREE.Color();

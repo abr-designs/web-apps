@@ -9,6 +9,8 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { clampDt } from './world/dayCycle.js';
 import { createSky } from './world/sky.js';
+import { applyEnvironment } from './world/materials.js';
+import { createIsland } from './world/island.js';
 
 const canvas = document.getElementById('game');
 
@@ -21,16 +23,18 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 900);
-camera.position.set(0, 12, 70);
-camera.lookAt(0, 20, 0);
+camera.position.set(0, 40, 105);
+camera.lookAt(0, -4, 0);
 
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.6, 0.4, 0.85);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.35, 0.4, 0.92);
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
 
 const sky = createSky(scene);
+applyEnvironment(renderer, scene);
+const island = createIsland(scene);
 
 let state = 'explore';
 let worldTime = 0;
@@ -54,6 +58,7 @@ function frame(now) {
   if (state !== 'scrapbook') {
     worldTime += dt;
     sky.update(worldTime);
+    island.update(dt);
   }
   composer.render(dt);
   requestAnimationFrame(frame);
