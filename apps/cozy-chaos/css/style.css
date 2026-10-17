@@ -1,0 +1,287 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-10-16 */
+
+:root {
+  --bg: #8e2440;
+  --wall: #c8405a;
+  --floor: #c98a4b;
+  --panel: #fbf3e6;
+  --text: #3f4660;
+  --accent: #ff6b6b;
+  --accent-2: #b9a2e8;
+  --slot-idle: #f0d9d9;
+  --bar-h: 72px;
+  --logo-floor: calc(var(--bar-h) + env(safe-area-inset-bottom, 0px));
+  --font: ui-rounded, "Nunito", "Segoe UI Rounded", "Arial Rounded MT Bold", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at 35% 35%, #b8334f, var(--bg) 70%);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.stage {
+  position: fixed;
+  inset: 0 0 var(--logo-floor) 0;
+}
+
+.stage canvas {
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Clock: day progress pie plus the score timer. */
+.clock {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.clock__face { width: 88px; height: 88px; filter: drop-shadow(0 3px 0 rgba(62, 20, 38, 0.35)); }
+.clock__rim { fill: var(--panel); }
+.clock__day { fill: var(--accent); }
+.clock__pin { fill: var(--text); }
+
+.clock__time { display: flex; align-items: center; gap: 6px; }
+
+.clock__timer {
+  color: var(--panel);
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock__timer.is-draining { color: #ffd0d0; animation: pulse 0.8s ease-in-out infinite; }
+
+.clock__drain {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--panel);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* Bottom bar of event slots. */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  height: var(--logo-floor);
+  padding: 0 16px env(safe-area-inset-bottom, 0px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--panel);
+  box-shadow: 0 -4px 0 rgba(62, 20, 38, 0.25);
+}
+
+.slot {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  background: var(--slot-idle);
+  filter: grayscale(1);
+  opacity: 0.55;
+  transition: background 0.2s, opacity 0.2s, filter 0.2s;
+}
+
+.slot.is-on {
+  background: var(--accent);
+  filter: none;
+  opacity: 1;
+  animation: wobble 0.6s ease-in-out infinite;
+}
+
+/* Speech bubble that follows the phone. */
+.bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 3px 0 rgba(62, 20, 38, 0.3);
+}
+
+.bubble[hidden], .bubble__bar[hidden], .overlay[hidden] { display: none; }
+
+.bubble__bar { width: 90px; height: 8px; border-radius: 999px; background: var(--slot-idle); overflow: hidden; }
+.bubble__fill { display: block; height: 100%; width: 0; background: var(--accent); }
+
+/* Focus mode: darkened, softly blurred edges around the zoomed desk. */
+/* Two layers share --focus: a masked blur, then the darkening on top (a mask on the dark layer would fade it out too). */
+.focus-blur, .vignette {
+  position: fixed;
+  inset: 0 0 var(--logo-floor) 0;
+  z-index: 4;
+  opacity: var(--focus, 0);
+  pointer-events: none;
+}
+
+.focus-blur {
+  backdrop-filter: blur(5px) saturate(0.6);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 42%, transparent 30%, #000 75%);
+  mask-image: radial-gradient(ellipse at 50% 42%, transparent 30%, #000 75%);
+}
+
+.vignette {
+  background: radial-gradient(ellipse at 50% 42%, transparent 28%, rgba(46, 10, 24, 0.6) 62%, rgba(24, 4, 12, 0.92) 100%);
+}
+
+.bonus {
+  position: fixed;
+  top: 150px;
+  left: 16px;
+  z-index: 6;
+  width: 88px;
+  text-align: center;
+  color: #b8f2c2;
+  font-size: 22px;
+  font-weight: 900;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bonus.is-bad { color: #ffd0d0; }
+.bonus.is-showing { animation: rise 1.1s ease-out; }
+
+.homework {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--logo-floor) + 20px);
+  z-index: 7;
+  width: min(360px, calc(100% - 32px));
+  transform: translateX(-50%);
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: #fffaf2;
+  border: 4px solid var(--text);
+  text-align: center;
+  background-image: repeating-linear-gradient(transparent 0 27px, #cfe3f7 27px 29px);
+}
+
+.homework[hidden] { display: none; }
+.homework.is-wrong { animation: shake 0.35s; }
+.homework__head { display: flex; justify-content: space-between; font-weight: 800; color: var(--accent); }
+.homework__sum { margin: 8px 0 12px; font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.homework__answers { display: flex; justify-content: center; gap: 12px; }
+
+.homework__answer {
+  min-width: 72px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent-2);
+  color: var(--text);
+  font: 900 24px var(--font);
+  cursor: pointer;
+  box-shadow: 0 4px 0 #8f78c4;
+}
+
+.homework__answer:active { transform: translateY(2px); box-shadow: 0 2px 0 #8f78c4; }
+.homework__hint { margin: 12px 0 0; font-size: 13px; font-weight: 700; opacity: 0.7; }
+
+/* Title and end screens. */
+.overlay {
+  position: fixed;
+  inset: 0 0 var(--logo-floor) 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(62, 20, 38, 0.45);
+}
+
+.card {
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 28px;
+  border-radius: 28px;
+  background: var(--panel);
+  border: 4px solid var(--text);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.card__title { margin: 0 0 8px; font-size: 52px; line-height: 1; font-weight: 900; }
+.card__title-accent { color: var(--accent); }
+.card__heading { margin: 0; font-size: 32px; font-weight: 900; }
+.card__score { margin: 8px 0 0; font-size: 56px; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; }
+.card__best { margin: 8px 0 0; min-height: 1.5em; font-weight: 700; }
+
+.howto { list-style: none; margin: 16px 0 20px; padding: 0; text-align: left; display: grid; gap: 8px; }
+.howto li { display: flex; align-items: center; gap: 10px; }
+.howto span { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--slot-idle); }
+
+.button {
+  padding: 12px 32px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--panel);
+  font: 800 18px var(--font);
+  cursor: pointer;
+  box-shadow: 0 4px 0 #c84d55;
+}
+
+.button:active { transform: translateY(2px); box-shadow: 0 2px 0 #c84d55; }
+
+@keyframes wobble {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-10deg) scale(1.08); }
+  75% { transform: rotate(10deg) scale(1.08); }
+}
+
+@keyframes rise {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-28px); }
+}
+
+@keyframes shake {
+  25% { transform: translateX(calc(-50% - 8px)); }
+  75% { transform: translateX(calc(-50% + 8px)); }
+}
+
+@keyframes pulse {
+  50% { transform: scale(1.08); }
+}
+
+@media (max-width: 480px) {
+  .clock__face { width: 64px; height: 64px; }
+  .clock__timer { font-size: 20px; }
+  .slot { width: 42px; height: 42px; font-size: 20px; }
+  .bar { gap: 8px; }
+  .card__title { font-size: 40px; }
+}
