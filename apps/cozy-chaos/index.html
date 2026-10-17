@@ -1,0 +1,85 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-16 -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#8E2440">
+  <title>Cozy Chaos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="logo/logo.css">
+</head>
+<body>
+  <img class="app-logo" src="logo/senor_claude.png" alt="">
+  <div id="stage" class="stage"></div>
+  <div class="focus-blur" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div id="bonus" class="bonus" aria-live="polite"></div>
+
+  <section id="homework" class="homework" aria-label="Homework" hidden>
+    <div class="homework__head"><span id="hw-page">Page 1</span><span id="hw-step">1 / 5</span></div>
+    <p id="hw-sum" class="homework__sum">7 + 5 =</p>
+    <div class="homework__answers">
+      <button class="homework__answer" type="button">12</button>
+      <button class="homework__answer" type="button">11</button>
+      <button class="homework__answer" type="button">13</button>
+    </div>
+    <p class="homework__hint">Click the room or press Esc to look up</p>
+  </section>
+
+  <div class="clock" aria-live="off">
+    <svg class="clock__face" viewBox="0 0 100 100" aria-hidden="true">
+      <circle class="clock__rim" cx="50" cy="50" r="46"/>
+      <path id="clock-day" class="clock__day" d=""/>
+      <circle class="clock__pin" cx="50" cy="50" r="5"/>
+    </svg>
+    <div class="clock__time">
+      <span id="timer" class="clock__timer">3:00</span>
+      <span id="drain" class="clock__drain" hidden>×2</span>
+    </div>
+  </div>
+
+  <div id="phone-bubble" class="bubble" hidden>
+    <span id="phone-bubble-text">Ring ring!</span>
+    <span id="phone-bubble-bar" class="bubble__bar"><span id="phone-bubble-fill" class="bubble__fill"></span></span>
+  </div>
+
+  <nav class="bar" aria-label="Room events">
+    <span class="slot" data-key="window" title="Window open" aria-label="Window open">🪟</span>
+    <span class="slot" data-key="mouse" title="Mouse in the room" aria-label="Mouse in the room">🐭</span>
+    <span class="slot" data-key="spider" title="Spider on the wall" aria-label="Spider on the wall">🕷️</span>
+    <span class="slot" data-key="phone" title="Phone ringing" aria-label="Phone ringing">📞</span>
+    <span class="slot" data-key="books" title="Books on the floor" aria-label="Books on the floor">📚</span>
+  </nav>
+
+  <section id="title-screen" class="overlay">
+    <div class="card">
+      <h1 class="card__title"><span>Cozy</span> <span class="card__title-accent">Chaos</span></h1>
+      <p>Finish your homework and keep your room calm until night. Every open problem drains your timer faster, and whatever is left when the day ends is your score.</p>
+      <ul class="howto">
+        <li><span>📝</span>Click the homework on the desk to focus. Each finished page adds 10s</li>
+        <li><span>🪟</span>Drag the open window shut</li>
+        <li><span>🐭</span>Click near the mouse to shoo it back into its hole</li>
+        <li><span>🕷️</span>Click the spider</li>
+        <li><span>📞</span>Click the phone, then hold on it to listen</li>
+        <li><span>📚</span>Drag fallen books back onto the shelf</li>
+      </ul>
+      <button id="start-button" class="button" type="button">Start the day</button>
+      <p id="title-best" class="card__best"></p>
+    </div>
+  </section>
+
+  <section id="end-screen" class="overlay" hidden>
+    <div class="card">
+      <h2 class="card__heading">Night falls</h2>
+      <p class="card__score" id="end-score">0:00</p>
+      <p id="end-best" class="card__best"></p>
+      <p id="end-pages" class="card__best"></p>
+      <button id="again-button" class="button" type="button">Play again</button>
+    </div>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
