@@ -1,0 +1,6 @@
+{
+  "name": "HEIC Converter",
+  "description": "Batch convert HEIC photos to JPEG, PNG or WebP in the browser with drag and drop.",
+  "icon": "brush",
+  "color": "blue"
+}
