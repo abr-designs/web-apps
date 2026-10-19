@@ -5,12 +5,12 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Implemented |
 | Created | 2026-10-05 |
-| Updated | 2026-10-05 |
+| Updated | 2026-10-07 |
 | Proficiency | 3/10 |
 | Engine | HTML / CSS / vanilla JS (ES modules) on GitHub Pages, Supabase (Postgres) as the hosted database |
-| Revisions | 1 (latest: U-001) |
+| Revisions | 2 (latest: U-002) |
 | Summary | One game list, broken reports and like counts shared by every player through Supabase, with the bundled `games.json` as the offline fallback. Designs the database and likes todos from plan 0001. |
 
 ## Revision Log
@@ -18,6 +18,7 @@
 | ID | Date | Type | Change |
 |---|---|---|---|
 | U-001 | 2026-10-05 | Update | Open questions answered. Reports and own ⚑ marks apply per orientation. Likes weight the shuffle of games not yet loaded. A weekly GitHub Action keeps the free project awake. CAPTCHA waits until abuse appears. The `game_stats` view bypassing RLS is accepted. |
+| U-002 | 2026-10-07 | Update | Built steps 1-7. Schema grants table access explicitly. `connect()` also returns the player's own likes so likes made before it finishes stay counted. `sync()` takes getters read after the server rows arrive. Keep-awake variables are prefixed `SNACKABLE_`. "Copy broken list" and `brokenIds()` are removed. |
 
 ---
 
@@ -307,6 +308,10 @@ alter table games enable row level security;
 alter table reports enable row level security;
 alter table likes enable row level security;
 
+-- Explicit Data API access; RLS policies below narrow it to the right rows.
+grant select on games to anon, authenticated;
+grant select, insert, delete on reports, likes to authenticated;
+
 create policy "anyone reads games" on games for select using (true);
 
 create policy "read own reports" on reports for select to authenticated using (player_id = auth.uid());
@@ -317,7 +322,7 @@ create policy "add own likes" on likes for insert to authenticated with check (p
 create policy "remove own likes" on likes for delete to authenticated using (player_id = auth.uid());
 
 -- Runs as its owner, so it counts every player's rows while exposing only totals.
-create view game_stats as
+create view game_stats with (security_invoker = false) as
 select g.id as game_id,
   (select count(*) from reports r where r.game_id = g.id and r.orientation = 'portrait') as reports_portrait,
   (select count(*) from reports r where r.game_id = g.id and r.orientation = 'landscape') as reports_landscape,
