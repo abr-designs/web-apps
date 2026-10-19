@@ -1,7 +1,7 @@
 # Created by Claude (claude-opus-5-5)
 # Date: 2026-09-30
 #
-# Tests the build scripts on every PR, then deploys main plus a preview of every app changed by an open PR to GitHub Pages.
+# Tests the build scripts on every PR, then deploys main plus a preview of every app and game changed by an open PR to GitHub Pages.
 # Every run rebuilds from the current state of main and the open PR list, whatever triggered it.
 
 name: Pages
@@ -33,10 +33,10 @@ jobs:
       - name: Test build scripts
         run: node --test scripts/*.test.mjs
 
-      - name: Validate apps
+      - name: Validate apps and games
         run: node scripts/build-directory.mjs
 
-      - name: Check app logos
+      - name: Check app and game logos
         run: node scripts/sync-logo.mjs --check
 
   build:
