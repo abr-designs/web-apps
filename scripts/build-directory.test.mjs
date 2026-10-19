@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { collectApps, buildIndex, assembleSite, resolveOutDir, changedSlugs, buildDevIndex, collectDev, gitRunner } from './build-directory.mjs';
+import { collectEntries, normalizeTags, buildIndex, assembleSite, resolveOutDir, changedSlugs, buildDevIndex, collectDev, gitRunner } from './build-directory.mjs';
 
 function makeTree(files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-'));
@@ -23,63 +23,63 @@ const okJson = JSON.stringify({ name: 'Ok', description: 'Fine.' });
 
 test('valid app is collected with defaults', () => {
   const dir = makeTree({ 'ok/index.html': '', 'ok/app.json': okJson });
-  const { apps, errors } = collectApps(dir);
+  const { entries: apps, errors } = collectEntries(dir, 'app');
   assert.deepEqual(errors, []);
-  assert.deepEqual(apps, [{ slug: 'ok', name: 'Ok', description: 'Fine.', icon: null, color: 'gray' }]);
+  assert.deepEqual(apps, [{ slug: 'ok', kind: 'app', name: 'Ok', description: 'Fine.', icon: null, color: 'gray' }]);
 });
 
 test('missing index.html', () => {
   const dir = makeTree({ 'a/app.json': okJson });
-  assert.match(collectApps(dir).errors.join('\n'), /apps\/a: missing index\.html/);
+  assert.match(collectEntries(dir, 'app').errors.join('\n'), /apps\/a: missing index\.html/);
 });
 
 test('missing app.json', () => {
   const dir = makeTree({ 'a/index.html': '' });
-  assert.match(collectApps(dir).errors.join('\n'), /apps\/a: missing app\.json/);
+  assert.match(collectEntries(dir, 'app').errors.join('\n'), /apps\/a: missing app\.json/);
 });
 
 test('invalid JSON', () => {
   const dir = makeTree({ 'a/index.html': '', 'a/app.json': '{ nope' });
-  assert.match(collectApps(dir).errors.join('\n'), /apps\/a: app\.json is not valid JSON/);
+  assert.match(collectEntries(dir, 'app').errors.join('\n'), /apps\/a: app\.json is not valid JSON/);
 });
 
 test('missing name', () => {
   const dir = makeTree({ 'a/index.html': '', 'a/app.json': JSON.stringify({ description: 'x' }) });
-  assert.match(collectApps(dir).errors.join('\n'), /apps\/a: app\.json needs a non-empty "name"/);
+  assert.match(collectEntries(dir, 'app').errors.join('\n'), /apps\/a: app\.json needs a non-empty "name"/);
 });
 
 test('missing description', () => {
   const dir = makeTree({ 'a/index.html': '', 'a/app.json': JSON.stringify({ name: 'x', description: '  ' }) });
-  assert.match(collectApps(dir).errors.join('\n'), /apps\/a: app\.json needs a non-empty "description"/);
+  assert.match(collectEntries(dir, 'app').errors.join('\n'), /apps\/a: app\.json needs a non-empty "description"/);
 });
 
 test('unknown color', () => {
   const dir = makeTree({ 'a/index.html': '', 'a/app.json': JSON.stringify({ name: 'x', description: 'y', color: 'neon' }) });
-  assert.match(collectApps(dir).errors.join('\n'), /apps\/a: "color" must be one of/);
+  assert.match(collectEntries(dir, 'app').errors.join('\n'), /apps\/a: "color" must be one of/);
 });
 
 test('bad slug', () => {
   const dir = makeTree({ 'My App/index.html': '', 'My App/app.json': okJson });
-  assert.match(collectApps(dir).errors.join('\n'), /apps\/My App: folder name must match/);
+  assert.match(collectEntries(dir, 'app').errors.join('\n'), /apps\/My App: folder name must match/);
 });
 
 test('files in apps are ignored', () => {
   const dir = makeTree({ '.gitkeep': '', 'ok/index.html': '', 'ok/app.json': okJson });
-  const { apps, errors } = collectApps(dir);
+  const { entries: apps, errors } = collectEntries(dir, 'app');
   assert.deepEqual(errors, []);
   assert.equal(apps.length, 1);
 });
 
 test('all errors are collected', () => {
   const dir = makeTree({ 'a/index.html': '', 'b/app.json': okJson });
-  assert.equal(collectApps(dir).errors.length, 2);
+  assert.equal(collectEntries(dir, 'app').errors.length, 2);
 });
 
-const meta = (slug) => ({ slug, name: slug, description: 'd', icon: null, color: 'gray' });
+const meta = (slug, kind = 'app') => ({ slug, kind, name: slug, description: 'd', icon: null, color: 'gray' });
 
 test('buildIndex sorts newest first, null last', () => {
   const updates = { a: '2026-09-01T00:00:00Z', b: null, c: '2026-09-20T00:00:00Z' };
-  const entries = buildIndex([meta('a'), meta('b'), meta('c')], (slug) => updates[slug]);
+  const entries = buildIndex([meta('a'), meta('b'), meta('c')], (entry) => updates[entry.slug]);
   assert.deepEqual(entries.map((e) => e.slug), ['c', 'a', 'b']);
   assert.equal(entries[0].url, 'c/');
   assert.equal(entries[2].updated, null);
@@ -95,7 +95,7 @@ test('assembleSite copies shell and apps', () => {
   });
   const out = path.join(root, '_site');
   const entry = { ...meta('x'), updated: null, url: 'x/' };
-  assembleSite(root, out, [entry]);
+  assembleSite(root, out, { apps: [entry] });
   for (const rel of ['index.html', 'directory.css', 'directory.js', 'apps.json', '.nojekyll',
     'assets/logo/logo.css', 'assets/logo/senor_claude.png',
     'x/index.html', 'x/js/app.js', 'x/js/docs/keep.txt']) {
@@ -124,12 +124,12 @@ test('resolveOutDir only accepts an underscore folder', () => {
 
 test('app.json with a UTF-8 BOM is accepted', () => {
   const dir = makeTree({ 'a/index.html': '', 'a/app.json': '﻿' + okJson });
-  assert.deepEqual(collectApps(dir).errors, []);
+  assert.deepEqual(collectEntries(dir, 'app').errors, []);
 });
 
 test('app.json that is not an object is reported', () => {
   const dir = makeTree({ 'a/index.html': '', 'a/app.json': 'null', 'b/index.html': '', 'b/app.json': '[]' });
-  const { errors } = collectApps(dir);
+  const { errors } = collectEntries(dir, 'app');
   assert.match(errors.join('\n'), /apps\/a: app\.json must be a JSON object/);
   assert.match(errors.join('\n'), /apps\/b: app\.json must be a JSON object/);
 });
@@ -140,11 +140,11 @@ test('changedSlugs keeps added and modified apps, drops delete-only and root fil
     'D\tapps/gone/index.html', 'M\tapps/.gitkeep',
     'R100\tapps/old/a.js\tapps/renamed/a.js', 'D\tapps/old/index.html',
   ].join('\n');
-  assert.deepEqual(changedSlugs(out), ['edit', 'new', 'renamed']);
+  assert.deepEqual(changedSlugs(out), { app: ['edit', 'new', 'renamed'], game: [] });
 });
 
 test('changedSlugs on empty output', () => {
-  assert.deepEqual(changedSlugs(''), []);
+  assert.deepEqual(changedSlugs(''), { app: [], game: [] });
 });
 
 test('buildDevIndex sorts by PR update then number then slug and shapes entries', () => {
@@ -225,7 +225,7 @@ test('assembleSite writes dev.json and filtered dev copies', () => {
   const workDir = makeTree({ 'pr-4/apps/new/index.html': '', 'pr-4/apps/new/docs/a.md': '', 'pr-4/apps/new/.claude/x': '' });
   const out = path.join(root, '_site');
   const dev = [{ ...meta('new'), updated: '2026-10-03T00:00:00Z', url: 'dev/pr-4/new/', pr: { number: 4, title: 'T', url: 'u' } }];
-  assembleSite(root, out, [], dev, workDir);
+  assembleSite(root, out, {}, dev, workDir);
   assert.ok(fs.existsSync(path.join(out, 'dev/pr-4/new/index.html')));
   assert.ok(!fs.existsSync(path.join(out, 'dev/pr-4/new/docs')));
   assert.ok(!fs.existsSync(path.join(out, 'dev/pr-4/new/.claude')));
@@ -235,6 +235,77 @@ test('assembleSite writes dev.json and filtered dev copies', () => {
 test('assembleSite writes empty dev.json without dev entries', () => {
   const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '', 'assets/logo/logo.css': '' });
   const out = path.join(root, '_site');
-  assembleSite(root, out, []);
+  assembleSite(root, out);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'dev.json'), 'utf8')), []);
 });
+
+// [Claude 2026-10-19 start]
+const gameJson = (extra = {}) => JSON.stringify({ name: 'G', description: 'Game.', tags: ['Puzzle', ' arcade ', 'puzzle'], ...extra });
+
+test('normalizeTags lowercases, trims, dedupes and sorts', () => {
+  assert.deepEqual(normalizeTags(['Puzzle', ' arcade ', 'puzzle']), { tags: ['arcade', 'puzzle'], error: null });
+});
+
+test('normalizeTags rejects missing, empty and non-slug tags', () => {
+  for (const bad of [undefined, [], 'puzzle', ['two words'], [3]]) {
+    assert.ok(normalizeTags(bad).error, JSON.stringify(bad));
+  }
+});
+
+test('valid game is collected with kind and normalized tags', () => {
+  const dir = makeTree({ 'g/index.html': '', 'g/game.json': gameJson() });
+  const { entries, errors } = collectEntries(dir, 'game');
+  assert.deepEqual(errors, []);
+  assert.deepEqual(entries, [{ slug: 'g', kind: 'game', name: 'G', description: 'Game.', icon: null, color: 'gray', tags: ['arcade', 'puzzle'] }]);
+});
+
+test('game errors name games/ and game.json', () => {
+  const dir = makeTree({ 'a/index.html': '', 'a/game.json': gameJson({ tags: [] }), 'b/index.html': '' });
+  const text = collectEntries(dir, 'game').errors.join('\n');
+  assert.match(text, /games\/a: game\.json needs a non-empty "tags" array/);
+  assert.match(text, /games\/b: missing game\.json/);
+});
+
+test('apps cannot use reserved slugs', () => {
+  const dir = makeTree({ 'games/index.html': '', 'games/app.json': okJson, 'dev/index.html': '', 'dev/app.json': okJson });
+  const text = collectEntries(dir, 'app').errors.join('\n');
+  assert.match(text, /apps\/dev: folder name "dev" is reserved/);
+  assert.match(text, /apps\/games: folder name "games" is reserved/);
+});
+
+test('missing folder yields no entries', () => {
+  assert.deepEqual(collectEntries(path.join(makeTree({}), 'games'), 'game'), { entries: [], errors: [] });
+});
+
+test('buildIndex serves games under games/', () => {
+  assert.equal(buildIndex([meta('g', 'game')], () => null)[0].url, 'games/g/');
+});
+
+test('changedSlugs splits apps and games', () => {
+  const out = ['A\tgames/new/index.html', 'M\tapps/edit/app.json', 'D\tgames/gone/index.html', 'A\tgames/.gitkeep'].join('\n');
+  assert.deepEqual(changedSlugs(out), { app: ['edit'], game: ['new'] });
+});
+
+test('collectDev returns changed games with a games/ preview path', () => {
+  const repo = gitRepo();
+  const sha = repo.branch('pr6', { 'games/g/index.html': '', 'games/g/game.json': gameJson() });
+  const workDir = makeTree({});
+  const { entries, warnings } = collectDev([prOf(6, sha)], repo.run, workDir);
+  assert.deepEqual(warnings, []);
+  assert.deepEqual(entries.map((e) => [e.kind, e.url]), [['game', 'dev/pr-6/games/g/']]);
+  assert.ok(fs.existsSync(path.join(workDir, 'pr-6', 'games', 'g', 'index.html')));
+});
+
+test('assembleSite writes games.json and copies games and dev games', () => {
+  const root = makeTree({ 'index.html': '', 'directory.css': '', 'directory.js': '', 'assets/logo/logo.css': '', 'games/g/index.html': '', 'games/g/docs/a.md': '' });
+  const workDir = makeTree({ 'pr-6/games/h/index.html': '' });
+  const out = path.join(root, '_site');
+  const game = { ...meta('g', 'game'), updated: null, url: 'games/g/' };
+  const dev = [{ ...meta('h', 'game'), updated: '2026-10-03T00:00:00Z', url: 'dev/pr-6/games/h/', pr: { number: 6, title: 'T', url: 'u' } }];
+  assembleSite(root, out, { games: [game] }, dev, workDir);
+  assert.ok(fs.existsSync(path.join(out, 'games/g/index.html')));
+  assert.ok(!fs.existsSync(path.join(out, 'games/g/docs')));
+  assert.ok(fs.existsSync(path.join(out, 'dev/pr-6/games/h/index.html')));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(out, 'games.json'), 'utf8')), [game]);
+});
+// [Claude 2026-10-19 end]
