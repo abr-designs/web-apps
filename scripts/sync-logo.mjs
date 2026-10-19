@@ -1,9 +1,9 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-14
 //
-// Copies assets/logo/ into every apps/<slug>/logo/, since each app deploys only its own folder.
+// Copies assets/logo/ into every apps/<slug>/logo/ and games/<slug>/logo/, since each one deploys only its own folder.
 // Usage: node scripts/sync-logo.mjs [--check]
-// --check changes nothing and exits 1 when an app's copy is stale or a top-level page lacks the logo.
+// --check changes nothing and exits 1 when an app's or game's copy is stale or a top-level page lacks the logo.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,37 +11,39 @@ import { pathToFileURL } from 'node:url';
 
 const LINK = 'logo/logo.css';
 const IMG = 'logo/senor_claude.png';
+const FOLDERS = ['apps', 'games']; // [Claude 2026-10-19]
 
 /** @created Claude (claude-opus-5-5) 2026-10-14 */
 export function syncLogo(rootDir, { check = false } = {}) {
   const masterDir = path.join(rootDir, 'assets', 'logo');
   const masterFiles = fs.readdirSync(masterDir);
-  const appsDir = path.join(rootDir, 'apps');
   const problems = [];
 
-  const slugs = fs.readdirSync(appsDir, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name)
-    .sort();
+  const targets = FOLDERS
+    .filter((folder) => fs.existsSync(path.join(rootDir, folder)))
+    .flatMap((folder) => fs.readdirSync(path.join(rootDir, folder), { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => `${folder}/${d.name}`)
+      .sort());
 
-  for (const slug of slugs) {
-    const appDir = path.join(appsDir, slug);
+  for (const target of targets) {
+    const targetDir = path.join(rootDir, target);
     for (const file of masterFiles) {
       const src = path.join(masterDir, file);
-      const dest = path.join(appDir, 'logo', file);
+      const dest = path.join(targetDir, 'logo', file);
       if (fs.existsSync(dest) && fs.readFileSync(src).equals(fs.readFileSync(dest))) continue;
       if (check) {
-        problems.push(`apps/${slug}/logo/${file} is missing or out of date`);
+        problems.push(`${target}/logo/${file} is missing or out of date`);
       } else {
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.copyFileSync(src, dest);
       }
     }
 
-    for (const page of fs.readdirSync(appDir).filter((f) => f.endsWith('.html'))) {
-      const html = fs.readFileSync(path.join(appDir, page), 'utf8');
+    for (const page of fs.readdirSync(targetDir).filter((f) => f.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(targetDir, page), 'utf8');
       if (!html.includes(LINK) || !html.includes(IMG)) {
-        problems.push(`apps/${slug}/${page} must link ${LINK} and show ${IMG}`);
+        problems.push(`${target}/${page} must link ${LINK} and show ${IMG}`);
       }
     }
   }
