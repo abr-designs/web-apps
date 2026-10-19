@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#170e19">
+  <title>Tech Scavenger</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="logo/logo.css">
+</head>
+<body>
+  <img class="app-logo" src="logo/senor_claude.png" alt="">
+  <main id="game" aria-label="Tech Scavenger game">
+    <div id="viewport" aria-hidden="true"></div>
+
+    <section id="loading" class="screen">
+      <div class="boot-mark"><span></span><span></span><span></span></div>
+      <p>LINKING FIELD SYSTEMS</p>
+    </section>
+
+    <section id="start" class="screen hidden">
+      <div class="title-block">
+        <p class="eyebrow">FIELD RECOVERY PROTOCOL // 06</p>
+        <h1>TECH<br><em>SCAVENGER</em></h1>
+        <p class="lede">The valley is full of dead machines.<br>Some of them are still remembering.</p>
+        <button id="begin" type="button">BEGIN RECOVERY <span>→</span></button>
+        <div class="controls">
+          <span><b>WASD</b> MOVE</span>
+          <span><b>MOUSE</b> LOOK</span>
+          <span><b>F</b> SCAN</span>
+          <span><b>Q</b> SIGNAL</span>
+          <span><b>E</b> INTERACT</span>
+        </div>
+      </div>
+      <div class="start-status">
+        <span>ARCHIVE LINK</span>
+        <strong>0 / 2</strong>
+        <i></i>
+        <small>EMERGENCY TRANSMISSION INCOMPLETE</small>
+      </div>
+    </section>
+
+    <section id="pause" class="screen hidden">
+      <div class="pause-card">
+        <p class="eyebrow">FIELD LINK SUSPENDED</p>
+        <h2>Paused</h2>
+        <p>Click below to return to the valley.</p>
+        <button id="resume" type="button">RESUME</button>
+        <button id="restart" class="secondary" type="button">RESTART EXPEDITION</button>
+      </div>
+    </section>
+
+    <section id="error" class="screen hidden" role="alert">
+      <div class="pause-card">
+        <p class="eyebrow">FIELD LINK FAILED</p>
+        <h2>Unable to initialize</h2>
+        <p id="error-message">WebGL or the Three.js CDN could not be reached.</p>
+        <small>Open this file in a current Chrome or Edge browser while connected to the internet.</small>
+      </div>
+    </section>
+
+    <div id="hud" class="hidden">
+      <div class="mission-panel">
+        <small>RECOVERY ORDER</small>
+        <strong id="objective">Find a machine. Record its signature.</strong>
+        <div class="archive-track"><i id="archive-fill"></i></div>
+        <span id="archive-count">ARCHIVES 0 / 2</span>
+      </div>
+
+      <div id="scanner-panel">
+        <div class="scanner-top">
+          <span>TRACKING</span>
+          <strong id="signature">— NO SIGNAL —</strong>
+        </div>
+        <div class="signal-row">
+          <div id="signal-bars" aria-label="signal strength">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div id="direction"><span>▲</span></div>
+        </div>
+        <small id="scanner-note">HOLD F ON A DEVICE TO RECORD</small>
+      </div>
+
+      <div id="crosshair"><i></i><i></i></div>
+      <div id="interaction">
+        <strong id="prompt"></strong>
+        <div id="hold-track"><i id="hold-fill"></i></div>
+      </div>
+      <div id="toast" role="status"></div>
+      <div id="carry-label" class="hidden"><span>HANDS OCCUPIED</span><small>E TO DROP</small></div>
+      <div class="hud-help">Q CYCLE TRACKED SIGNATURE <b>•</b> ESC PAUSE</div>
+    </div>
+
+    <section id="terminal" class="hidden" aria-label="Ship archive terminal">
+      <header class="terminal-bar">
+        <div><i></i> ARC/OS RECOVERY CONSOLE</div>
+        <span id="terminal-clock">00:00:00</span>
+        <button id="terminal-exit" type="button">DISCONNECT ×</button>
+      </header>
+      <div class="terminal-body">
+        <aside>
+          <h3>SHIP // ARCHIVE</h3>
+          <nav>
+            <button class="active" type="button">▣ MOUNTED DRIVE</button>
+            <button type="button" disabled>□ SHIP MEMORY</button>
+            <button type="button" disabled>□ TRANSMISSION</button>
+          </nav>
+          <div class="system-copy">
+            <small>UPLINK STATUS</small>
+            <strong id="terminal-progress">0 OF 2 FRAGMENTS</strong>
+            <div><i id="terminal-progress-fill"></i></div>
+          </div>
+        </aside>
+        <div class="desktop">
+          <div class="desktop-heading">
+            <div><small>MOUNT</small><strong id="drive-name">NO DRIVE</strong></div>
+            <span id="drive-free">READ ONLY // UNKNOWN MEDIA</span>
+          </div>
+          <div id="file-grid" class="file-grid"></div>
+          <div class="drop-docks">
+            <div id="archive-dock" class="drop-dock" data-accept="zip">
+              <span class="dock-icon">⇩</span>
+              <div><strong>ARCHIVE UPLINK</strong><small>DROP .ZIP TO TRANSMIT</small></div>
+            </div>
+            <div id="install-dock" class="drop-dock" data-accept="exe">
+              <span class="dock-icon">⌁</span>
+              <div><strong>FIRMWARE INSTALL</strong><small>DROP .EXE TO APPLY</small></div>
+            </div>
+          </div>
+          <div id="file-window" class="file-window hidden" role="dialog" aria-modal="false">
+            <header><span id="window-title">FILE</span><button id="window-close" type="button">×</button></header>
+            <div id="window-content"></div>
+          </div>
+        </div>
+      </div>
+      <footer><span>DRAG ARCHIVES AND FIRMWARE TO PROCESS</span><span>DOUBLE-CLICK DOCUMENTS TO OPEN</span></footer>
+    </section>
+
+    <section id="ending" class="screen hidden">
+      <div class="transmission-card">
+        <p class="eyebrow">TRANSMISSION RECONSTRUCTED // 100%</p>
+        <div class="waveform"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <blockquote>“If the recovery ship answers, do not follow the navigation beacon. The beacon is not ours. It learned our voices.”</blockquote>
+        <p class="signoff">SIGNAL ORIGIN: <b>YOUR SHIP</b><br>RECORDED: 46 YEARS BEFORE LAUNCH</p>
+        <div class="ending-actions">
+          <span id="elapsed">FIELD TIME 00:00</span>
+          <button id="ending-restart" type="button">RESTART EXPEDITION</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="game.js" defer></script>
+</body>
+</html>

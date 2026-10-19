@@ -1,0 +1,8 @@
+{
+  "name": "Tech Scavenger",
+  "description": "First-person exploration game: scan a foggy valley of dead machines, recover their data drives, and read what they remember.",
+  "color": "teal",
+  "tags": [
+    "ld60"
+  ]
+}
