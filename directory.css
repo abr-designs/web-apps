@@ -167,3 +167,58 @@ h1 { font-size: 22px; font-weight: 500; margin: 0; }
 
 .pr-link:hover { color: var(--text-primary); text-decoration: underline; }
 .pr-link:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* [Claude 2026-10-19 start] */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip:hover { background: var(--hover); }
+.chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.chip[aria-pressed="true"] {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--bg-app);
+}
+
+.chip-clear {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+.tag {
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.section-heading {
+  margin: 20px 0 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+/* [Claude 2026-10-19 end] */

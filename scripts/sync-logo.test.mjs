@@ -48,3 +48,16 @@ test('pages without the logo tags are reported', () => {
   const root = makeTree({ ...master, 'apps/one/index.html': '<p>hi</p>' });
   assert.deepEqual(syncLogo(root), ['apps/one/index.html must link logo/logo.css and show logo/senor_claude.png']);
 });
+
+// [Claude 2026-10-19 start]
+test('sync covers games and reports them by folder', () => {
+  const root = makeTree({ ...master, 'games/g/index.html': page, 'games/h/index.html': '<p>hi</p>' });
+  assert.deepEqual(syncLogo(root), ['games/h/index.html must link logo/logo.css and show logo/senor_claude.png']);
+  assert.equal(fs.readFileSync(path.join(root, 'games/g/logo/logo.css'), 'utf8'), 'a{}');
+});
+
+test('missing apps or games folder is skipped', () => {
+  const root = makeTree({ ...master, 'games/g/index.html': page });
+  assert.deepEqual(syncLogo(root, { check: true }), ['games/g/logo/logo.css is missing or out of date', 'games/g/logo/senor_claude.png is missing or out of date']);
+});
+// [Claude 2026-10-19 end]
