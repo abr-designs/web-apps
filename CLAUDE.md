@@ -25,6 +25,6 @@ Every page of every app displays the shared logo, fixed to the bottom-right corn
   <link rel="stylesheet" href="logo/logo.css">
   <img class="app-logo" src="logo/senor_claude.png" alt="">
   ```
-- Run `node scripts/sync-logo.mjs` after creating an app or editing anything in `assets/logo/`. It copies the master folder into every `apps/<slug>/logo/`, because the Pages build deploys only each app's own folder.
+- Run `node scripts/sync-logo.mjs` after creating an app or game, or editing anything in `assets/logo/`. It copies the master folder into every `apps/<slug>/logo/` and `games/<slug>/logo/`, because the Pages build deploys only each app's or game's own folder.
 - An app with a fixed bottom bar sets `--logo-floor` on `:root` to the bar's height (include `env(safe-area-inset-bottom, 0px)` when the bar pads for it), so the logo rests on the bar's top edge and the bar acts as the bottom of the window.
-- Change the logo's look only in `assets/logo/`, then sync. CI runs `node scripts/sync-logo.mjs --check` and fails when an app's copy is out of date or a page is missing the two lines.
+- Change the logo's look only in `assets/logo/`, then sync. CI runs `node scripts/sync-logo.mjs --check` and fails when an app's or game's copy is out of date or a page is missing the two lines.
