@@ -1,5 +1,8 @@
 {
   "name": "Cozy Chaos",
   "description": "Keep an isometric bedroom calm as windows, mice, spiders, phone calls and falling books pile up.",
-  "color": "pink"
+  "color": "pink",
+  "tags": [
+    "ld60"
+  ]
 }
