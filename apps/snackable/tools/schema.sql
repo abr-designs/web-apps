@@ -40,6 +40,8 @@ alter table likes enable row level security;
 -- Explicit Data API access; RLS policies below narrow it to the right rows.
 grant select on games to anon, authenticated;
 grant select, insert, delete on reports, likes to authenticated;
+-- curate.mjs --push upserts with the service key; service_role skips RLS but still needs grants.
+grant select, insert, update on games to service_role;
 
 create policy "anyone reads games" on games for select using (true);
 
