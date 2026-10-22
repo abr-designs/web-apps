@@ -12,13 +12,15 @@ date: 2026-10-21
 | Updated | 2026-10-21 |
 | Proficiency | 5-7/10 |
 | Engine | JavaScript (ES modules, no build step) + three.js, static page in `games/vigil/` |
-| Revisions | 3 (latest: U-003) |
+| Revisions | 5 (latest: U-005) |
 | Summary | XCOM 2 style turn-based squad combat in the browser: heightmap grid, cover, hit chances, overwatch, concealment and pods, four classes, destructible cover, one Sweep mission. |
 
 ## Revision Log
 
 | ID | Date | Type | Change |
 |---|---|---|---|
+| U-005 | 2026-10-21 | Update | Step 4 data: abilities gain `name` and `description` for the rail list; WEAPONS adds melee `sword` and `stunBaton` (no range table); `ammo: null` means unlimited (pistol, melee); effect fields documented in AbilitySystem. |
+| U-004 | 2026-10-21 | Fix | Test command is `node --test "games/vigil/tests/*.test.mjs"`: Node 25 treats a bare directory argument as a module and fails. |
 | U-003 | 2026-10-21 | Update | Layout gate (step 2): picked C Tactical Rail from docs/mockups/layout.html. v1 is desktop only (mouse and keyboard); touch Open Question closed. UI Reference records where each piece sits in the rail layout. |
 | U-002 | 2026-10-21 | Update | Added UI Reference (R1 to R15) from the user's XCOM 2 screenshot. Hud gains showSquad, showObjective, updateUnitBars. Move range draws as perimeter outlines. Step 2 prompt cites the reference. |
 | U-001 | 2026-10-21 | Update | Palette gate (step 1): picked A Command Cyan from docs/mockups/palette.html. Tokens: background #0B1118, surface #121C26, surface-raised #1B2834, text #E6EEF4, text-muted #8A9BAA, accent #3FD0E8, xcom-team #4AA8FF, alien-team #E5484D, move-blue #2F8CFF, move-yellow #F2C94C, danger/detection-red #FF3B3B, half-cover #6E9BB8, full-cover #43C4F0, crit #FFB13B. |
@@ -570,9 +572,9 @@ Responsibility: targeting rules per ability and execution of its effect list.
 Owns: nothing.
 Pattern: Type Object (ability data) + Strategy (one function per effect type).
 
-Ability data shape: `{ apCost, endsTurn, usesAmmo, charges?, cooldown?, targeting, range?, radius?, aim?, crit?, guaranteedHit?, breaksConcealment, passive?, effects: [...] }`.
+Ability data shape: `{ name, description, apCost, endsTurn, usesAmmo, charges?, cooldown?, targeting, range?, radius?, aim?, crit?, guaranteedHit?, breaksConcealment, passive?, effects: [...] }`.
 Targeting values: `self`, `enemyLos`, `enemySquadsight`, `ally`, `allyAny`, `tile` (range, radius), `melee` (reachable tile adjacent to an enemy).
-Effect types: `weaponDamage`, `flatDamage`, `shred`, `destroyCover`, `heal`, `applyStatus`, `modifyStat`, `setOverwatch`, `hunker`, `reload`, `grantAp`, `moveThenAct`.
+Effect types: `weaponDamage`, `flatDamage`, `shred`, `destroyCover`, `heal`, `applyStatus`, `modifyStat`, `setOverwatch`, `hunker`, `reload`, `grantAp`, `moveThenAct`. Effect fields are documented at the top of `js/data/abilities.js`: `weaponDamage` takes an optional `weapon` (melee abilities name `sword` or `stunBaton`) and `damageMult`; `modifyStat` carries a `status` label so the HUD can show it; `applyStatus` with `onHit` applies only when the preceding `weaponDamage` hit. A unit with the `squadsight` passive treats `enemyLos` as `enemySquadsight`; the `shredder` passive adds its `shred` value to the unit's weapon hits.
 
 Stub:
 ```js
@@ -811,52 +813,52 @@ Read games/vigil/docs/plans/0001-tactical-layer.md (File layout, Implementation 
 
 **Step 4: Rng and data**
 ```text
-Implement step 4 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/rng.js (mulberry32 over state.rngState) and js/data/rules.js, classes.js, weapons.js, abilities.js (data only, shapes from the AbilitySystem section), enemies.js, props.js exactly as the Defs and Rng stubs describe. Fill all four classes, five weapons (rifle, shotgun, sniper, cannon, pistol) with range tables, the ability list in the Defs stub, and four enemies (trooper, officer, stunLancer, sectoid) with XCOM 2 early-game style stats. Freeze every table. Write tests/rng.test.mjs proving determinism from a seed, [0,1) bounds, and nextInt inclusivity. Run node --test games/vigil/tests/.
+Implement step 4 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/rng.js (mulberry32 over state.rngState) and js/data/rules.js, classes.js, weapons.js, abilities.js (data only, shapes from the AbilitySystem section), enemies.js, props.js exactly as the Defs and Rng stubs describe. Fill all four classes, five weapons (rifle, shotgun, sniper, cannon, pistol) with range tables, the ability list in the Defs stub, and four enemies (trooper, officer, stunLancer, sectoid) with XCOM 2 early-game style stats. Freeze every table. Write tests/rng.test.mjs proving determinism from a seed, [0,1) bounds, and nextInt inclusivity. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 5: Grid and MapBuilder**
 ```text
-Implement step 5 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/grid.js, js/data/parcels.js (at least 6 parcels of 8x8 with heights 0-3, props using the legend in the Defs stub, at least 2 tagged 'spawn', each with at least one 'P' anchor unless spawn), and js/sim/map-builder.js per their stubs. Edge cover: a tile's edge takes the cover of the prop on the orthogonal neighbour across that edge. Tests: index round trip, rotateParcel 4x returns the original, edge cover derivation, damageProp swaps to rubble and rebuilds only the 4 neighbours, buildMission is deterministic per seed, puts 4 soldiers on walkable tiles, and places pods at least 10 tiles away. Run node --test games/vigil/tests/.
+Implement step 5 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/grid.js, js/data/parcels.js (at least 6 parcels of 8x8 with heights 0-3, props using the legend in the Defs stub, at least 2 tagged 'spawn', each with at least one 'P' anchor unless spawn), and js/sim/map-builder.js per their stubs. Edge cover: a tile's edge takes the cover of the prop on the orthogonal neighbour across that edge. Tests: index round trip, rotateParcel 4x returns the original, edge cover derivation, damageProp swaps to rubble and rebuilds only the 4 neighbours, buildMission is deterministic per seed, puts 4 soldiers on walkable tiles, and places pods at least 10 tiles away. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 6: Visibility and cover**
 ```text
-Implement step 6 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/visibility.js and js/sim/cover.js per their stubs and Settled rules (step-out, squadsight, edge plane test with 0.5 tile margin, flanked only when the tile has some cover edge). Use a 3D DDA (Amanatides-Woo) across the XZ grid, sampling ray height at each tile boundary. Write tests on small hand-built grids: wall blocks LOS, crate does not, high terrain blocks low viewers, step-out sees around a wall corner, half vs full cover by angle, flanked from the side, no flank on open ground. Run node --test games/vigil/tests/.
+Implement step 6 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/visibility.js and js/sim/cover.js per their stubs and Settled rules (step-out, squadsight, edge plane test with 0.5 tile margin, flanked only when the tile has some cover edge). Use a 3D DDA (Amanatides-Woo) across the XZ grid, sampling ray height at each tile boundary. Write tests on small hand-built grids: wall blocks LOS, crate does not, high terrain blocks low viewers, step-out sees around a wall corner, half vs full cover by angle, flanked from the side, no flank on open ground. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 7: Pathfinder**
 ```text
-Implement step 7 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/pathfinder.js per its stub. Tests on hand-built grids: blue vs yellow bands by mobility, diagonal cost 1.5, no corner cutting past props, climbing one level costs +1, two-level steps impassable, units block tiles, pathTo returns [] for unreachable tiles. Run node --test games/vigil/tests/.
+Implement step 7 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/pathfinder.js per its stub. Tests on hand-built grids: blue vs yellow bands by mobility, diagonal cost 1.5, no corner cutting past props, climbing one level costs +1, two-level steps impassable, units block tiles, pathTo returns [] for unreachable tiles. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 8: Hit and combat**
 ```text
-Implement step 8 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/hit.js and js/sim/combat.js per their stubs and RULES. Every modifier in compute() appears in modifiers[] with a label. Tests: cover and hunker values, high ground, flank crit, overwatch multiplier, clamp to 0..100, guaranteed hit, melee ignores cover, rollOutcome thresholds with a forced RNG state (hit, graze band edges, miss, crit, dodge downgrade), armor and shred math, death at 0 hp, stray cover hit on a miss. After tests pass, run the maths-verifier agent on hit.js compute and combat.js rollOutcome against the formulas in the plan. Run node --test games/vigil/tests/.
+Implement step 8 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/hit.js and js/sim/combat.js per their stubs and RULES. Every modifier in compute() appears in modifiers[] with a label. Tests: cover and hunker values, high ground, flank crit, overwatch multiplier, clamp to 0..100, guaranteed hit, melee ignores cover, rollOutcome thresholds with a forced RNG state (hit, graze band edges, miss, crit, dodge downgrade), armor and shred math, death at 0 hp, stray cover hit on a miss. After tests pass, run the maths-verifier agent on hit.js compute and combat.js rollOutcome against the formulas in the plan. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 9: State, executor, turns**
 ```text
-Implement step 9 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/state.js, js/sim/events.js, js/sim/executor.js, js/sim/turns.js per their stubs, the Battle phase diagram and Settled rules. execute() must leave state unchanged when it throws InvalidCommand (validate fully before mutating). Implement the 'move' handler with the per-step loop from the Move flow, calling Detection.onStep and ReactionSystem.onStep through injectable hooks that default to no-ops until step 11. Accept an autosave option so tests skip SaveStore. Tests: AP refresh and side switch, move spends 1 or 2 AP, invalid commands throw with a reason and change nothing, victory and defeat set outcome and emit BattleEnded. Run node --test games/vigil/tests/.
+Implement step 9 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/state.js, js/sim/events.js, js/sim/executor.js, js/sim/turns.js per their stubs, the Battle phase diagram and Settled rules. execute() must leave state unchanged when it throws InvalidCommand (validate fully before mutating). Implement the 'move' handler with the per-step loop from the Move flow, calling Detection.onStep and ReactionSystem.onStep through injectable hooks that default to no-ops until step 11. Accept an autosave option so tests skip SaveStore. Tests: AP refresh and side switch, move spends 1 or 2 AP, invalid commands throw with a reason and change nothing, victory and defeat set outcome and emit BattleEnded. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 10: Abilities and effects**
 ```text
-Implement step 10 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/abilities.js and js/sim/effects.js per the AbilitySystem and EffectRegistry section, wired into the executor's 'ability' handler. Implement every effect type listed and every ability in js/data/abilities.js. Grenades and launchGrenade use destroyCover plus flatDamage plus shred in a radius and call Detection.onNoise through the same injectable hook. Tests: standard shot, reload, overwatch sets status, hunker, slash moves then attacks, runAndGun, squadsight targeting, launchGrenade destroys cover and shreds, medicalProtocol heals, cooldowns and charges block reuse, abilitiesFor reports disabled reasons. Run node --test games/vigil/tests/.
+Implement step 10 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/abilities.js and js/sim/effects.js per the AbilitySystem and EffectRegistry section, wired into the executor's 'ability' handler. Implement every effect type listed and every ability in js/data/abilities.js. Grenades and launchGrenade use destroyCover plus flatDamage plus shred in a radius and call Detection.onNoise through the same injectable hook. Tests: standard shot, reload, overwatch sets status, hunker, slash moves then attacks, runAndGun, squadsight targeting, launchGrenade destroys cover and shreds, medicalProtocol heals, cooldowns and charges block reuse, abilitiesFor reports disabled reasons. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 11: Reactions and detection**
 ```text
-Implement step 11 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/reactions.js and js/sim/detection.js per their stubs, the Pod alert diagram and Settled rules, and replace the step 9 no-op hooks with them. Scamper moves each revealed member to its best cover tile within 1 AP band without spending AP, with ReactionSystem firing during scamper steps. Tests: stepping into detection radius breaks concealment, shooting breaks it, seeing a pod member reveals the pod and the mover finishes its path, overwatch fires once on first visible step and clears, mover killed mid-path stops, noise reveals pods within hearing radius. Run node --test games/vigil/tests/.
+Implement step 11 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/reactions.js and js/sim/detection.js per their stubs, the Pod alert diagram and Settled rules, and replace the step 9 no-op hooks with them. Scamper moves each revealed member to its best cover tile within 1 AP band without spending AP, with ReactionSystem firing during scamper steps. Tests: stepping into detection radius breaks concealment, shooting breaks it, seeing a pod member reveals the pod and the mover finishes its path, overwatch fires once on first visible step and clears, mover killed mid-path stops, noise reveals pods within hearing radius. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 12: Enemy AI**
 ```text
-Implement step 12 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/ai.js per its stub with rifleman, melee and caster profiles and starting weights for w1 to w4 (record them in the plan's Open Questions entry). nextCommand returns one command at a time and null when done. Use Rng for ties so turns replay from the same state. Tests: Unaware pods patrol along their route, an engaged rifleman moves to cover and shoots the best target, melee closes and attacks, a unit with no good shot overwatches, nextCommand eventually returns null, same state gives the same command. Run node --test games/vigil/tests/.
+Implement step 12 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/ai.js per its stub with rifleman, melee and caster profiles and starting weights for w1 to w4 (record them in the plan's Open Questions entry). nextCommand returns one command at a time and null when done. Use Rng for ties so turns replay from the same state. Tests: Unaware pods patrol along their route, an engaged rifleman moves to cover and shoots the best target, melee closes and attacks, a unit with no good shot overwatches, nextCommand eventually returns null, same state gives the same command. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 13: SaveStore**
 ```text
-Implement step 13 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/save.js per its stub and hook it into execute() (autosave option). Wrap every storage call in try/catch. Tests with an in-memory globalThis.localStorage: round trip equals the original state, corrupt JSON returns null, version mismatch returns null, clear removes the key, rngState survives so the next roll matches. Run node --test games/vigil/tests/.
+Implement step 13 of games/vigil/docs/plans/0001-tactical-layer.md: js/sim/save.js per its stub and hook it into execute() (autosave option). Wrap every storage call in try/catch. Tests with an in-memory globalThis.localStorage: round trip equals the original state, corrupt JSON returns null, version mismatch returns null, clear removes the key, rngState survives so the next roll matches. Run node --test "games/vigil/tests/*.test.mjs".
 ```
 
 **Step 14: Renderer, camera, picker**
@@ -876,13 +878,13 @@ Implement step 16 of games/vigil/docs/plans/0001-tactical-layer.md: js/view/hud.
 
 **Step 17: Wiring and playtest**
 ```text
-Implement step 17 of games/vigil/docs/plans/0001-tactical-layer.md: js/main.js per its stub (replace the debug entry), enemy turn driver at speed 3, victory and defeat overlay with New mission, load from SaveStore on start. Run node --test games/vigil/tests/ and node scripts/sync-logo.mjs --check. Play at least two full missions in the browser pane, note balance issues (AI weights, sight and detection radii) in the plan's Open Questions, set the plan Status to Implemented, and add a Revision Log row for any design change made during the playtest.
+Implement step 17 of games/vigil/docs/plans/0001-tactical-layer.md: js/main.js per its stub (replace the debug entry), enemy turn driver at speed 3, victory and defeat overlay with New mission, load from SaveStore on start. Run node --test "games/vigil/tests/*.test.mjs" and node scripts/sync-logo.mjs --check. Play at least two full missions in the browser pane, note balance issues (AI weights, sight and detection radii) in the plan's Open Questions, set the plan Status to Implemented, and add a Revision Log row for any design change made during the playtest.
 ```
 
 ## Implementation Notes
 
 - **No build step.** Browser and Node both load `js/` as ES modules. `games/vigil/package.json` with `"type": "module"` makes Node treat `.js` as ESM so `tests/*.test.mjs` can import sim modules. Sim modules must never import from `js/view/` or touch `document`, `window` or `localStorage` (except `save.js` through `globalThis`).
-- **Run tests** with `node --test games/vigil/tests/` (Node 22+). `tests/` and `docs/` are kept in the repo and not published.
+- **Run tests** with `node --test "games/vigil/tests/*.test.mjs"` (Node 22+). `tests/` and `docs/` are kept in the repo and not published.
 - **Logo and CI**: every page carries the two logo lines; run `node scripts/sync-logo.mjs` after creating the game and `--check` before pushing.
 - **Attribution**: JS files start with `// Created by Claude (<model id>)` and `// Date: YYYY-MM-DD`; CSS uses `/* */`; HTML uses `<!-- -->`; new functions get `/** @created Claude (<model id>) - YYYY-MM-DD */`.
 - **Determinism**: never call `Math.random` in `js/sim/`. Iterate units and pods in sorted id order wherever order affects outcomes (overwatch, scamper, AI).
