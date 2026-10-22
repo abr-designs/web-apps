@@ -1,11 +1,20 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
-// The serializable battle root. units is keyed by id; ids sort in turn order (x1..x4 squad, a1.. aliens).
+// The serializable battle root. units is keyed by id; ids sort in turn order (x1..x4 squad, a01.. aliens).
+// phase is one of PHASE; activeSide is 'xcom' | 'alien'; outcome is null | 'victory' | 'defeat' (set with phase 'ended').
+// Unit.statuses: [{ id, turns }] in application order. turns counts the owner's side starts left: TurnManager.beginSide
+//   subtracts 1 and expires the status at 0. turns null means no timer (cleared by a rule or an effect).
+//   'overwatch' and 'hunkered' always clear at the start of the owner's side. A 'stunned' unit starts its side with 0 AP.
+//   modifyStat statuses may also carry { stat, amount }; read them with statValue, never bake them into unit.stats.
+// Unit.cooldowns: { abilityId: turns } with the same countdown; the ability is ready when its key is absent.
 
 import { ABILITIES } from '../data/abilities.js';
 import { WEAPONS } from '../data/weapons.js';
 
 export const STATE_VERSION = 1;
+
+// deploy -> playerTurn <-> enemyTurn -> ended (Battle phase diagram; Victory and Defeat are ended plus outcome).
+export const PHASE = Object.freeze({ deploy: 'deploy', playerTurn: 'playerTurn', enemyTurn: 'enemyTurn', ended: 'ended' });
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
 export function createUnit(id, team, defId, def, tile) {
@@ -42,4 +51,17 @@ export function livingUnits(state, team) {
 export function unitAt(state, tile) {
   for (const u of Object.values(state.units)) if (u.hp > 0 && u.tile === tile) return u;
   return null;
+}
+
+/** @created Claude (claude-opus-5-5) - 2026-10-21 */
+export function hasStatus(unit, id) {
+  return unit.statuses.some((s) => s.id === id);
+}
+
+// Base stat plus every status modifier for it (modifyStat statuses carry stat and amount).
+/** @created Claude (claude-opus-5-5) - 2026-10-21 */
+export function statValue(unit, stat) {
+  let value = unit.stats[stat] ?? 0;
+  for (const s of unit.statuses) if (s.stat === stat) value += s.amount;
+  return value;
 }

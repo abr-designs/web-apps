@@ -7,18 +7,22 @@ date: 2026-10-21
 
 | Field | Value |
 |---|---|
-| Status | In Progress |
+| Status | Implemented |
 | Created | 2026-10-21 |
 | Updated | 2026-10-21 |
 | Proficiency | 5-7/10 |
 | Engine | JavaScript (ES modules, no build step) + three.js, static page in `games/vigil/` |
-| Revisions | 6 (latest: U-006) |
+| Revisions | 10 (latest: U-010) |
 | Summary | XCOM 2 style turn-based squad combat in the browser: heightmap grid, cover, hit chances, overwatch, concealment and pods, four classes, destructible cover, one Sweep mission. |
 
 ## Revision Log
 
 | ID | Date | Type | Change |
 |---|---|---|---|
+| U-010 | 2026-10-21 | Update | Step 17: `main.js` wires all executor hooks (autosave clears on battle end), builds or loads the battle before the view, drives the enemy turn at speed 3 and exposes `window.vigil` as a console handle. Playtest: 6 browser missions (2 victories, 4 defeats) and 400 headless missions with no exceptions or invalid AI commands; reload resumes with the same `rngState` and roll. No design changes; balance findings added to Open Questions. |
+| U-009 | 2026-10-21 | Update | Steps 14 to 16 (view): 1 world unit per tile and `HEIGHT_STEP` 0.5; `tileCenter` is the tile middle on its terrain top. `Renderer` owns the camera and defaults its palette to `readPalette()`; `showCoverShields` takes flanked edges; R12 pod marker skipped; `showDetection` uses a plain radius without LOS. `EventPlayer` takes `{ getState, container }`, queues overlapping `play` calls, exposes `project(unitId)` and `onBattleEnded`, and `skip` covers the current batch only. `Hud` adds `setActiveAbility`, `setLocked` and `onSelectUnit`; `InputController` takes `player` and adds `update(dt)`. Hover previews, first click arms, second click or Enter confirms. Leaving Locked reselects the previous soldier (diagram says Idle). |
+| U-008 | 2026-10-21 | Update | Steps 6 to 13 (sim): visibility takes `{ fromTile, targetTile }` and exports `tileDistance` and `stepOutTiles`; step-out stays within `maxClimb`; `coverAt` returns `coverTile`; a cover edge counts only when the attacker is 2+ rows past it. `reachable` ignores `unit.ap`, so the executor rejects `apCost > ap`. `PHASE` is deploy, playerTurn, enemyTurn, ended; statuses are `{ id, turns }` with `hasStatus` and `statValue`; executor hooks via `setHooks` (detection, reactions, abilities, save), wired in `main.js`; new `deploy` command; `ApSpent` carries `{ spent, ap }`; the xcom side auto-ends at 0 AP; a mutual wipe is defeat. Hit graze band clipped to 0..100; guaranteed hits cannot be dodged; dodge downgrades crits; effective armor is `armor - shred`; stray cover hits do 1 damage. Explosions do 4 prop damage and hit friendlies; overwatch needs ammo; actives need 1+ AP. Pods are not revealed by sight while the squad is concealed; overwatch range is sight (ranged) or 1.5 tiles (melee). AI ties break without RNG so `nextCommand` is pure; the patrol waypoint is `patrolRoute[(patrolIndex + turn) % length]`; every AI command spends AP; engaged aliens know every soldier position. `load` coerces `rngState`. |
+| U-007 | 2026-10-21 | Update | Execution switched to subagents from step 6 on; `Model` and `Why` columns restored from the Steps sign-off. |
 | U-006 | 2026-10-21 | Update | Step 5: `state.js` (`STATE_VERSION`, `createUnit`, `livingUnits`, `unitAt`) written early because `buildMission` creates units; step 9 adds events, executor and turns. `buildMission` takes `squad` and `enemyPool` options for the strategy layer. Grid adds `placeProp` and `rebuildAllEdgeCover`; indestructible props store hp `null`. Unit ids: `x1` to `x4`, aliens `a01` up so ids sort in order. |
 | U-005 | 2026-10-21 | Update | Step 4 data: abilities gain `name` and `description` for the rail list; WEAPONS adds melee `sword` and `stunBaton` (no range table); `ammo: null` means unlimited (pistol, melee); effect fields documented in AbilitySystem. |
 | U-004 | 2026-10-21 | Fix | Test command is `node --test "games/vigil/tests/*.test.mjs"`: Node 25 treats a bare directory argument as a module and fails. |
@@ -765,35 +769,43 @@ function newMission() {}          // SaveStore.clear, buildMission with a new se
 
 ## Open Questions
 
-- [ ] AI weights `w1` to `w4` per profile: set starting values in step 12, tune in the step 17 playtest.
-- [ ] Sight 14 and detection 4 tiles on a 24x24 map: confirm in playtest that scouting while concealed feels tense without being trivial.
+- [ ] AI weights `w1` to `w4` per profile: starting values in `AI_PROFILES` (`js/sim/ai.js`): rifleman 1.0, 1.2, 0.6, 0.7 (min hit 35); melee 0.4, 2.0, 0.3, 0.3 (min hit 40, w2 scores closeness); caster 1.2, 0.8, 0.3, 1.0 (min hit 30). Tune in the step 17 playtest.
+- [ ] Graze band near 0 and 100: clipping means hit 1 to 5 has no clean hit and 95 to 99 no miss, so the preview slightly overstates odds there. Keep, or adopt a symmetric shrink of the band?
+- [ ] Grenades do 4 prop damage against wall hp 8, so a wall needs two grenades. Keep?
+- [ ] Statuses tick at the owner's side start, so `psiDisorient` and `marked` (2 turns) affect one soldier turn and the description misleads. Use 3 turns, reword, or count from application?
+- [ ] Sight 14 and detection 4 tiles on a 24x24 map: in playtest the squad sees an enemy at start in about 40% of seeds (nearest alien about 13 tiles), and detection 4 is rarely reached before sight. Bot win rate about 36%, loss 48%.
+- [ ] Overwatch standoff: a lone engaged alien can overwatch every turn; about 16% of 200 bot runs hit turn 40 this way. Add an aggression ramp?
+- [ ] Chain wakes: one shot wakes 2+ pods in about 40% of seeds (hearing 8, pods under 8 apart). Try `hearingRadius` 6 or a larger `POD_SPACING`.
+- [ ] Overwatch fires at 0% hit chance (sniper point-blank). Skip shots below a floor?
+- [ ] Patrols of unaware pods take 3 to 7 s at speed 3 and the camera follows each pod. Speed up or skip camera focus for unseen pods?
+- [ ] Unit bars show end-state HP before the tracer lands (cosmetic).
 - [ ] Destroyed walls leave half-cover rubble (`PROPS.wall.rubble`): keep, or leave open ground?
 - [x] Touch support: v1 is desktop only (mouse and keyboard). Touch moves to a later plan.
 - [ ] `game.json` color and tags: suggested `"color": "blue"`, `"tags": ["tactics", "turn-based", "strategy"]`.
 
 ## Steps
 
-Execution: Implement the steps in `#` order in one session, started on opus.
+Execution: Run each step as its own subagent on the model in its `Model` column, in `#` order, starting a step only once everything in `Depends on` is done. Hand each subagent this plan path and its step number. Steps 1 to 5 ran inline.
 
-| # | Step | Files | Depends on |
-|---|---|---|---|
-| 1 | Palette: 3+ rendered options with hex and role (user gate) | `docs/mockups/palette.html` | none |
-| 2 | Layout: 3+ static mockups in the chosen palette, logo bottom-right (user gate) | `docs/mockups/layout.html` | 1 |
-| 3 | Scaffold: `index.html`, `style.css`, `game.json`, `package.json`, vendored three, folders, logo sync | root files, `vendor/`, `logo/` | 2 |
-| 4 | `Rng` + data modules | `js/sim/rng.js`, `js/data/*.js`, `tests/rng.test.mjs` | 3 |
-| 5 | `Grid`, parcels, `MapBuilder`, edge-cover derivation | `js/sim/grid.js`, `js/sim/map-builder.js`, `js/data/parcels.js`, `tests/grid.test.mjs`, `tests/map-builder.test.mjs` | 4 |
-| 6 | `Visibility` + `CoverResolver` | `js/sim/visibility.js`, `js/sim/cover.js`, `tests/visibility.test.mjs`, `tests/cover.test.mjs` | 5 |
-| 7 | `Pathfinder` | `js/sim/pathfinder.js`, `tests/pathfinder.test.mjs` | 5 |
-| 8 | `HitCalculator` + `CombatResolver` | `js/sim/hit.js`, `js/sim/combat.js`, `tests/hit.test.mjs`, `tests/combat.test.mjs` | 4, 6 |
-| 9 | `BattleState`, `EventLog`, `CommandExecutor`, `TurnManager` | `js/sim/state.js`, `js/sim/events.js`, `js/sim/executor.js`, `js/sim/turns.js`, `tests/executor.test.mjs` | 5 |
-| 10 | `AbilitySystem` + `EFFECTS` + class abilities | `js/sim/abilities.js`, `js/sim/effects.js`, `js/data/abilities.js`, `tests/abilities.test.mjs` | 7, 8, 9 |
-| 11 | `ReactionSystem` + `Detection` | `js/sim/reactions.js`, `js/sim/detection.js`, `tests/reactions.test.mjs`, `tests/detection.test.mjs` | 6, 10 |
-| 12 | `EnemyAI` | `js/sim/ai.js`, `tests/ai.test.mjs` | 11 |
-| 13 | `SaveStore` | `js/sim/save.js`, `tests/save.test.mjs` | 9 |
-| 14 | `Renderer` + `CameraRig` + `Picker` | `js/view/renderer.js`, `js/view/camera.js`, `js/view/picker.js` | 2, 3, 5 |
-| 15 | `EventPlayer` | `js/view/event-player.js` | 9, 14 |
-| 16 | `Hud` + `InputController` | `js/view/hud.js`, `js/view/input.js`, `style.css` | 7, 8, 15 |
-| 17 | `main.js` wiring, Sweep mission, victory and defeat, playtest | `js/main.js`, `index.html` | 10 to 16 |
+| # | Step | Files | Depends on | Model | Why |
+|---|---|---|---|---|---|
+| 1 | Palette: 3+ rendered options with hex and role (user gate) | `docs/mockups/palette.html` | none | sonnet | interactive design gate, repo rule |
+| 2 | Layout: 3+ static mockups in the chosen palette, logo bottom-right (user gate) | `docs/mockups/layout.html` | 1 | sonnet | interactive design gate, repo rule |
+| 3 | Scaffold: `index.html`, `style.css`, `game.json`, `package.json`, vendored three, folders, logo sync | root files, `vendor/`, `logo/` | 2 | haiku | boilerplate per README |
+| 4 | `Rng` + data modules | `js/sim/rng.js`, `js/data/*.js`, `tests/rng.test.mjs` | 3 | sonnet | stubs and tunables settled |
+| 5 | `Grid`, parcels, `MapBuilder`, edge-cover derivation | `js/sim/grid.js`, `js/sim/map-builder.js`, `js/data/parcels.js`, `tests/grid.test.mjs`, `tests/map-builder.test.mjs` | 4 | sonnet | format and rules settled |
+| 6 | `Visibility` + `CoverResolver` | `js/sim/visibility.js`, `js/sim/cover.js`, `tests/visibility.test.mjs`, `tests/cover.test.mjs` | 5 | opus | 3D geometry, subtle edge cases |
+| 7 | `Pathfinder` | `js/sim/pathfinder.js`, `tests/pathfinder.test.mjs` | 5 | sonnet | algorithm fully specified |
+| 8 | `HitCalculator` + `CombatResolver` | `js/sim/hit.js`, `js/sim/combat.js`, `tests/hit.test.mjs`, `tests/combat.test.mjs` | 4, 6 | sonnet | formulas settled; run maths-verifier |
+| 9 | `BattleState`, `EventLog`, `CommandExecutor`, `TurnManager` | `js/sim/state.js`, `js/sim/events.js`, `js/sim/executor.js`, `js/sim/turns.js`, `tests/executor.test.mjs` | 5 | opus | core state machine, single writer |
+| 10 | `AbilitySystem` + `EFFECTS` + class abilities | `js/sim/abilities.js`, `js/sim/effects.js`, `js/data/abilities.js`, `tests/abilities.test.mjs` | 7, 8, 9 | sonnet | Type Object + Strategy settled |
+| 11 | `ReactionSystem` + `Detection` | `js/sim/reactions.js`, `js/sim/detection.js`, `tests/reactions.test.mjs`, `tests/detection.test.mjs` | 6, 10 | opus | per-step interrupt ordering |
+| 12 | `EnemyAI` | `js/sim/ai.js`, `tests/ai.test.mjs` | 11 | opus | tuning judgment left open |
+| 13 | `SaveStore` | `js/sim/save.js`, `tests/save.test.mjs` | 9 | haiku | JSON in localStorage |
+| 14 | `Renderer` + `CameraRig` + `Picker` | `js/view/renderer.js`, `js/view/camera.js`, `js/view/picker.js` | 2, 3, 5 | sonnet | three.js scene from grid |
+| 15 | `EventPlayer` | `js/view/event-player.js` | 9, 14 | sonnet | sequence diagram settled |
+| 16 | `Hud` + `InputController` | `js/view/hud.js`, `js/view/input.js`, `style.css` | 7, 8, 15 | opus | state machine with UI edge cases |
+| 17 | `main.js` wiring, Sweep mission, victory and defeat, playtest | `js/main.js`, `index.html` | 10 to 16 | sonnet | integration from settled parts |
 
 ### Step prompts
 
