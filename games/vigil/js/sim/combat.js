@@ -7,7 +7,10 @@
 
 import { RULES } from '../data/rules.js';
 import { ABILITIES } from '../data/abilities.js';
-import { damageProp } from './grid.js';
+import { PROPS } from '../data/props.js';
+import { damageProp, toXZ, toIndex } from './grid.js';
+import { livingUnits } from './state.js';
+import { tileDistance } from './visibility.js';
 import { next, nextInt } from './rng.js';
 import { abilityDef, abilityId, abilityWeapon, grazeWindow, unitDef, weaponEffect } from './hit.js';
 
@@ -81,18 +84,60 @@ function passiveShred(unit) {
   return total;
 }
 
-// A missed shot may chip the cover it passed through (breakdown.coverTile, -1 for none).
+// Tile indices within `radius` tiles (Euclidean, centre to centre) of `center`, ascending.
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+export function tilesInRadius(grid, center, radius) {
+  const [cx, cz] = toXZ(grid, center);
+  const r = Math.ceil(radius);
+  const out = [];
+  for (let z = cz - r; z <= cz + r; z++) {
+    for (let x = cx - r; x <= cx + r; x++) {
+      const i = toIndex(grid, x, z);
+      if (i !== -1 && tileDistance(grid, center, i) <= radius) out.push(i);
+    }
+  }
+  return out.sort((a, b) => a - b);
+}
+
+// Damages the prop on a tile and emits CoverDamaged or CoverDestroyed. A destroyed prop with a burst (barrels) explodes at once,
+// so bursts chain depth first. noise, when given, collects blast tiles for the caller's flushNoise. -> damageProp's result.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+export function hitProp(state, ctx, tile, amount, noise = null) {
+  const prop = state.grid.props[tile];
+  const kind = prop?.kind;
+  const result = damageProp(state.grid, tile, amount);
+  if (result.destroyed) ctx.emit('CoverDestroyed', { tile, rubbleKind: result.rubbleKind });
+  else if (result.damaged) ctx.emit('CoverDamaged', { tile, hp: prop.hp });
+  const burst = result.destroyed ? PROPS[kind].burst : null;
+  if (burst) explode(state, ctx, tile, burst, noise);
+  return result;
+}
+
+// One blast: Explosion, damage rolled per living unit in the radius (friend or foe, id order), then propDamage on every prop
+// in the radius (tile order). blast: { radius, damage: [min, max] | null, propDamage }.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+export function explode(state, ctx, center, blast, noise = null) {
+  const tiles = tilesInRadius(state.grid, center, blast.radius);
+  ctx.emit('Explosion', { center, radius: blast.radius, tiles });
+  noise?.push(center);
+  if (blast.damage) {
+    for (const unit of livingUnits(state)) {
+      if (tileDistance(state.grid, center, unit.tile) > blast.radius) continue;
+      applyDamage(state, ctx, unit, nextInt(state, blast.damage[0], blast.damage[1]));
+    }
+  }
+  for (const t of tiles) if (state.grid.props[t]) hitProp(state, ctx, t, blast.propDamage, noise);
+}
+
+// A missed shot may chip the cover it passed through (breakdown.coverTile, -1 for none). Walls shrug it off (hardness).
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - through hitProp, so barrels can burst
+ */
 function strayCoverHit(state, ctx, breakdown) {
   if (breakdown.coverTile < 0) return false;
   if (next(state) >= RULES.strayCoverHitChance) return false;
-  const tile = breakdown.coverTile;
-  const prop = state.grid.props[tile];
-  if (!prop || prop.hp === null) return false;
-  const { destroyed, rubbleKind } = damageProp(state.grid, tile, STRAY_COVER_DAMAGE);
-  if (destroyed) ctx.emit('CoverDestroyed', { tile, rubbleKind });
-  else ctx.emit('CoverDamaged', { tile, hp: state.grid.props[tile].hp });
-  return true;
+  return hitProp(state, ctx, breakdown.coverTile, STRAY_COVER_DAMAGE).damaged;
 }
 
 // Full weapon shot. ability is an id or a def; the weapon and damageMult come from its weaponDamage effect.

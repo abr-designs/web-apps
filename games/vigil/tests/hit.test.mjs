@@ -296,10 +296,16 @@ test('squadsight inside own sight radius but without own LOS carries no penalty'
   assert.equal(mod(b, 'Squadsight'), undefined);
 });
 
-test('graze band is centred on the hit chance and clipped to 0..100', () => {
+test('graze band is centred on the hit chance and shrinks symmetrically near 0 and 100', () => {
   assert.deepEqual(grazeWindow(50), [45, 55]);
-  assert.deepEqual(grazeWindow(2), [0, 7]);
-  assert.deepEqual(grazeWindow(98), [93, 100]);
+  assert.deepEqual(grazeWindow(2), [0, 4]);
+  assert.deepEqual(grazeWindow(98), [96, 100]);
+  assert.deepEqual(grazeWindow(5), [0, 10]);
+  for (let hit = 0; hit <= 100; hit++) {
+    const [lo, hi] = grazeWindow(hit);
+    assert.equal(lo + (hi - lo) / 2, hit, `centred at ${hit}`);
+    assert.ok(lo >= 0 && hi <= 100, `inside 0..100 at ${hit}`);
+  }
   assert.deepEqual(grazeWindow(0), [0, 0]);
   assert.deepEqual(grazeWindow(100), [100, 100]);
   const { s, ranger, trooper } = duel([[5, 4, 'crate']]);

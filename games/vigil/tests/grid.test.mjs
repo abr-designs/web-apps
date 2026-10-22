@@ -37,7 +37,7 @@ test('edge cover takes the cover of the prop across each edge', () => {
   assert.equal(isWalkable(g, centre), true);
 });
 
-test('damageProp swaps a wall to rubble and rebuilds only the four neighbours', () => {
+test('damageProp ignores hits below hardness, destroys a wall to open ground and rebuilds only the four neighbours', () => {
   const g = createGrid(5, 5);
   const wall = toIndex(g, 2, 2);
   placeProp(g, wall, 'wall');
@@ -48,15 +48,15 @@ test('damageProp swaps a wall to rubble and rebuilds only the four neighbours', 
   g.edgeCover[diagonal] = 'untouched';
   g.edgeCover[wall] = 'untouched';
 
-  assert.deepEqual(damageProp(g, wall, 3), { destroyed: false, rubbleKind: null });
-  assert.equal(g.props[wall].hp, 5);
-  assert.deepEqual(damageProp(g, wall, 5), { destroyed: true, rubbleKind: 'rubble' });
+  assert.deepEqual(damageProp(g, wall, 7), { damaged: false, destroyed: false, rubbleKind: null });
+  assert.equal(g.props[wall].hp, 8);
+  assert.deepEqual(damageProp(g, wall, 8), { damaged: true, destroyed: true, rubbleKind: null });
 
-  assert.deepEqual(g.props[wall], { kind: 'rubble', hp: 2 });
-  assert.equal(g.edgeCover[toIndex(g, 2, 1)][2], 'half'); // north neighbour, south edge
-  assert.equal(g.edgeCover[toIndex(g, 3, 2)][3], 'half'); // east neighbour, west edge
-  assert.equal(g.edgeCover[toIndex(g, 2, 3)][0], 'half'); // south neighbour, north edge
-  assert.equal(g.edgeCover[toIndex(g, 1, 2)][1], 'half'); // west neighbour, east edge
+  assert.equal(g.props[wall], null);
+  assert.equal(g.edgeCover[toIndex(g, 2, 1)][2], 'none'); // north neighbour, south edge
+  assert.equal(g.edgeCover[toIndex(g, 3, 2)][3], 'none'); // east neighbour, west edge
+  assert.equal(g.edgeCover[toIndex(g, 2, 3)][0], 'none'); // south neighbour, north edge
+  assert.equal(g.edgeCover[toIndex(g, 1, 2)][1], 'none'); // west neighbour, east edge
   assert.equal(g.edgeCover[far], 'untouched');
   assert.equal(g.edgeCover[diagonal], 'untouched');
   assert.equal(g.edgeCover[wall], 'untouched');
@@ -67,7 +67,8 @@ test('destroying a prop without rubble leaves open ground', () => {
   const crate = toIndex(g, 1, 1);
   placeProp(g, crate, 'crate');
   rebuildAllEdgeCover(g);
-  assert.deepEqual(damageProp(g, crate, 99), { destroyed: true, rubbleKind: null });
+  assert.deepEqual(damageProp(g, crate, 1), { damaged: true, destroyed: false, rubbleKind: null });
+  assert.deepEqual(damageProp(g, crate, 99), { damaged: true, destroyed: true, rubbleKind: null });
   assert.equal(g.props[crate], null);
   assert.equal(g.edgeCover[toIndex(g, 1, 0)][2], 'none');
 });
@@ -76,13 +77,13 @@ test('rocks are indestructible and stay JSON-safe', () => {
   const g = createGrid(3, 3);
   const rock = toIndex(g, 1, 1);
   placeProp(g, rock, 'rock');
-  assert.deepEqual(damageProp(g, rock, 1000), { destroyed: false, rubbleKind: null });
+  assert.deepEqual(damageProp(g, rock, 1000), { damaged: false, destroyed: false, rubbleKind: null });
   const loaded = JSON.parse(JSON.stringify(g));
-  assert.deepEqual(damageProp(loaded, rock, 1000), { destroyed: false, rubbleKind: null });
+  assert.deepEqual(damageProp(loaded, rock, 1000), { damaged: false, destroyed: false, rubbleKind: null });
   assert.equal(loaded.props[rock].kind, 'rock');
 });
 
 test('damageProp on open ground is a no-op', () => {
   const g = createGrid(2, 2);
-  assert.deepEqual(damageProp(g, 0, 5), { destroyed: false, rubbleKind: null });
+  assert.deepEqual(damageProp(g, 0, 5), { damaged: false, destroyed: false, rubbleKind: null });
 });

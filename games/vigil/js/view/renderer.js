@@ -31,7 +31,7 @@ const PROP_LOOK = {
   barrier: { footprint: 0.96, color: 'halfCover', shade: 0.55 },
   wall: { footprint: 0.98, color: 'textMuted', shade: 0.55 },
   rock: { footprint: 0.9, color: 'textMuted', shade: 0.85 },
-  rubble: { footprint: 0.6, color: 'halfCover', shade: 0.4 },
+  barrel: { footprint: 0.5, color: 'danger', shade: 0.7 },
 };
 
 /** Reads the palette tokens from style.css; falls back to the plan's Command Cyan hexes. @created Claude (claude-sonnet-5-5) - 2026-10-21 */

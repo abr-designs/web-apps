@@ -92,14 +92,29 @@ function alienStep(state, ctx, mover) {
   if (soldiers.some((s) => canSee(state, mover, s) || canSee(state, s, mover))) revealPod(state, ctx, pod.id, mover.id);
 }
 
-// Shots and explosions: every Unaware pod with a living member within RULES.hearingRadius of the tile is revealed.
+// Living aliens in pods that are no longer Unaware, plus aliens outside every pod.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+export function engagedCount(state) {
+  return livingUnits(state, 'alien').filter((u) => podOf(state, u.id)?.alert !== 'unaware').length;
+}
+
+// Shots and explosions: every Unaware pod with a living member within RULES.hearingRadius of the tile is revealed, nearest
+// pod first (then pod id), skipping any pod that would take the engaged aliens past RULES.engagedCap. Sight reveals ignore the cap.
 // byUnitId is the living unit on the noise tile when it is not one of the pod's own members, else null.
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - nearest pod first and the engaged cap
+ */
 export function onNoise(state, ctx, tile) {
+  const heard = [];
   for (const pod of sortedPods(state)) {
     if (pod.alert !== 'unaware') continue;
-    const heard = livingMembers(state, pod).some((m) => tileDistance(state.grid, tile, m.tile) <= RULES.hearingRadius);
-    if (!heard) continue;
+    const near = Math.min(...livingMembers(state, pod).map((m) => tileDistance(state.grid, tile, m.tile)));
+    if (near <= RULES.hearingRadius) heard.push({ pod, near });
+  }
+  heard.sort((a, b) => a.near - b.near);
+  for (const { pod } of heard) {
+    if (engagedCount(state) + livingMembers(state, pod).length > RULES.engagedCap) continue;
     const source = livingUnits(state).find((u) => u.tile === tile && !pod.unitIds.includes(u.id));
     revealPod(state, ctx, pod.id, source ? source.id : null);
   }

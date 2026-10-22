@@ -9,16 +9,17 @@ date: 2026-10-21
 |---|---|
 | Status | Implemented |
 | Created | 2026-10-21 |
-| Updated | 2026-10-21 |
+| Updated | 2026-10-22 |
 | Proficiency | 5-7/10 |
 | Engine | JavaScript (ES modules, no build step) + three.js, static page in `games/vigil/` |
-| Revisions | 10 (latest: U-010) |
+| Revisions | 11 (latest: U-011) |
 | Summary | XCOM 2 style turn-based squad combat in the browser: heightmap grid, cover, hit chances, overwatch, concealment and pods, four classes, destructible cover, one Sweep mission. |
 
 ## Revision Log
 
 | ID | Date | Type | Change |
 |---|---|---|---|
+| U-011 | 2026-10-22 | Update | Open Questions resolved. Graze band shrinks symmetrically near 0 and 100 (`half = min(grazeBand / 2, hit, 100 - hit)`). Props gain `hardness` (wall 8): a single hit below it does nothing, so grenades (4) and stray shots never hurt walls, and destroyed walls leave open ground (rubble prop removed). New explosive barrel prop (parcel code `x`, half cover, hp 2) bursts when destroyed: radius 2, 3 to 4 damage to every unit, 8 prop damage, chains through `hitProp` and `explode` in `combat.js`. Hidden `shootBarrel` ability (guaranteed, 1 AP, 1 ammo, targeting `prop`) joins the Shoot target cycle through `alsoTargets`. New `rocket` utility (1 charge, range 12, radius 1, 3 to 5 damage, 8 prop damage), carried by the grenadier until the loadout screen (plan 0002). Mark and Mindspin descriptions reworded to their real windows. Pods start at least 15 tiles from the squad, falling back to 14 then 12 from the same rngState when they do not fit (start sighting 40% to 2%, no build failures). Aggression ramp: `unit.idleTurns` counts engaged alien turns since a hostile ability; at `RESTLESS_TURNS` 3 the AI drops overwatch, takes any shot above 0% and closes in (bot timeouts 16% to 4%). `hearingRadius` 8 to 6 and `engagedCap` 6 on noise reveals, nearest pod first (chain wakes 45% to 5%). Unseen alien steps snap with no camera focus. Unit bars show HP as of the last played damage event. `STATE_VERSION` 2, save key `vigil.battle.v2`. Bot sweep (400 missions): 49% and 47% wins, AI weights unchanged. |
 | U-010 | 2026-10-21 | Update | Step 17: `main.js` wires all executor hooks (autosave clears on battle end), builds or loads the battle before the view, drives the enemy turn at speed 3 and exposes `window.vigil` as a console handle. Playtest: 6 browser missions (2 victories, 4 defeats) and 400 headless missions with no exceptions or invalid AI commands; reload resumes with the same `rngState` and roll. No design changes; balance findings added to Open Questions. |
 | U-009 | 2026-10-21 | Update | Steps 14 to 16 (view): 1 world unit per tile and `HEIGHT_STEP` 0.5; `tileCenter` is the tile middle on its terrain top. `Renderer` owns the camera and defaults its palette to `readPalette()`; `showCoverShields` takes flanked edges; R12 pod marker skipped; `showDetection` uses a plain radius without LOS. `EventPlayer` takes `{ getState, container }`, queues overlapping `play` calls, exposes `project(unitId)` and `onBattleEnded`, and `skip` covers the current batch only. `Hud` adds `setActiveAbility`, `setLocked` and `onSelectUnit`; `InputController` takes `player` and adds `update(dt)`. Hover previews, first click arms, second click or Enter confirms. Leaving Locked reselects the previous soldier (diagram says Idle). |
 | U-008 | 2026-10-21 | Update | Steps 6 to 13 (sim): visibility takes `{ fromTile, targetTile }` and exports `tileDistance` and `stepOutTiles`; step-out stays within `maxClimb`; `coverAt` returns `coverTile`; a cover edge counts only when the attacker is 2+ rows past it. `reachable` ignores `unit.ap`, so the executor rejects `apCost > ap`. `PHASE` is deploy, playerTurn, enemyTurn, ended; statuses are `{ id, turns }` with `hasStatus` and `statValue`; executor hooks via `setHooks` (detection, reactions, abilities, save), wired in `main.js`; new `deploy` command; `ApSpent` carries `{ spent, ap }`; the xcom side auto-ends at 0 AP; a mutual wipe is defeat. Hit graze band clipped to 0..100; guaranteed hits cannot be dodged; dodge downgrades crits; effective armor is `armor - shred`; stray cover hits do 1 damage. Explosions do 4 prop damage and hit friendlies; overwatch needs ammo; actives need 1+ AP. Pods are not revealed by sight while the squad is concealed; overwatch range is sight (ranged) or 1.5 tiles (melee). AI ties break without RNG so `nextCommand` is pure; the patrol waypoint is `patrolRoute[(patrolIndex + turn) % length]`; every AI command spends AP; engaged aliens know every soldier position. `load` coerces `rngState`. |
@@ -284,6 +285,10 @@ stateDiagram-v2
 
 - **Action points**: every unit starts its side's turn with 2 AP. Moving within the blue band costs 1, within the yellow band costs 2. Abilities flagged `endsTurn` set AP to 0.
 - **Mid-move reveal**: the revealed pod scampers at once, then the moving soldier finishes the path unless killed.
+- **Hardness**: a single hit below a prop's `hardness` does nothing. Walls (hardness 8, hp 8) fall only to barrel bursts and rockets and leave open ground.
+- **Barrels** burst when destroyed by any source (shot, blast, stray hit), damaging every unit within 2 tiles and chaining into other barrels.
+- **Aggression ramp**: an engaged alien on its third turn in a row without a hostile ability stops overwatching, accepts any shot above 0% and closes on the squad.
+- **Noise** reveals Unaware pods within `hearingRadius` 6, nearest first, skipping a pod that would take the engaged aliens past `engagedCap` 6. Sight reveals ignore the cap.
 - **Concealment** is squad-wide in v1. Any XCOM shot or ability, or any XCOM step onto a tile inside an enemy's `detection` radius with LOS to that enemy, breaks it for the whole squad.
 - **Overwatch** fires once, on the first step of an enemy (or soldier, for alien overwatch) that enters LOS and weapon range of the overwatching unit, then clears. Overwatch also clears at the start of the owner's next turn.
 - **Hunker Down** doubles the cover defense bonus until the owner's next turn and ends the unit's turn.
@@ -769,19 +774,21 @@ function newMission() {}          // SaveStore.clear, buildMission with a new se
 
 ## Open Questions
 
-- [ ] AI weights `w1` to `w4` per profile: starting values in `AI_PROFILES` (`js/sim/ai.js`): rifleman 1.0, 1.2, 0.6, 0.7 (min hit 35); melee 0.4, 2.0, 0.3, 0.3 (min hit 40, w2 scores closeness); caster 1.2, 0.8, 0.3, 1.0 (min hit 30). Tune in the step 17 playtest.
-- [ ] Graze band near 0 and 100: clipping means hit 1 to 5 has no clean hit and 95 to 99 no miss, so the preview slightly overstates odds there. Keep, or adopt a symmetric shrink of the band?
-- [ ] Grenades do 4 prop damage against wall hp 8, so a wall needs two grenades. Keep?
-- [ ] Statuses tick at the owner's side start, so `psiDisorient` and `marked` (2 turns) affect one soldier turn and the description misleads. Use 3 turns, reword, or count from application?
-- [ ] Sight 14 and detection 4 tiles on a 24x24 map: in playtest the squad sees an enemy at start in about 40% of seeds (nearest alien about 13 tiles), and detection 4 is rarely reached before sight. Bot win rate about 36%, loss 48%.
-- [ ] Overwatch standoff: a lone engaged alien can overwatch every turn; about 16% of 200 bot runs hit turn 40 this way. Add an aggression ramp?
-- [ ] Chain wakes: one shot wakes 2+ pods in about 40% of seeds (hearing 8, pods under 8 apart). Try `hearingRadius` 6 or a larger `POD_SPACING`.
-- [ ] Overwatch fires at 0% hit chance (sniper point-blank). Skip shots below a floor?
-- [ ] Patrols of unaware pods take 3 to 7 s at speed 3 and the camera follows each pod. Speed up or skip camera focus for unseen pods?
-- [ ] Unit bars show end-state HP before the tracer lands (cosmetic).
-- [ ] Destroyed walls leave half-cover rubble (`PROPS.wall.rubble`): keep, or leave open ground?
+- [x] AI weights: kept as set after the U-011 bot sweep (bot wins 49% bold, 47% careful). Retune when a strategy layer changes squad strength.
+- [x] Graze band near 0 and 100: symmetric shrink (U-011).
+- [x] Grenades against walls: grenades never topple walls (hardness 8); barrels and rockets do (U-011).
+- [x] Status durations: descriptions reworded; Mindspin covers the soldier's next turn, Mark covers the rest of the alien turn and the next.
+- [x] Sight at start: pods start 15 tiles out with fallback to 14 then 12; the squad sees an enemy at start in 2% of seeds.
+- [x] Overwatch standoff: aggression ramp at `RESTLESS_TURNS` 3.
+- [x] Chain wakes: `hearingRadius` 6 plus `engagedCap` 6; one shot wakes 2+ pods in 5% of seeds.
+- [x] Overwatch at 0%: no floor, matching XCOM 2 (reaction fire is hit x 0.7 with no lower clamp).
+- [x] Patrol speed: unseen alien steps snap with no camera focus.
+- [x] Unit bars: show HP as of the last played damage or heal event.
+- [x] Destroyed walls leave open ground.
 - [x] Touch support: v1 is desktop only (mouse and keyboard). Touch moves to a later plan.
-- [ ] `game.json` color and tags: suggested `"color": "blue"`, `"tags": ["tactics", "turn-based", "strategy"]`.
+- [x] `game.json`: `"color": "blue"`, `"tags": ["tactics", "turn-based", "strategy"]`.
+- [ ] A restless alien with no path toward the squad (cut off by terrain) still idles; seen in 1 of 200 bot runs.
+- [ ] Rocket carrier is the grenadier until plan 0002 (loadout screen) assigns utility items.
 
 ## Steps
 

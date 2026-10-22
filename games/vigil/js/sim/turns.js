@@ -33,6 +33,10 @@ export function beginSide(state, ctx, side) {
   ctx.emit(EVENT.TurnStarted, { side, turn: state.turn });
 
   for (const u of livingUnits(state, side)) {
+    if (side === 'alien') {
+      const pod = (state.pods ?? []).find((p) => p.unitIds.includes(u.id));
+      u.idleTurns = pod && pod.alert === 'unaware' ? 0 : (u.idleTurns ?? 0) + 1;
+    }
     // AP reads statuses before they tick, so a 1-turn stun costs exactly one turn.
     u.ap = hasStatus(u, 'stunned') ? 0 : RULES.apPerTurn;
 

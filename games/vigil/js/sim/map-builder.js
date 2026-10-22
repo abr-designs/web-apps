@@ -11,7 +11,9 @@ import { createGrid, toIndex, toXZ, isWalkable, placeProp, rebuildAllEdgeCover, 
 import { STATE_VERSION, createUnit, unitAt } from './state.js';
 
 const PARCEL_SIZE = 8;
-const POD_MIN_DISTANCE = 10; // tiles between every pod member or patrol tile and every squad start
+// Tiles between every pod member or patrol tile and every squad start. Tried in order: when the pods do not fit at one
+// distance, placement restarts from the same rngState at the next, so a seed always builds the same map.
+const POD_MIN_DISTANCES = Object.freeze([15, 14, 12]);
 const POD_SPACING = 6;       // tiles between pod anchors
 const PATROL_MIN_STEPS = 3;
 const PATROL_MAX_STEPS = 8;
@@ -50,9 +52,29 @@ export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQU
     state.units[id] = createUnit(id, 'xcom', classId, CLASSES[classId], squadTiles[k]);
   });
 
-  const farFromSquad = (tile) => squadTiles.every((s) => distance(grid, s, tile) >= POD_MIN_DISTANCE);
+  const rngState = state.rngState;
+  for (const [k, minDistance] of POD_MIN_DISTANCES.entries()) {
+    try {
+      placePods(state, seed, squadTiles, markers.P, pods, enemyPool, minDistance);
+      break;
+    } catch (error) {
+      if (k === POD_MIN_DISTANCES.length - 1) throw error;
+      state.rngState = rngState;
+      state.pods = [];
+      for (const id of Object.keys(state.units)) if (state.units[id].team === 'alien') delete state.units[id];
+    }
+  }
+
+  return state;
+}
+
+// Pods at anchor markers at least minDistance from every squad start. Throws when they do not fit.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function placePods(state, seed, squadTiles, podMarkers, pods, enemyPool, minDistance) {
+  const grid = state.grid;
+  const farFromSquad = (tile) => squadTiles.every((s) => distance(grid, s, tile) >= minDistance);
   const anchors = [];
-  for (const a of shuffle(state, markers.P.filter(farFromSquad))) {
+  for (const a of shuffle(state, podMarkers.filter(farFromSquad))) {
     if (anchors.length === pods) break;
     if (anchors.every((b) => distance(grid, a, b) >= POD_SPACING)) anchors.push(a);
   }
@@ -77,8 +99,6 @@ export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQU
     if (patrolRoute.length < 3) throw new Error(`seed ${seed}: no patrol route for pod at tile ${anchor}`);
     state.pods.push({ id: `p${k + 1}`, unitIds, alert: 'unaware', patrolRoute, patrolIndex: 0 });
   });
-
-  return state;
 }
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */

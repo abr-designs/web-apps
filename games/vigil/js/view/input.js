@@ -9,6 +9,7 @@
 // main owns the command loop: onCommand(cmd) executes, calls lock(), plays the events and calls unlock().
 
 import { ABILITIES } from '../data/abilities.js';
+import { PROPS } from '../data/props.js';
 import { PHASE, livingUnits } from '../sim/state.js';
 import { reachable } from '../sim/pathfinder.js';
 import { validate } from '../sim/executor.js';
@@ -54,6 +55,29 @@ function flankedEdges(state, tile, enemyTiles) {
   const edges = state.grid.edgeCover[tile];
   if (!enemyTiles.some((from) => coverAt(state, tile, from).flanked)) return [];
   return ALL_EDGES.filter((k) => edges[k] !== 'none');
+}
+
+// Barrels ride in a unit target cycle (an ability's alsoTargets) as 'prop:<tile>' keys next to unit ids.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function propKey(tile) {
+  return `prop:${tile}`;
+}
+
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function propTile(key) {
+  return typeof key === 'string' && key.startsWith('prop:') ? Number(key.slice(5)) : null;
+}
+
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function targetTile(state, key) {
+  return propTile(key) ?? state.units[key].tile;
+}
+
+// The cycle key a picker hit names: the unit, or a prop key for a tile hit.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function hitKey(hit) {
+  if (hit?.unitId) return hit.unitId;
+  return hit?.tile !== undefined ? propKey(hit.tile) : undefined;
 }
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -205,9 +229,10 @@ const Targeting = {
     const def = ABILITIES[data.abilityId];
     data.kind = def.targeting === 'self' ? 'self' : def.targeting === 'tile' ? 'tile' : 'unit';
     data.targets = validTargets(state, unit, data.abilityId);
+    if (data.kind === 'unit' && def.alsoTargets) data.targets.push(...validTargets(state, unit, def.alsoTargets).map(propKey));
     if (data.kind === 'unit') {
       // Nearest first, so the first target and Tab order match what the player sees.
-      const d = (id) => tileDistance(state.grid, unit.tile, state.units[id].tile);
+      const d = (id) => tileDistance(state.grid, unit.tile, targetTile(state, id));
       data.targets.sort((a, b) => d(a) - d(b) || (a < b ? -1 : 1));
     }
     if (data.targets.length === 0) {
@@ -219,7 +244,7 @@ const Targeting = {
     data.tileSet = data.kind === 'tile' ? new Set(data.targets) : null;
     data.target = data.kind === 'tile' ? null : data.targets[0];
     ic.hud.setActiveAbility(data.abilityId);
-    if (data.kind === 'unit') ic.focusTile(state.units[data.target].tile);
+    if (data.kind === 'unit') ic.focusTile(targetTile(state, data.target));
     Targeting.show(ic, data);
   },
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -262,6 +287,11 @@ const Targeting = {
       return;
     }
 
+    if (propTile(data.target) !== null) {
+      Targeting.showProp(ic, data);
+      return;
+    }
+
     const target = state.units[data.target];
     const hostile = target.team !== unit.team;
     ic.renderer.showTargetLine(unit.tile, target.tile, hostile ? ic.renderer.colors.crit : ic.renderer.colors.accent);
@@ -284,11 +314,32 @@ const Targeting = {
       note: data.targets.length > 1 ? `${CONFIRM_NOTE}. Tab for next target` : CONFIRM_NOTE,
     });
   },
+  /** A barrel in the cycle: the blast as red hatch and everyone it would catch. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  showProp(ic, data) {
+    const state = ic.state;
+    const tile = propTile(data.target);
+    const def = ABILITIES[ABILITIES[data.abilityId].alsoTargets];
+    const { radius } = PROPS[state.grid.props[tile].kind].burst;
+    const blast = { team: 'alien', hp: 1, tile, stats: { detection: radius } };
+    ic.renderer.showDetection({ squadConcealed: true, units: { blast } });
+    ic.renderer.showTargetLine(ic.selected.tile, tile, ic.renderer.colors.crit);
+    const caught = livingUnits(state).filter((u) => tileDistance(state.grid, u.tile, tile) <= radius);
+    ic.hud.showBreakdown(null, {
+      title: def.name,
+      subtitle: `Guaranteed hit · bursts radius ${radius}`,
+      hostile: true,
+      lines: caught.length > 0
+        ? caught.map((u) => ({ label: unitDef(u).name, value: u.team === 'xcom' ? 'Squad' : hpText(u) }))
+        : [{ label: 'No one in the blast', value: '' }],
+      note: data.targets.length > 1 ? `${CONFIRM_NOTE}. Tab for next target` : CONFIRM_NOTE,
+    });
+  },
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */
   pointerMove(ic, hit, data) {
     if (data.kind === 'unit') {
-      if (hit?.unitId && hit.unitId !== data.target && data.targets.includes(hit.unitId)) {
-        data.target = hit.unitId;
+      const key = hitKey(hit);
+      if (key && key !== data.target && data.targets.includes(key)) {
+        data.target = key;
         data.armed = null;
         Targeting.show(ic, data);
       }
@@ -305,7 +356,7 @@ const Targeting = {
   click(ic, hit, data) {
     let picked;
     if (data.kind === 'tile') picked = hit?.tile ?? (hit?.unitId ? ic.state.units[hit.unitId].tile : undefined);
-    else picked = data.targets.includes(hit?.unitId) ? hit.unitId : undefined;
+    else picked = data.targets.includes(hitKey(hit)) ? hitKey(hit) : undefined;
     if (picked === undefined || (data.kind === 'tile' && !data.tileSet.has(picked))) return;
     // The first click picks (and arms) a target, a second click on the armed one confirms.
     if (picked === data.armed) {
@@ -331,7 +382,7 @@ const Targeting = {
         const k = data.targets.indexOf(data.target);
         data.target = data.targets[(k + (e.shiftKey ? -1 : 1) + data.targets.length) % data.targets.length];
         data.armed = null;
-        ic.focusTile(ic.state.units[data.target].tile);
+        ic.focusTile(targetTile(ic.state, data.target));
         Targeting.show(ic, data);
       }
       return true;
@@ -345,6 +396,10 @@ const Targeting = {
       return;
     }
     const cmd = { type: 'ability', unitId: ic.selectedId, abilityId: data.abilityId };
+    if (propTile(data.target) !== null) {
+      ic.issue({ ...cmd, abilityId: ABILITIES[data.abilityId].alsoTargets, targetTile: propTile(data.target) });
+      return;
+    }
     if (data.kind === 'tile') cmd.targetTile = data.target;
     else if (data.kind === 'unit') cmd.targetId = data.target;
     if (ABILITIES[data.abilityId].targeting === 'melee') cmd.targetTile = meleeTiles(ic.state, ic.selected, data.target)[0];

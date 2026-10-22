@@ -9,17 +9,19 @@
 // list has resolved, so a pod revealed by a grenade scampers only after the blast landed.
 
 import { WEAPONS } from '../data/weapons.js';
+import { PROPS } from '../data/props.js';
 import { EVENT } from './events.js';
-import { toXZ, toIndex, damageProp } from './grid.js';
 import { nextInt } from './rng.js';
 import { livingUnits } from './state.js';
 import { tileDistance } from './visibility.js';
 import { compute, unitDef } from './hit.js';
-import { resolve, applyDamage, shredArmor } from './combat.js';
+import { resolve, applyDamage, shredArmor, hitProp, tilesInRadius } from './combat.js';
 import { walkPath, getHooks } from './executor.js';
 
-// Hit points an explosion takes off every destructible prop in its radius (crates, barriers and rubble fall, walls need two).
+// Hit points a grenade takes off every destructible prop in its radius: crates, barriers and barrels fall, walls (hardness 8) hold.
 export const EXPLOSION_PROP_DAMAGE = 4;
+
+export { tilesInRadius };
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
 export function newRun(extra = {}) {
@@ -47,21 +49,6 @@ export function flushNoise(state, ctx, run) {
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
 function isTile(target) {
   return typeof target === 'number';
-}
-
-// Tile indices within `radius` tiles (Euclidean, centre to centre) of `center`, ascending.
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-export function tilesInRadius(grid, center, radius) {
-  const [cx, cz] = toXZ(grid, center);
-  const r = Math.ceil(radius);
-  const out = [];
-  for (let z = cz - r; z <= cz + r; z++) {
-    for (let x = cx - r; x <= cx + r; x++) {
-      const i = toIndex(grid, x, z);
-      if (i !== -1 && tileDistance(grid, center, i) <= radius) out.push(i);
-    }
-  }
-  return out.sort((a, b) => a - b);
 }
 
 // Living units an effect lands on: everyone in the blast for a tile target, else the single target.
@@ -108,20 +95,26 @@ export const EFFECTS = {
     for (const unit of affected(state, target, ability)) shredArmor(state, ctx, unit, effect.amount);
   },
 
-  // Explosion, then damageProp on every destructible prop in the radius, ascending tile order.
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  // Explosion, then hitProp on every prop in the radius, ascending tile order (barrels caught in it burst and chain).
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - props hit through hitProp
+   */
   destroyCover(state, ctx, src, tile, effect, ability, run) {
     const radius = ability.radius ?? 0;
     const tiles = tilesInRadius(state.grid, tile, radius);
     ctx.emit(EVENT.Explosion, { center: tile, radius, tiles });
-    for (const t of tiles) {
-      const prop = state.grid.props[t];
-      if (!prop || prop.hp === null) continue;
-      const { destroyed, rubbleKind } = damageProp(state.grid, t, effect.damage ?? EXPLOSION_PROP_DAMAGE);
-      if (destroyed) ctx.emit(EVENT.CoverDestroyed, { tile: t, rubbleKind });
-      else ctx.emit(EVENT.CoverDamaged, { tile: t, hp: state.grid.props[t].hp });
-    }
     run.noise.push(tile);
+    for (const t of tiles) if (state.grid.props[t]) hitProp(state, ctx, t, effect.damage ?? EXPLOSION_PROP_DAMAGE, run.noise);
+  },
+
+  // Destroys the prop on the target tile outright; a barrel bursts.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  destroyProp(state, ctx, src, tile, effect, ability, run) {
+    const prop = state.grid.props[tile];
+    if (!prop || prop.hp === null) return;
+    run.noise.push(src.tile);
+    hitProp(state, ctx, tile, Math.max(prop.hp, PROPS[prop.kind].hardness), run.noise);
   },
 
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */

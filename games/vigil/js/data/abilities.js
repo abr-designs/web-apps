@@ -4,14 +4,17 @@
 import { deepFreeze } from './freeze.js';
 
 // Shape: { name, description, apCost, endsTurn, usesAmmo, charges?, cooldown?, targeting, range?, radius?, aim?, crit?,
-//          guaranteedHit?, breaksConcealment, passive?, effects: [...] }
-// Targeting: self, enemyLos, enemySquadsight (any enemy the squad sees), ally, allyAny, tile, melee.
+//          guaranteedHit?, breaksConcealment, passive?, hidden?, alsoTargets?, effects: [...] }
+// Targeting: self, enemyLos, enemySquadsight (any enemy the squad sees), ally, allyAny, tile, melee,
+//   prop (a burstable prop the unit can see, by tile).
+// hidden abilities get no rail button; alsoTargets names a hidden ability whose targets join this one's target cycle.
 // A unit with the squadsight passive treats enemyLos as enemySquadsight.
 // Effects:
 //   weaponDamage { weapon?, damageMult? }       weapon defaults to the unit's own
 //   flatDamage   { damage: [min, max] }         no hit roll
 //   shred        { amount }
-//   destroyCover {}                             uses the ability's radius
+//   destroyCover { damage? }                    uses the ability's radius; damage defaults to EXPLOSION_PROP_DAMAGE
+//   destroyProp  {}                             destroys the prop on the target tile (a barrel bursts)
 //   heal         { amount }
 //   applyStatus  { status, turns, onHit? }      onHit: only when the preceding weaponDamage hit
 //   modifyStat   { status, stat, amount, turns } timed stat change shown as a status
@@ -27,8 +30,13 @@ const FRAG_EFFECTS = [
 export const ABILITIES = deepFreeze({
   standardShot: {
     name: 'Shoot', description: 'Fire the primary weapon.',
-    apCost: 1, endsTurn: true, usesAmmo: 1, targeting: 'enemyLos', aim: 0, breaksConcealment: true,
+    apCost: 1, endsTurn: true, usesAmmo: 1, targeting: 'enemyLos', aim: 0, breaksConcealment: true, alsoTargets: 'shootBarrel',
     effects: [{ type: 'weaponDamage' }],
+  },
+  shootBarrel: {
+    name: 'Shoot barrel', description: 'Shoot an explosive barrel: it bursts, hurting everyone within 2 tiles and toppling walls.',
+    apCost: 1, endsTurn: true, usesAmmo: 1, targeting: 'prop', guaranteedHit: true, breaksConcealment: true, hidden: true,
+    effects: [{ type: 'destroyProp' }],
   },
   overwatch: {
     name: 'Overwatch', description: 'Shoot the first enemy that moves in sight, at reduced aim.',
@@ -105,8 +113,13 @@ export const ABILITIES = deepFreeze({
     apCost: 1, endsTurn: true, usesAmmo: 0, charges: 1, targeting: 'tile', range: 10, radius: 2, breaksConcealment: true,
     effects: FRAG_EFFECTS,
   },
+  rocket: {
+    name: 'Rocket', description: 'Fire a rocket: damages everyone in the blast and topples walls.',
+    apCost: 1, endsTurn: true, usesAmmo: 0, charges: 1, targeting: 'tile', range: 12, radius: 1, breaksConcealment: true,
+    effects: [{ type: 'destroyCover', damage: 8 }, { type: 'flatDamage', damage: [3, 5] }],
+  },
   markTarget: {
-    name: 'Mark Target', description: 'Marked soldiers take -15 defense for 2 turns.',
+    name: 'Mark Target', description: 'Marked soldier takes -15 defense for the rest of this alien turn and the next.',
     apCost: 1, endsTurn: true, usesAmmo: 0, cooldown: 2, targeting: 'enemyLos', guaranteedHit: true, breaksConcealment: false,
     effects: [{ type: 'modifyStat', status: 'marked', stat: 'defense', amount: -15, turns: 2 }],
   },
@@ -119,7 +132,7 @@ export const ABILITIES = deepFreeze({
     ] }],
   },
   psiDisorient: {
-    name: 'Mindspin', description: 'Disorient a soldier: -20 aim for 2 turns.',
+    name: 'Mindspin', description: "Disorient a soldier: -20 aim on the soldier's next turn.",
     apCost: 1, endsTurn: true, usesAmmo: 0, cooldown: 3, targeting: 'enemyLos', guaranteedHit: true, breaksConcealment: false,
     effects: [{ type: 'modifyStat', status: 'disoriented', stat: 'aim', amount: -20, turns: 2 }],
   },

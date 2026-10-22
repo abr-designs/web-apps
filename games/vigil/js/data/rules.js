@@ -12,7 +12,8 @@ export const RULES = deepFreeze({
   grazeBand: 10,                                  // total width centred on the hit threshold
   squadsightAimPerTile: -2,
   strayCoverHitChance: 0.35,                      // missed shot damages the cover it hit
-  hearingRadius: 8,                               // shots within this many tiles reveal Unaware pods
+  hearingRadius: 6,                               // shots within this many tiles reveal Unaware pods
+  engagedCap: 6,                                  // noise never wakes a pod that would push living engaged aliens past this
   diagonalCost: 1.5,
   climbCost: 1,                                   // extra cost per height level climbed
   maxClimb: 1,                                    // larger height steps are impassable

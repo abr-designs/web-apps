@@ -49,7 +49,7 @@ test('a saved mission loads back deep-equal to the original', () => {
 test('save writes the JSON snapshot under SAVE_KEY', () => {
   const state = buildMission(42);
   save(state);
-  assert.equal(SAVE_KEY, 'vigil.battle.v1');
+  assert.equal(SAVE_KEY, 'vigil.battle.v2');
   assert.deepEqual(JSON.parse(store.map.get(SAVE_KEY)), JSON.parse(JSON.stringify(state)));
 });
 

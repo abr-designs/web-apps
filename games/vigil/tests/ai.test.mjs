@@ -16,8 +16,9 @@ import { RULES } from '../js/data/rules.js';
 import * as Detection from '../js/sim/detection.js';
 import * as Reactions from '../js/sim/reactions.js';
 import {
-  AI_PROFILES, nextCommand, patrolStep, patrolTarget, scoreTile, chooseAction, profileOf, distanceField,
+  AI_PROFILES, RESTLESS_TURNS, nextCommand, patrolStep, patrolTarget, scoreTile, chooseAction, profileOf, distanceField,
 } from '../js/sim/ai.js';
+import { compute } from '../js/sim/hit.js';
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
 beforeEach(() => {
@@ -161,6 +162,42 @@ test('a rifleman with no good shot overwatches', () => {
   x1.statuses = [];
   x1.tile = at(state, 8, 4);
   assert.equal(chooseAction(state, a01, 'rifleman').abilityId, 'standardShot');
+});
+
+test('a restless rifleman never overwatches: it takes a long-odds shot, else moves', () => {
+  const state = makeState(24, 9, [[5, 4, 'wall']]);
+  const x1 = addUnit(state, 'x1', 'ranger', 4, 4);
+  const a01 = addUnit(state, 'a01', 'trooper', 16, 4);
+  a01.ap = 1;
+  addPod(state, 'p1', ['a01']);
+  const { hit } = compute(state, a01, x1, 'standardShot');
+  assert.ok(hit > 0 && hit < AI_PROFILES.rifleman.minHit, `precondition: long odds (${hit})`);
+  assert.notEqual(chooseAction(state, a01, 'rifleman').abilityId, 'standardShot');
+
+  a01.idleTurns = RESTLESS_TURNS;
+  assert.equal(chooseAction(state, a01, 'rifleman').abilityId, 'standardShot');
+
+  // Hunkered, the shot rounds to 0, so the restless trooper moves instead of overwatching.
+  x1.statuses.push({ id: 'hunkered', turns: null });
+  assert.equal(chooseAction(state, a01, 'rifleman').type, 'move');
+});
+
+test('idleTurns counts engaged alien turns and resets on a hostile ability', () => {
+  const state = makeState(24, 9);
+  state.activeSide = 'xcom';
+  state.phase = PHASE.playerTurn;
+  addUnit(state, 'x1', 'ranger', 2, 4).hp = 50; // survives the shot below
+  const a01 = addUnit(state, 'a01', 'trooper', 10, 4);
+  const a02 = addUnit(state, 'a02', 'trooper', 22, 0);
+  addPod(state, 'p1', ['a01']);
+  addPod(state, 'p2', ['a02'], 'unaware');
+  run(state, { type: 'endTurn' });
+  assert.deepEqual([a01.idleTurns, a02.idleTurns], [1, 0]);
+  run(state, { type: 'ability', unitId: 'a01', abilityId: 'standardShot', targetId: 'x1' });
+  assert.equal(a01.idleTurns, 0);
+  run(state, { type: 'endTurn' });
+  run(state, { type: 'endTurn' });
+  assert.equal(a01.idleTurns, 1);
 });
 
 test('a rifleman out of ammo reloads before it overwatches', () => {

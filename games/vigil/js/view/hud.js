@@ -63,9 +63,9 @@ function statusName(id) {
 
 // hp segments (lost ones dimmed), then one armor segment per point of armor left.
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
-function hpBars(unit) {
+function hpBars(unit, hp = unit.hp) {
   let html = '';
-  for (let k = 0; k < unit.stats.hp; k++) html += k < unit.hp ? '<i></i>' : '<i class="x"></i>';
+  for (let k = 0; k < unit.stats.hp; k++) html += k < hp ? '<i></i>' : '<i class="x"></i>';
   const armor = Math.max(0, unit.armor - unit.shred);
   for (let k = 0; k < armor; k++) html += '<i class="arm"></i>';
   return html;
@@ -184,8 +184,13 @@ export class Hud {
     this.el.objective.innerHTML = `<div><div class="obj-t">${esc(text)}</div><div class="obj-s">${esc(sub)}</div></div><div class="ring">${count}</div>`;
   }
 
-  /** R8 overhead bars. project(unitId) -> canvas pixels { x, y } above the head, or null when off screen. Call every frame. @created Claude (claude-opus-5-5) - 2026-10-21 */
-  updateUnitBars(state, project) {
+  /**
+   * R8 overhead bars. project(unitId) -> canvas pixels { x, y } above the head, or null when off screen. Call every frame.
+   * hpOf(unit) -> the hit points to draw, so playback can show HP as of the last damage event it played.
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - hpOf
+   */
+  updateUnitBars(state, project, hpOf = (u) => u.hp) {
     for (const [id, entry] of this._barEls) {
       if (!state.units[id]) {
         entry.el.remove();
@@ -202,19 +207,20 @@ export class Hud {
         entry = { el, sig: '' };
         this._barEls.set(id, entry);
       }
-      const p = u.hp > 0 ? project(id) : null;
+      const hp = hpOf(u);
+      const p = hp > 0 ? project(id) : null;
       if (!p) {
         entry.el.hidden = true;
         continue;
       }
       entry.el.hidden = false;
       const statuses = u.statuses.map((s) => s.id);
-      const sig = `${u.hp}/${u.stats.hp}/${u.armor - u.shred}/${u.team === 'xcom' ? u.ap : ''}/${statuses.join(',')}`;
+      const sig = `${hp}/${u.stats.hp}/${u.armor - u.shred}/${u.team === 'xcom' ? u.ap : ''}/${statuses.join(',')}`;
       if (sig !== entry.sig) {
         entry.sig = sig;
         const chev = u.team === 'xcom' && u.ap > 0 ? `<b class="${u.ap === 1 ? 'one' : ''}">${u.ap === 1 ? '&gt;' : '&gt;&gt;'}</b>` : '';
         const tags = statuses.map((s) => `<em>${STATUS_SHORT[s] ?? esc(s.slice(0, 3).toUpperCase())}</em>`).join('');
-        entry.el.innerHTML = `<span class="segs">${hpBars(u)}</span>${chev}${tags}`;
+        entry.el.innerHTML = `<span class="segs">${hpBars(u, hp)}</span>${chev}${tags}`;
       }
       entry.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
     }

@@ -7,11 +7,13 @@
 //   'overwatch' and 'hunkered' always clear at the start of the owner's side. A 'stunned' unit starts its side with 0 AP.
 //   modifyStat statuses may also carry { stat, amount }; read them with statValue, never bake them into unit.stats.
 // Unit.cooldowns: { abilityId: turns } with the same countdown; the ability is ready when its key is absent.
+// Unit.idleTurns: alien sides begun while engaged since the unit's last hostile ability (TurnManager adds, AbilitySystem
+//   resets); EnemyAI turns aggressive once it reaches RESTLESS_TURNS. Unaware aliens hold 0.
 
 import { ABILITIES } from '../data/abilities.js';
 import { WEAPONS } from '../data/weapons.js';
 
-export const STATE_VERSION = 1;
+export const STATE_VERSION = 2;
 
 // deploy -> playerTurn <-> enemyTurn -> ended (Battle phase diagram; Victory and Defeat are ended plus outcome).
 export const PHASE = Object.freeze({ deploy: 'deploy', playerTurn: 'playerTurn', enemyTurn: 'enemyTurn', ended: 'ended' });
@@ -37,6 +39,7 @@ export function createUnit(id, team, defId, def, tile) {
     statuses: [],
     cooldowns: {},
     charges,
+    idleTurns: 0,
   };
 }
 

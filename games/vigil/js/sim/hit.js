@@ -71,13 +71,15 @@ function clamp(v, lo, hi) {
 }
 
 // Roll thresholds on 0..100: r < lo is a hit, r < hi a graze, else a miss.
-// The band is centred on the hit chance; 0 never grazes and 100 never misses or grazes.
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+// The band is centred on the hit chance and shrinks symmetrically near 0 and 100, so lo + graze/2 always equals hit;
+// 0 never grazes and 100 never misses or grazes.
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - symmetric shrink at the ends
+ */
 export function grazeWindow(hit) {
-  if (hit <= 0) return [0, 0];
-  if (hit >= 100) return [100, 100];
-  const half = RULES.grazeBand / 2;
-  return [Math.max(0, hit - half), Math.min(100, hit + half)];
+  const half = Math.max(0, Math.min(RULES.grazeBand / 2, hit, 100 - hit));
+  return [hit - half, hit + half];
 }
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */

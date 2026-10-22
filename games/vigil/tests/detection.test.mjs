@@ -212,6 +212,25 @@ test('noise reveals only Unaware pods with a living member within the hearing ra
   assert.deepEqual(state.pods.map((p) => p.alert), ['engaged', 'unaware', 'unaware', 'engaged']);
 });
 
+test('noise wakes the nearest pods first and skips a pod that would pass the engaged cap', () => {
+  const state = makeState(30, 5);
+  state.squadConcealed = false;
+  const x1 = addUnit(state, 'x1', 'ranger', 0, 2);
+  for (const [id, x, z] of [['a01', 5, 1], ['a02', 5, 3], ['a03', 6, 2], ['a04', 2, 0], ['a05', 2, 4], ['a06', 4, 0], ['a07', 4, 4]]) {
+    addUnit(state, id, 'trooper', x, z);
+  }
+  addPod(state, 'p1', ['a01', 'a02', 'a03']);
+  addPod(state, 'p2', ['a04', 'a05']);
+  addPod(state, 'p3', ['a06', 'a07']);
+  assert.equal(RULES.engagedCap, 6);
+
+  const ctx = createContext(state);
+  Detection.onNoise(state, ctx, x1.tile);
+  assert.deepEqual(ctx.events.filter((e) => e.type === 'PodRevealed').map((e) => e.podId), ['p2', 'p3']);
+  assert.equal(state.pods[0].alert, 'unaware', '2 + 2 + 3 would pass the cap');
+  assert.equal(Detection.engagedCount(state), 4);
+});
+
 test('revealPod ignores unknown, already revealed and wiped-out pods', () => {
   const state = makeState();
   addUnit(state, 'a01', 'trooper', 10, 2).hp = 0;

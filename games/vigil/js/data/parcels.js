@@ -4,10 +4,10 @@
 import { deepFreeze } from './freeze.js';
 
 // 8x8 blocks, row 0 is north. heights: '0'-'3' per tile (a climb of more than 1 level is impassable).
-// props: '.' open, c crate, b barrier, w wall, r rock, S squad start, P pod anchor (S and P are open tiles).
+// props: '.' open, c crate, b barrier, w wall, r rock, x explosive barrel, S squad start, P pod anchor (S and P are open tiles).
 // 'spawn' parcels hold exactly the squad's S tiles and no P anchors; every other parcel has at least one P.
 // Borders stay at height 0 so parcels join in any rotation.
-export const PROP_CODES = Object.freeze({ c: 'crate', b: 'barrier', w: 'wall', r: 'rock' });
+export const PROP_CODES = Object.freeze({ c: 'crate', b: 'barrier', w: 'wall', r: 'rock', x: 'barrel' });
 
 export const PARCELS = deepFreeze([
   {
@@ -44,7 +44,7 @@ export const PARCELS = deepFreeze([
     props: [
       '........',
       '.ww.www.',
-      '.w....w.',
+      '.wx...w.',
       '.w.P..w.',
       '......w.',
       '.w..c.w.',
@@ -75,7 +75,7 @@ export const PARCELS = deepFreeze([
       '........',
       '..r..P..',
       '..r.....',
-      '........',
+      '.....x..',
       '.cc..cc.',
       '........',
     ],
@@ -103,7 +103,7 @@ export const PARCELS = deepFreeze([
       '.....b..',
       '..P.....',
       '.....P..',
-      '..b.....',
+      '..b...x.',
       'www..www',
       '........',
     ],

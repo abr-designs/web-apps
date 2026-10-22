@@ -72,12 +72,16 @@ export function rebuildAllEdgeCover(grid) {
   for (let i = 0; i < grid.heights.length; i++) rebuildEdgeCover(grid, i);
 }
 
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
+// -> { damaged, destroyed, rubbleKind }. A hit below the prop's hardness, or on an indestructible prop, changes nothing.
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - hardness and the damaged flag
+ */
 export function damageProp(grid, i, amount) {
   const prop = grid.props[i];
-  if (!prop || prop.hp === null) return { destroyed: false, rubbleKind: null };
+  if (!prop || prop.hp === null || amount < PROPS[prop.kind].hardness) return { damaged: false, destroyed: false, rubbleKind: null };
   prop.hp -= amount;
-  if (prop.hp > 0) return { destroyed: false, rubbleKind: null };
+  if (prop.hp > 0) return { damaged: true, destroyed: false, rubbleKind: null };
 
   const rubbleKind = PROPS[prop.kind].rubble;
   if (rubbleKind) placeProp(grid, i, rubbleKind);
@@ -89,5 +93,5 @@ export function damageProp(grid, i, amount) {
     const n = toIndex(grid, x + dx, z + dz);
     if (n !== -1) rebuildEdgeCover(grid, n);
   }
-  return { destroyed: true, rubbleKind };
+  return { damaged: true, destroyed: true, rubbleKind };
 }

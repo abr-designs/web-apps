@@ -6,7 +6,7 @@
 
 import { STATE_VERSION } from './state.js';
 
-export const SAVE_KEY = 'vigil.battle.v1';
+export const SAVE_KEY = 'vigil.battle.v2';
 
 /** @created Claude (claude-haiku-5-5) - 2026-10-21 */
 function storage() {

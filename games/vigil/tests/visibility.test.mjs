@@ -32,8 +32,8 @@ test('a wall blocks line of sight, open ground does not', () => {
   assert.equal(hasLos(walled, walled.units.x1, walled.units.a01), false);
 });
 
-test('crates and rubble do not block line of sight', () => {
-  for (const kind of ['crate', 'barrier', 'rubble']) {
+test('crates, barriers and barrels do not block line of sight', () => {
+  for (const kind of ['crate', 'barrier', 'barrel']) {
     const s = makeState(5, 3, [[2, 1, kind]]);
     assert.equal(hasLosTiles(s, at(s, 0, 1), at(s, 4, 1)), true, kind);
   }

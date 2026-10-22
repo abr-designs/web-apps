@@ -9,6 +9,8 @@
 // living member toward the turn's waypoint, the rest toward that leader. The remaining AP is left unspent.
 // Engaged units (and aliens outside any pod) score tiles and attacks with their ENEMIES ai profile (Strategy).
 // Aliens know where every living soldier is once their pod is engaged (v1 has no alien-side fog of war).
+// Aggression ramp: an engaged alien whose idleTurns reaches RESTLESS_TURNS (its third engaged turn in a row without a hostile
+// ability) stops overwatching, takes any attack with a hit chance above 0, and otherwise closes on the nearest soldier.
 
 import { RULES } from '../data/rules.js';
 import { ABILITIES } from '../data/abilities.js';
@@ -31,6 +33,7 @@ export const AI_PROFILES = Object.freeze({
   caster:   Object.freeze({ w1: 1.2, w2: 0.8, w3: 0.3, w4: 1.0, minHit: 30 }),
 });
 
+export const RESTLESS_TURNS = 3;
 // A move must beat staying put by this much when the unit could already attack from where it stands.
 const MOVE_MARGIN = 0.15;
 // Share of closeness a ranged unit scores on tiles with no shot, so engaged units advance instead of stalling out of sight.
@@ -39,6 +42,8 @@ const APPROACH_SHARE = 0.25;
 const KILL_BONUS = 2;
 const STATUS_BONUS = 1;
 const DEBUFF_VALUE = 1.5;
+// A restless unit stops closing in once within this path cost of a soldier (a diagonal neighbour).
+const ADJACENT_COST = 1.5;
 // Patrol followers stop once within this path cost of the leader.
 const FOLLOW_DISTANCE = 2;
 const EPS = 1e-9;
@@ -228,7 +233,7 @@ function hasEffect(effects, type) {
 
 // Expected value of one attack in hit points, and whether the profile accepts it. -> { value, acceptable } or null.
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
-function attackValue(state, unit, abilityId, target, fromTile, w) {
+function attackValue(state, unit, abilityId, target, fromTile, w, restless = false) {
   const def = ABILITIES[abilityId];
   if (weaponEffect(def)) {
     const b = compute(state, unit, target, abilityId, { fromTile });
@@ -239,7 +244,7 @@ function attackValue(state, unit, abilityId, target, fromTile, w) {
     let value = p * (avg + (b.crit / 100) * weapon.critDamage);
     if (avg >= target.hp) value += p * KILL_BONUS;
     if (hasEffect(def.effects, 'applyStatus')) value += p * STATUS_BONUS;
-    return { value, acceptable: b.hit >= w.minHit };
+    return { value, acceptable: b.hit >= w.minHit || (restless && b.hit > 0) };
   }
   const debuff = def.effects.find((e) => e.type === 'modifyStat' || e.type === 'applyStatus');
   if (!debuff || hasStatus(target, debuff.status)) return null;
@@ -247,9 +252,12 @@ function attackValue(state, unit, abilityId, target, fromTile, w) {
 }
 
 // Acceptable attacks on enemies, best first (value, then target id). melee: true lists only melee abilities, false only
-// the rest. Melee commands carry the best-scoring attack tile.
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
-function attackOptions(state, unit, profile, cache, melee) {
+// the rest. Melee commands carry the best-scoring attack tile. restless accepts any hit chance above 0.
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - restless
+ */
+function attackOptions(state, unit, profile, cache, melee, restless = false) {
   const w = weightsOf(profile);
   const options = [];
   for (const abilityId of unitDef(unit).abilities) {
@@ -265,7 +273,7 @@ function attackOptions(state, unit, profile, cache, melee) {
         if (fromTile === null) continue;
         cmd.targetTile = fromTile;
       }
-      const v = attackValue(state, unit, abilityId, target, fromTile, w);
+      const v = attackValue(state, unit, abilityId, target, fromTile, w, restless);
       if (v && v.acceptable) options.push({ cmd, value: v.value });
     }
   }
@@ -288,14 +296,19 @@ function bestTileOf(state, unit, tiles, profile, cache) {
 //   melee profile: melee attack, then (2+ AP) close in
 //   other profiles: (2+ AP) reposition when the best tile beats staying put
 //   then ranged attacks, reload when empty, overwatch, a 1 AP reposition, reload when not full.
+//   Restless (idleTurns >= RESTLESS_TURNS): no overwatch; after the 1 AP reposition, a 1 AP step toward the nearest soldier.
 // -> command or null when the unit cannot usefully act.
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - aggression ramp
+ */
 export function chooseAction(state, unit, profile = profileOf(unit)) {
   if (!unit || unit.hp <= 0 || unit.ap <= 0) return null;
   const cache = {};
   const self = (abilityId) => ({ type: 'ability', unitId: unit.id, abilityId });
-  const meleeAttacks = profile === 'melee' ? attackOptions(state, unit, profile, cache, true) : [];
-  const attacks = attackOptions(state, unit, profile, cache, false);
+  const restless = (unit.idleTurns ?? 0) >= RESTLESS_TURNS;
+  const meleeAttacks = profile === 'melee' ? attackOptions(state, unit, profile, cache, true, restless) : [];
+  const attacks = attackOptions(state, unit, profile, cache, false, restless);
   const here = scoreTile(state, unit, unit.tile, profile, cache);
   const margin = meleeAttacks.length + attacks.length > 0 ? MOVE_MARGIN : 0;
 
@@ -305,7 +318,9 @@ export function chooseAction(state, unit, profile = profileOf(unit)) {
   if (unit.ap >= 2) candidates.push(moveCmd);
   candidates.push(...attacks);
   if (unit.ammo === 0) candidates.push(self('reload'));
-  candidates.push(self('overwatch'), moveCmd, self('reload'));
+  if (restless) candidates.push(moveCmd, () => stepToward(state, unit, scoreCache(state, unit, cache).field, ADJACENT_COST));
+  else candidates.push(self('overwatch'), moveCmd);
+  candidates.push(self('reload'));
 
   for (const entry of candidates) {
     const cmd = typeof entry === 'function' ? entry() : entry;

@@ -10,6 +10,8 @@
 
 import * as THREE from '../../vendor/three.module.min.js';
 import { EVENT } from '../sim/events.js';
+import { livingUnits } from '../sim/state.js';
+import { canSee } from '../sim/visibility.js';
 
 const STEP_TIME = 0.2;       // seconds per tile moved
 const HOP = 0.08;            // world units a stepping unit bobs
@@ -61,6 +63,8 @@ export class EventPlayer {
     this._timer = 0;
     this._last = 0;
     this._flyCount = new Map(); // anchor key -> flyovers alive on it
+    this._hp = new Map();       // unit id -> hit points as of the last damage or heal event played; empty when idle
+    this._hpOf = (unit) => this.shownHp(unit);
     this._tmp = new THREE.Vector3();
     this._project = (unitId) => this.project(unitId);
 
@@ -102,6 +106,7 @@ export class EventPlayer {
   play(events) {
     const run = async () => {
       this.playing = true;
+      this._holdHp(events);
       try {
         for (const event of events) {
           const handler = this._handlers[event.type];
@@ -117,6 +122,7 @@ export class EventPlayer {
         }
         this._refreshBars();
       } finally {
+        this._hp.clear();
         this.playing = false;
         this.skipping = false;
       }
@@ -145,6 +151,11 @@ export class EventPlayer {
     return this._toScreen(this._head(object, this._tmp));
   }
 
+  /** Hit points to draw for a unit: the value as of the last played damage or heal event, else the state's. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  shownHp(unit) {
+    return this._hp.get(unit.id) ?? unit.hp;
+  }
+
   /** Removes the flyover layer and frees shared geometry. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   dispose() {
     this.skipping = true;
@@ -157,12 +168,20 @@ export class EventPlayer {
 
   // ---- Handlers ----
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  // Steps no soldier can see at either end snap into place with no camera focus, so unseen patrols cost no time.
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - unseen steps snap
+   */
   async _onUnitStepped({ unitId, from, to }) {
     const object = this.renderer.unitObject(unitId);
     if (!object) return;
     const a = this.renderer.tileCenter(from);
     const b = this.renderer.tileCenter(to);
+    if (this._unseenStep(unitId, from, to)) {
+      object.position.copy(b);
+      return;
+    }
     this._focus(b);
     await this._tween(STEP_TIME, (t) => {
       object.position.lerpVectors(a, b, t);
@@ -203,8 +222,9 @@ export class EventPlayer {
   }
 
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-  async _onUnitDamaged({ unitId, amount, armorAbsorbed = 0 }) {
+  async _onUnitDamaged({ unitId, amount, armorAbsorbed = 0, hp }) {
     const object = this.renderer.unitObject(unitId);
+    this._hp.set(unitId, hp);
     const text = amount > 0 ? `-${amount}` : 'Blocked';
     this._flyUnit(unitId, armorAbsorbed > 0 ? `${text} (${armorAbsorbed} armor)` : text, 'dmg');
     this._refreshBars();
@@ -212,7 +232,8 @@ export class EventPlayer {
   }
 
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-  async _onUnitHealed({ unitId, amount }) {
+  async _onUnitHealed({ unitId, amount, hp }) {
+    this._hp.set(unitId, hp);
     this._flyUnit(unitId, `+${amount}`, 'heal');
     this._refreshBars();
     await this._wait(0.2);
@@ -516,10 +537,28 @@ export class EventPlayer {
     return sum.divideScalar(objects.length);
   }
 
+  // The state is final before playback starts, so each unit's HP before the batch is read back from its first damage or heal event.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _holdHp(events) {
+    for (const e of events) {
+      if (this._hp.has(e.unitId)) continue;
+      if (e.type === EVENT.UnitDamaged) this._hp.set(e.unitId, e.hp + e.amount);
+      else if (e.type === EVENT.UnitHealed) this._hp.set(e.unitId, e.hp - e.amount);
+    }
+  }
+
+  /** True for an alien step that no living soldier sees at its start or end tile. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _unseenStep(unitId, from, to) {
+    const state = this.getState?.();
+    const unit = state?.units[unitId];
+    if (!unit || unit.team === 'xcom') return false;
+    return !livingUnits(state, 'xcom').some((s) => canSee(state, s, unit, { targetTile: from }) || canSee(state, s, unit, { targetTile: to }));
+  }
+
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   _refreshBars() {
     const state = this.getState?.();
-    if (this.hud && state) this.hud.updateUnitBars?.(state, this._project);
+    if (this.hud && state) this.hud.updateUnitBars?.(state, this._project, this._hpOf);
   }
 
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */

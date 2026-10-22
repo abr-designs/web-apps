@@ -7,6 +7,7 @@ import { buildMission, rotateParcel } from '../js/sim/map-builder.js';
 import { PARCELS } from '../js/data/parcels.js';
 import { toXZ, isWalkable } from '../js/sim/grid.js';
 import { livingUnits } from '../js/sim/state.js';
+import { tileDistance } from '../js/sim/visibility.js';
 
 const SEEDS = Array.from({ length: 200 }, (_, k) => k * 7919 + 1);
 const dist = (grid, a, b) => {
@@ -23,7 +24,7 @@ test('parcels are 8x8 with valid codes, spawn parcels have 4 S and no P, others 
     assert.equal(p.props.length, 8, p.id);
     for (let r = 0; r < 8; r++) {
       assert.match(p.heights[r], /^[0-3]{8}$/, `${p.id} heights row ${r}`);
-      assert.match(p.props[r], /^[.cbwrSP]{8}$/, `${p.id} props row ${r}`);
+      assert.match(p.props[r], /^[.cbwrxSP]{8}$/, `${p.id} props row ${r}`);
     }
     const text = p.props.join('');
     const count = (ch) => [...text].filter((c) => c === ch).length;
@@ -97,6 +98,16 @@ test('units start with full hp and ammo, zero AP and their charges', () => {
   assert.equal(grenadier.hp, grenadier.stats.hp);
   assert.equal(grenadier.ammo, 3);
   assert.equal(grenadier.ap, 0);
-  assert.deepEqual(grenadier.charges, { launchGrenade: 2, fragGrenade: 1 });
+  assert.deepEqual(grenadier.charges, { launchGrenade: 2, fragGrenade: 1, rocket: 1 });
   assert.deepEqual(s.units.x2.charges, { fragGrenade: 1 });
+});
+
+test('pods start at least 12 tiles from every squad start and every seed builds', () => {
+  for (let k = 1; k <= 60; k++) {
+    const s = buildMission(k * 7919);
+    const squad = Object.values(s.units).filter((u) => u.team === 'xcom');
+    for (const a of Object.values(s.units).filter((u) => u.team === 'alien')) {
+      for (const x of squad) assert.ok(tileDistance(s.grid, a.tile, x.tile) >= 12, `seed ${k * 7919}`);
+    }
+  }
 });

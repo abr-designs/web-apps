@@ -11,8 +11,8 @@ import { ENEMIES } from '../js/data/enemies.js';
 import { PROPS } from '../js/data/props.js';
 
 const EFFECT_TYPES = ['weaponDamage', 'flatDamage', 'shred', 'destroyCover', 'heal', 'applyStatus', 'modifyStat',
-  'setOverwatch', 'hunker', 'reload', 'grantAp', 'moveThenAct'];
-const TARGETING = ['self', 'enemyLos', 'enemySquadsight', 'ally', 'allyAny', 'tile', 'melee'];
+  'setOverwatch', 'hunker', 'reload', 'grantAp', 'moveThenAct', 'destroyProp'];
+const TARGETING = ['self', 'enemyLos', 'enemySquadsight', 'ally', 'allyAny', 'tile', 'melee', 'prop'];
 
 function assertDeepFrozen(value, path) {
   if (!value || typeof value !== 'object') return;
@@ -92,5 +92,13 @@ test('props name existing rubble kinds', () => {
   for (const [id, p] of Object.entries(PROPS)) {
     assert.ok(['half', 'full'].includes(p.cover), `${id}: cover`);
     assert.ok(p.rubble === null || PROPS[p.rubble], `${id}: unknown rubble ${p.rubble}`);
+    assert.ok(Number.isInteger(p.hardness) && p.hardness >= 0, `${id}: hardness`);
+  }
+  assert.equal(PROPS.wall.rubble, null, 'destroyed walls leave open ground');
+});
+
+test('alsoTargets names a hidden ability', () => {
+  for (const [id, a] of Object.entries(ABILITIES)) {
+    if (a.alsoTargets) assert.equal(ABILITIES[a.alsoTargets]?.hidden, true, id);
   }
 });

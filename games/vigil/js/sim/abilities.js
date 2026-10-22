@@ -9,19 +9,24 @@
 //   allyAny          every living squadmate on the map, the unit included (the drone flies there)
 //   tile             any tile within range of the unit, own tile excluded; no line of sight needed in v1
 //   melee            visible enemies with a free tile next to them inside the 1 AP band; cmd.targetTile picks that tile
+//   prop             tiles of burstable props (barrels) within the unit's sight with LOS from it or a step-out tile
 // Abilities that heal only list wounded allies. Active abilities need at least 1 AP even when apCost is 0 (runAndGun).
 
 import { ABILITIES } from '../data/abilities.js';
+import { PROPS } from '../data/props.js';
 import { WEAPONS } from '../data/weapons.js';
 import { RULES } from '../data/rules.js';
 import { EVENT } from './events.js';
 import { livingUnits } from './state.js';
 import { reachable, pathTo } from './pathfinder.js';
 import { neighbours8, isWalkable } from './grid.js';
-import { canSee, squadVisible, tileDistance } from './visibility.js';
+import { canSee, squadVisible, tileDistance, hasLosTiles, stepOutTiles } from './visibility.js';
 import { compute, unitDef } from './hit.js';
 import { EFFECTS, newRun, runEffects, flushNoise } from './effects.js';
 import { breakConcealment } from './detection.js';
+
+// Targeting kinds that aim at the enemy; using one resets the unit's idleTurns (EnemyAI aggression ramp).
+const HOSTILE_TARGETING = Object.freeze(['enemyLos', 'enemySquadsight', 'melee', 'tile', 'prop']);
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
 function abilityIds(unit) {
@@ -90,6 +95,11 @@ export function validTargets(state, unit, abilityId) {
       for (let t = 0; t < state.grid.heights.length; t++) if (tileInRange(state, unit, def, t)) out.push(t);
       return out;
     }
+    case 'prop': {
+      const out = [];
+      state.grid.props.forEach((prop, t) => { if (prop && PROPS[prop.kind].burst && seesTile(state, unit, t)) out.push(t); });
+      return out;
+    }
     case 'melee': {
       const seen = squadVisible(state, unit.team);
       const reach = reachable(state, unit);
@@ -100,6 +110,13 @@ export function validTargets(state, unit, abilityId) {
     default:
       return [];
   }
+}
+
+// Sight radius from the unit's own tile, LOS from it or a step-out tile (the target tile's own prop never blocks).
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function seesTile(state, unit, tile) {
+  if (tileDistance(state.grid, unit.tile, tile) > unit.stats.sight) return false;
+  return [unit.tile, ...stepOutTiles(state, unit.tile, unit.id)].some((o) => hasLosTiles(state, o, tile));
 }
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -146,6 +163,10 @@ function targetReason(state, unit, cmd) {
     if (!Number.isInteger(cmd.targetTile)) return 'Pick a tile';
     return tileInRange(state, unit, def, cmd.targetTile) ? null : 'Target is out of range';
   }
+  if (def.targeting === 'prop') {
+    if (!Number.isInteger(cmd.targetTile)) return 'Pick a target';
+    return validTargets(state, unit, cmd.abilityId).includes(cmd.targetTile) ? null : 'Invalid target';
+  }
   if (typeof cmd.targetId !== 'string') return 'Pick a target';
   if (!validTargets(state, unit, cmd.abilityId).includes(cmd.targetId)) return 'Invalid target';
   if (def.targeting === 'melee' && cmd.targetTile !== undefined && !meleeTiles(state, unit, cmd.targetId).includes(cmd.targetTile)) {
@@ -154,16 +175,21 @@ function targetReason(state, unit, cmd) {
   return null;
 }
 
-// One entry per active ability of the unit (class abilities, then utility), passives excluded.
+// One entry per active ability of the unit (class abilities, then utility), passives and hidden abilities excluded.
 // reason is null when usable. HUD list; the side and phase checks live in the executor's validate.
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+// An ability with alsoTargets stays usable when only the hidden ability has targets (Shoot with only a barrel in view).
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - hidden and alsoTargets
+ */
 export function abilitiesFor(state, unit) {
   return abilityIds(unit)
-    .filter((id) => !ABILITIES[id].passive)
+    .filter((id) => !ABILITIES[id].passive && !ABILITIES[id].hidden)
     .map((id) => {
       const def = ABILITIES[id];
       let reason = unitReason(unit, id);
-      if (!reason && def.targeting !== 'self' && validTargets(state, unit, id).length === 0) reason = noTargetsReason(def);
+      const extra = def.alsoTargets && !unitReason(unit, def.alsoTargets) ? validTargets(state, unit, def.alsoTargets).length : 0;
+      if (!reason && def.targeting !== 'self' && validTargets(state, unit, id).length + extra === 0) reason = noTargetsReason(def);
       return { id, def, usable: reason === null, reason, charges: unit.charges[id] ?? null, cooldown: unit.cooldowns[id] ?? 0 };
     });
 }
@@ -190,7 +216,7 @@ export function use(state, ctx, cmd) {
   const run = newRun();
 
   let target = unit;
-  if (def.targeting === 'tile') {
+  if (def.targeting === 'tile' || def.targeting === 'prop') {
     target = cmd.targetTile;
   } else if (def.targeting !== 'self') {
     target = state.units[cmd.targetId];
@@ -206,6 +232,7 @@ export function use(state, ctx, cmd) {
   if (def.charges) unit.charges[id] -= 1;
   if (def.cooldown) unit.cooldowns[id] = def.cooldown;
   if (def.usesAmmo && unit.ammo !== null) unit.ammo -= def.usesAmmo;
+  if (HOSTILE_TARGETING.includes(def.targeting)) unit.idleTurns = 0;
   // Squad-wide concealment (Settled rules): only soldiers hold it.
   if (def.breaksConcealment && unit.team === 'xcom') breakConcealment(state, ctx, unit.id, 'ability');
 

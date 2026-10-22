@@ -85,7 +85,7 @@ test('EFFECTS has a function for every effect type the data uses', () => {
   for (const def of Object.values(ABILITIES)) walk(def.effects);
   for (const type of used) assert.equal(typeof EFFECTS[type], 'function', type);
   assert.deepEqual(Object.keys(EFFECTS).sort(), [
-    'applyStatus', 'destroyCover', 'flatDamage', 'grantAp', 'heal', 'hunker', 'modifyStat',
+    'applyStatus', 'destroyCover', 'destroyProp', 'flatDamage', 'grantAp', 'heal', 'hunker', 'modifyStat',
     'moveThenAct', 'reload', 'setOverwatch', 'shred', 'weaponDamage',
   ]);
 });
@@ -270,8 +270,9 @@ test('launchGrenade destroys cover, shreds armor, hurts everyone in the radius a
   });
   assert.equal(state.grid.props[target], null, 'crate (3 hp) destroyed');
   assert.ok(e.some((x) => x.type === 'CoverDestroyed' && x.tile === target));
-  assert.equal(state.grid.props[at(state, 11, 4)].hp, 8 - EXPLOSION_PROP_DAMAGE, 'wall damaged, not destroyed');
-  assert.ok(e.some((x) => x.type === 'CoverDamaged' && x.tile === at(state, 11, 4)));
+  assert.ok(EXPLOSION_PROP_DAMAGE < 8);
+  assert.equal(state.grid.props[at(state, 11, 4)].hp, 8, 'wall hardness shrugs off the grenade');
+  assert.ok(!e.some((x) => x.tile === at(state, 11, 4)), 'no cover event for the wall');
   assert.notEqual(state.grid.props[at(state, 14, 4)], null, 'outside the radius');
 
   assert.equal(trooper.shred, 1);
@@ -284,21 +285,53 @@ test('launchGrenade destroys cover, shreds armor, hurts everyone in the radius a
   assert.equal(gren.ammo, 3, 'grenades use no ammo');
 });
 
-test('a blast rubbles a wall after two grenades and a kill emits UnitKilled', () => {
+test('grenades never topple walls; a rocket does, leaves open ground and a kill emits UnitKilled', () => {
   const state = makeState(12, 9, [[6, 4, 'wall']]);
-  addUnit(state, 'x1', 'grenadier', 1, 4);
-  const lone = addUnit(state, 'a01', 'trooper', 6, 6);
+  const gren = addUnit(state, 'x1', 'grenadier', 1, 4);
+  const lone = addUnit(state, 'a01', 'trooper', 6, 5);
   lone.hp = 40;
   const target = at(state, 6, 4);
   run(state, cmd('x1', 'launchGrenade', { targetTile: target }));
-  assert.equal(state.grid.props[target].hp, 4);
+  gren.ap = 2;
+  run(state, cmd('x1', 'launchGrenade', { targetTile: target }));
+  assert.equal(state.grid.props[target].hp, 8, 'two grenades leave the wall whole');
   lone.hp = 1;
-  state.units.x1.ap = 2;
-  const ctx = run(state, cmd('x1', 'launchGrenade', { targetTile: target }));
-  assert.equal(state.grid.props[target].kind, 'rubble');
-  assert.ok(ctx.events.some((x) => x.type === 'CoverDestroyed' && x.rubbleKind === 'rubble'));
+  gren.ap = 2;
+  const ctx = run(state, cmd('x1', 'rocket', { targetTile: target }));
+  assert.equal(state.grid.props[target], null);
+  assert.ok(ctx.events.some((x) => x.type === 'CoverDestroyed' && x.tile === target && x.rubbleKind === null));
   assert.equal(lone.hp, 0);
   assert.ok(ctx.events.some((x) => x.type === 'UnitKilled' && x.unitId === 'a01'));
+  assert.equal(gren.charges.rocket, 0);
+  assert.equal(gren.ap, 0);
+});
+
+test('a shot barrel bursts, hurts everyone in radius 2, topples a wall and chains into the next barrel', () => {
+  const state = makeState(16, 9, [[6, 4, 'barrel'], [7, 4, 'wall'], [8, 4, 'barrel']]);
+  const ranger = addUnit(state, 'x1', 'ranger', 2, 4);
+  const near = addUnit(state, 'a01', 'trooper', 6, 6);
+  const chained = addUnit(state, 'a02', 'trooper', 10, 4);
+  near.hp = 20;
+  chained.hp = 20;
+  const first = at(state, 6, 4);
+  assert.deepEqual(validTargets(state, ranger, 'shootBarrel'), [first], 'the far barrel hides behind the wall');
+  const ctx = run(state, cmd('x1', 'shootBarrel', { targetTile: first }));
+  const blasts = ctx.events.filter((x) => x.type === 'Explosion').map((x) => x.center);
+  assert.deepEqual(blasts, [first, at(state, 8, 4)]);
+  assert.equal(state.grid.props[at(state, 7, 4)], null, 'the wall falls to the 8 prop damage');
+  assert.ok(near.hp >= 16 && near.hp <= 17, 'one blast of 3 to 4');
+  assert.ok(chained.hp >= 16 && chained.hp <= 17, 'only the chained blast reaches it');
+  assert.equal(ranger.ammo, 3);
+  assert.equal(ranger.ap, 0);
+});
+
+test('Shoot stays usable with only a barrel in view, and barrels are hidden from the ability list', () => {
+  const state = makeState(12, 9, [[6, 4, 'barrel']]);
+  const ranger = addUnit(state, 'x1', 'ranger', 2, 4);
+  const list = abilitiesFor(state, ranger);
+  assert.equal(list.find((a) => a.id === 'standardShot').usable, true);
+  assert.equal(list.some((a) => a.id === 'shootBarrel'), false);
+  assert.equal(validate(state, cmd('x1', 'shootBarrel', { targetTile: at(state, 5, 4) })).ok, false);
 });
 
 test('grenade targeting: tiles within range, not the unit tile, and range is enforced', () => {

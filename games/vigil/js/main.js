@@ -158,7 +158,7 @@ function frame(now) {
   last = now;
   rig.update(dt);
   input.update(dt);
-  if (state) hud.updateUnitBars(state, (unitId) => player.project(unitId));
+  if (state) hud.updateUnitBars(state, (unitId) => player.project(unitId), (unit) => player.shownHp(unit));
   renderer.render();
   requestAnimationFrame(frame);
 }
