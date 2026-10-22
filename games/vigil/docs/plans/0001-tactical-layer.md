@@ -12,13 +12,14 @@ date: 2026-10-21
 | Updated | 2026-10-21 |
 | Proficiency | 5-7/10 |
 | Engine | JavaScript (ES modules, no build step) + three.js, static page in `games/vigil/` |
-| Revisions | 5 (latest: U-005) |
+| Revisions | 6 (latest: U-006) |
 | Summary | XCOM 2 style turn-based squad combat in the browser: heightmap grid, cover, hit chances, overwatch, concealment and pods, four classes, destructible cover, one Sweep mission. |
 
 ## Revision Log
 
 | ID | Date | Type | Change |
 |---|---|---|---|
+| U-006 | 2026-10-21 | Update | Step 5: `state.js` (`STATE_VERSION`, `createUnit`, `livingUnits`, `unitAt`) written early because `buildMission` creates units; step 9 adds events, executor and turns. `buildMission` takes `squad` and `enemyPool` options for the strategy layer. Grid adds `placeProp` and `rebuildAllEdgeCover`; indestructible props store hp `null`. Unit ids: `x1` to `x4`, aliens `a01` up so ids sort in order. |
 | U-005 | 2026-10-21 | Update | Step 4 data: abilities gain `name` and `description` for the rail list; WEAPONS adds melee `sword` and `stunBaton` (no range table); `ammo: null` means unlimited (pistol, melee); effect fields documented in AbilitySystem. |
 | U-004 | 2026-10-21 | Fix | Test command is `node --test "games/vigil/tests/*.test.mjs"`: Node 25 treats a bare directory argument as a module and fails. |
 | U-003 | 2026-10-21 | Update | Layout gate (step 2): picked C Tactical Rail from docs/mockups/layout.html. v1 is desktop only (mouse and keyboard); touch Open Question closed. UI Reference records where each piece sits in the rail layout. |
@@ -401,7 +402,7 @@ export function pick(state, list) {}        // -> random element; throws on empt
 
 ### Grid (`js/sim/grid.js`)
 Responsibility: map data and derived per-edge cover.
-Owns: `grid.width`, `grid.depth`, `grid.heights[]` (0 to 3), `grid.props[]` (`{ kind, hp } | null`), `grid.edgeCover[]` (`[n, e, s, w]` each `'none' | 'half' | 'full'`).
+Owns: `grid.width`, `grid.depth`, `grid.heights[]` (0 to 3), `grid.props[]` (`{ kind, hp } | null`, hp `null` for indestructible props so saves stay JSON-safe), `grid.edgeCover[]` (`[n, e, s, w]` each `'none' | 'half' | 'full'`).
 Pattern: Dirty Flag, so only the four neighbours of a changed prop rebuild their edge cover.
 
 Stub:
@@ -411,6 +412,8 @@ export function toIndex(grid, x, z) {}               // -> tile index, -1 when o
 export function toXZ(grid, i) {}                     // -> [x, z]
 export function neighbours8(grid, i) {}              // -> [{ i, dx, dz, diagonal }] in bounds
 export function isWalkable(grid, i) {}               // -> true when no prop occupies the tile
+export function placeProp(grid, i, kind) {}          // sets props[i] from PROPS; does not touch edge cover
+export function rebuildAllEdgeCover(grid) {}         // full pass after MapBuilder stamps parcels
 export function rebuildEdgeCover(grid, i) {}         // recompute edgeCover of tile i from its 4 orthogonal neighbours' props
 export function damageProp(grid, i, amount) {}       // -> { destroyed, rubbleKind }; swaps to rubble and rebuilds neighbours' edges
 ```
@@ -421,7 +424,7 @@ Owns: nothing (pure).
 
 Stub:
 ```js
-export function buildMission(seed, { plotSize = 3, pods = 3 } = {}) {} // -> BattleState in Deploy phase
+export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQUAD, enemyPool = DEFAULT_ENEMY_POOL } = {}) {} // -> BattleState in Deploy phase
 // picks one 'spawn' parcel for a corner, fills the rest at random with a random 0/90/180/270 rotation,
 // copies heights and props, rebuilds all edge cover, places 4 soldiers on 'S' tiles,
 // places each pod (2 to 3 enemies from ENEMIES) around a 'P' anchor at least 10 tiles from the squad,
