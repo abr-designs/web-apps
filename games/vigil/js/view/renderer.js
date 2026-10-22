@@ -15,6 +15,10 @@ const TILE_GAP = 0.97;          // terrain boxes are slightly narrower than a ti
 const UNIT_RADIUS = 0.25;
 const UNIT_BODY = 1.0;          // matches RULES.bodyHeight
 const MARKER_WIDTH = 0.07;      // outline strip width in world units
+const FOG_OPACITY = 0.55;       // dim over tiles outside squad sight
+const PATH_WIDTH = 0.09;        // move path line width (plan 0003 Layout B)
+const PATH_LIFT = 0.05;         // path height above the terrain top
+const SELECT_PULSE = 4;         // selection ring pulse speed, radians per second
 const FALLBACK_PALETTE = {
   bg: '#0B1118', surface: '#121C26', surfaceRaised: '#1B2834', text: '#E6EEF4', textMuted: '#8A9BAA', accent: '#3FD0E8',
   xcom: '#4AA8FF', alien: '#E5484D', moveBlue: '#2F8CFF', moveYellow: '#F2C94C', danger: '#FF3B3B',
@@ -74,11 +78,16 @@ export class Renderer {
     this.propObjects = new Map(); // tile -> Group
     this.unitObjects = new Map(); // unit id -> Group
     this.layers = {};
-    for (const name of ['move', 'cover', 'detection', 'target']) {
+    for (const name of ['fog', 'move', 'path', 'cover', 'detection', 'target']) {
       this.layers[name] = new THREE.Group();
       this.layers[name].renderOrder = 2;
       this.overlayGroup.add(this.layers[name]);
     }
+
+    this.unitRingMaterials = new Map(); // unit id -> its own ring material (soldier slot colours)
+    this.selectRing = null;             // pulsing ring parented to the selected soldier's Group
+    this._fogTiles = null;              // visible set the fog layer was last drawn for
+    this._clock = new THREE.Clock();
 
     this._makeSharedResources();
     this._onResize = () => this._resize();
@@ -90,12 +99,17 @@ export class Renderer {
   /** Rebuilds terrain, props and units from a BattleState. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   build(state) {
     this.clearOverlays();
+    this._clearLayer('fog');
+    this._fogTiles = null;
+    this.setSelected(null);
     this._disposeGroup(this.terrainGroup);
     this._disposeGroup(this.propGroup);
     this._disposeGroup(this.unitGroup);
     this.terrainMeshes = [];
     this.propObjects.clear();
     this.unitObjects.clear();
+    for (const material of this.unitRingMaterials.values()) material.dispose();
+    this.unitRingMaterials.clear();
     this.grid = state.grid;
 
     this._buildTerrain();
@@ -173,13 +187,19 @@ export class Renderer {
     }
   }
 
-  /** Hatched red tiles inside every living alien's detection radius, shown only while the squad is concealed. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-  showDetection(state) {
+  /**
+   * Hatched red tiles inside a living alien's detection radius, shown only while the squad is concealed.
+   * alienIds limits them to those aliens (the ones the fog shows); null draws every alien's.
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - alienIds
+   */
+  showDetection(state, alienIds = null) {
     const layer = this._clearLayer('detection');
     if (!state.squadConcealed) return;
     const tiles = new Set();
     for (const unit of Object.values(state.units)) {
       if (unit.team !== 'alien' || unit.hp <= 0) continue;
+      if (alienIds && !alienIds.has(unit.id)) continue;
       const radius = unit.stats.detection;
       const [ux, uz] = toXZ(this.grid, unit.tile);
       for (let dz = -radius; dz <= radius; dz++) {
@@ -191,6 +211,81 @@ export class Renderer {
       }
     }
     this._addQuads(layer, this._tileRects([...tiles], 0.02, 0.02), this.colors.danger, 0.7, this.hatchTexture);
+  }
+
+  /**
+   * Move path (plan 0003 Layout B): a solid line through the tile centres, an arrowhead into the last tile and a dot on it.
+   * tiles starts at the soldier's own tile; fewer than 2 tiles clears.
+   * @created Claude (claude-opus-5-5) - 2026-10-22
+   */
+  showPath(tiles, color = this.colors.accent) {
+    const layer = this._clearLayer('path');
+    if (tiles.length < 2) return;
+    const points = tiles.map((t) => this.tileCenter(t).setY(this.grid.heights[t] * HEIGHT_STEP + PATH_LIFT));
+    const end = points[points.length - 1];
+    const lastDir = end.clone().sub(points[points.length - 2]).setY(0).normalize();
+    // The line stops where the arrowhead starts.
+    points[points.length - 1] = end.clone().addScaledVector(lastDir, -0.32);
+    const triangles = [];
+    const quad = (a, b, w) => {
+      const side = new THREE.Vector3(b.z - a.z, 0, a.x - b.x).normalize().multiplyScalar(w / 2);
+      const p = [a.clone().add(side), b.clone().add(side), b.clone().sub(side), a.clone().sub(side)];
+      triangles.push(p[0], p[1], p[2], p[0], p[2], p[3]);
+    };
+    for (let k = 1; k < points.length; k++) {
+      const a = points[k - 1];
+      const b = points[k];
+      // Each segment runs half a width past both ends so the corners close.
+      const dir = b.clone().sub(a).setY(0).normalize().multiplyScalar(PATH_WIDTH / 2);
+      quad(a.clone().sub(dir), b.clone().add(dir), PATH_WIDTH);
+    }
+    const base = points[points.length - 1];
+    const tip = end.clone().addScaledVector(lastDir, -0.1);
+    const wing = new THREE.Vector3(lastDir.z, 0, -lastDir.x).multiplyScalar(0.16);
+    triangles.push(base.clone().add(wing), tip, base.clone().sub(wing));
+    for (let k = 0; k < 16; k++) {
+      const a0 = (k / 16) * Math.PI * 2;
+      const a1 = ((k + 1) / 16) * Math.PI * 2;
+      triangles.push(end, end.clone().add(new THREE.Vector3(Math.cos(a1) * 0.1, 0, Math.sin(a1) * 0.1)),
+        end.clone().add(new THREE.Vector3(Math.cos(a0) * 0.1, 0, Math.sin(a0) * 0.1)));
+    }
+    const geometry = new THREE.BufferGeometry().setFromPoints(triangles);
+    const material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = 3;
+    mesh.raycast = () => {};
+    layer.add(mesh);
+  }
+
+  /** Gives one unit its own ring colour (soldier slot colours from the Roster). @created Claude (claude-opus-5-5) - 2026-10-22 */
+  setUnitColor(unitId, color) {
+    const object = this.unitObjects.get(unitId);
+    if (!object || !color) return;
+    let material = this.unitRingMaterials.get(unitId);
+    if (!material) {
+      material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      this.unitRingMaterials.set(unitId, material);
+    }
+    material.color.set(color);
+    object.userData.ring.material = material;
+  }
+
+  /** Larger pulsing ring in the unit's ring colour under the selected soldier; null clears. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  setSelected(unitId) {
+    if (this.selectRing && unitId && this.selectRing.parent === this.unitObjects.get(unitId)) return;
+    if (this.selectRing) {
+      this.selectRing.parent?.remove(this.selectRing);
+      this.selectRing.material.dispose();
+      this.selectRing = null;
+    }
+    const object = unitId ? this.unitObjects.get(unitId) : null;
+    if (!object) return;
+    const material = new THREE.MeshBasicMaterial({ color: object.userData.ring.material.color, side: THREE.DoubleSide, transparent: true, depthWrite: false });
+    this.selectRing = new THREE.Mesh(this.selectGeometry, material);
+    this.selectRing.rotation.x = -Math.PI / 2;
+    this.selectRing.position.y = 0.03;
+    this.selectRing.raycast = () => {};
+    object.add(this.selectRing);
   }
 
   /** Thin line from one tile's unit centre to another's. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -211,9 +306,34 @@ export class Renderer {
     layer.add(mesh);
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /**
+   * Dark quads over every tile outside visibleTiles (plan 0003 fog). Lives in its own layer, which clearOverlays leaves alone.
+   * Skips the rebuild when the set matches the last one drawn, since the fog refreshes on every playback step.
+   * @created Claude (claude-opus-5-5) - 2026-10-22
+   */
+  showFog(visibleTiles) {
+    const last = this._fogTiles;
+    if (last && last.size === visibleTiles.size && [...visibleTiles].every((t) => last.has(t))) return;
+    this._fogTiles = new Set(visibleTiles);
+    const layer = this._clearLayer('fog');
+    const hidden = [];
+    for (let tile = 0; tile < this.grid.heights.length; tile++) if (!visibleTiles.has(tile)) hidden.push(tile);
+    this._addQuads(layer, this._tileRects(hidden, 0.008, 0), this.colors.bg, FOG_OPACITY);
+  }
+
+  /** Shows or hides a unit for the fog. syncUnits resets visibility to hp > 0, so the fog refreshes after it. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  setUnitShown(unitId, shown) {
+    const object = this.unitObjects.get(unitId);
+    if (object) object.visible = shown;
+  }
+
+  /**
+   * Every overlay layer except the fog.
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - fog layer kept
+   */
   clearOverlays() {
-    for (const name of Object.keys(this.layers)) this._clearLayer(name);
+    for (const name of Object.keys(this.layers)) if (name !== 'fog') this._clearLayer(name);
   }
 
   /** Removes the prop on tile (CoverDestroyed) and puts a rubbleKind prop there when given. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -227,8 +347,13 @@ export class Renderer {
     if (rubbleKind) this._addProp(tile, rubbleKind);
   }
 
-  /** Draws one frame. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /** Draws one frame. @created Claude (claude-sonnet-5-5) - 2026-10-21 @modified Claude (claude-opus-5-5) - 2026-10-22 - selection pulse */
   render() {
+    if (this.selectRing) {
+      const wave = Math.sin(this._clock.getElapsedTime() * SELECT_PULSE);
+      this.selectRing.scale.setScalar(1 + 0.08 * wave);
+      this.selectRing.material.opacity = 0.75 + 0.25 * wave;
+    }
     // Shield icons turn to face the camera so they never read edge-on.
     const cam = this.camera.position;
     for (const shield of this.layers.cover.children) {
@@ -264,9 +389,12 @@ export class Renderer {
   dispose() {
     this._resizeObserver.disconnect();
     this.clearOverlays();
+    this._clearLayer('fog');
+    this.setSelected(null);
     this._disposeGroup(this.terrainGroup);
     this._disposeGroup(this.propGroup);
     this._disposeGroup(this.unitGroup);
+    for (const material of this.unitRingMaterials.values()) material.dispose();
     this.webgl.dispose();
   }
 
@@ -278,6 +406,7 @@ export class Renderer {
 
     this.unitGeometry = keep(new THREE.CapsuleGeometry(UNIT_RADIUS, UNIT_BODY - UNIT_RADIUS * 2, 4, 12));
     this.ringGeometry = keep(new THREE.RingGeometry(0.3, 0.42, 28));
+    this.selectGeometry = keep(new THREE.RingGeometry(0.46, 0.56, 36));
     this.unitMaterials = {
       xcom: keep(new THREE.MeshLambertMaterial({ color: this.colors.xcom })),
       alien: keep(new THREE.MeshLambertMaterial({ color: this.colors.alien })),
@@ -404,6 +533,7 @@ export class Renderer {
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.02;
     group.add(body, ring);
+    group.userData.ring = ring;
     this.tileCenter(unit.tile, group.position);
     group.visible = unit.hp > 0;
     this.unitGroup.add(group);

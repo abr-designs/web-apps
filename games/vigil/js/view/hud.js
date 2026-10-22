@@ -2,13 +2,16 @@
 // Date: 2026-10-21
 // Hud: the DOM layer of layout C Tactical Rail (plan UI Reference). It fills the containers index.html already holds:
 // #unit (R1, R7 as text), #abilities (R5 list), #breakdown (R13), #end-turn, #squad (R2), #turn, #concealed, #message,
-// #objective (R4), #unit-bars (R8) and #outcome. It only draws and reports clicks; InputController decides what they mean.
+// #objective (R4), #unit-bars (R8), #outcome and plan 0003's #confirm. It only draws and reports clicks; InputController decides what they mean.
+// Plan 0003 Layout B: soldier names and slot colours come from the Roster, the ConfirmBar sits bottom-centre, the hit badge is a
+// reticle positioned in the updateUnitBars pass, and a click on the rail name plate swaps in a rename field.
 // Ability rows are numbered 1..n in the order showUnit receives them, which is the order number keys use.
 
 import { RULES } from '../data/rules.js';
 import { WEAPONS } from '../data/weapons.js';
 import { statValue } from '../sim/state.js';
 import { unitDef } from '../sim/hit.js';
+import { SLOTS, NAME_MAX } from './roster.js';
 
 const MESSAGE_TIME = 2600; // ms a message stays up
 
@@ -87,15 +90,40 @@ function signed(value) {
   return value > 0 ? `+${value}` : String(value);
 }
 
+// Inline style giving a soldier's row or plate its slot colour as --c (empty for aliens).
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function slotStyle(unitId) {
+  const k = SLOTS.indexOf(unitId);
+  return k === -1 ? '' : ` style="--c: var(--slot-${k + 1})"`;
+}
+
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function keysHtml(keys) {
+  return keys.map((k) => `<kbd>${esc(k)}</kbd>`).join(' or ');
+}
+
+const RETICLE = '<svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="22"/><path d="M28 0v9M28 47v9M0 28h9M47 28h9"/></svg>';
+
 export class Hud {
-  /** root is the document (or a node holding the layout C containers). @created Claude (claude-opus-5-5) - 2026-10-21 */
-  constructor(root = document) {
+  /**
+   * root is the document (or a node holding the layout C containers). roster gives soldier names (plan 0003).
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - roster, ConfirmBar, hit badge, rename
+   */
+  constructor(root = document, roster = null) {
     const find = (id) => root.querySelector(`#${id}`);
+    this.roster = roster;
     this.el = {
       unit: find('unit'), abilities: find('abilities'), breakdown: find('breakdown'), endTurn: find('end-turn'),
       squad: find('squad'), turn: find('turn'), concealed: find('concealed'), message: find('message'),
-      objective: find('objective'), bars: find('unit-bars'), outcome: find('outcome'),
+      objective: find('objective'), bars: find('unit-bars'), outcome: find('outcome'), confirm: find('confirm'),
     };
+    this._confirmCb = null;
+    this._renameCb = null;
+    this._unitId = null;   // soldier on the name plate
+    this._badge = null;    // { anchor, el } while a hit badge is up
+    this.el.confirm.addEventListener('click', (e) => { if (e.target.closest('.go')) this._confirmCb?.(); });
+    this.el.unit.addEventListener('click', (e) => { if (e.target.closest('.unit-name.renamable')) this._startRename(); });
     this.rail = this.el.abilities.closest('.rail');
     this._abilityCb = null;
     this._endTurnCb = null;
@@ -116,13 +144,14 @@ export class Hud {
       if (row) this._selectCb?.(row.dataset.unit);
     });
     // Rail and squad buttons never take focus, so Enter and Space stay with the game keys.
-    for (const el of [this.rail, this.el.squad]) {
+    for (const el of [this.rail, this.el.squad, this.el.confirm]) {
       el.addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
     }
   }
 
   /** R1 name plate with hp, AP pips, weapon ammo and statuses, and the R5 ability list. unit null clears both. @created Claude (claude-opus-5-5) - 2026-10-21 */
   showUnit(state, unit, abilities = [], activeId = null) {
+    this._unitId = unit?.id ?? null;
     if (!unit) {
       this.el.unit.innerHTML = '<div class="label">No soldier selected</div><div class="unit-hint">Click a soldier or press Tab</div>';
       this.el.abilities.innerHTML = '';
@@ -138,10 +167,11 @@ export class Hud {
       return `<span class="chip">${esc(statusName(s.id))}${turns}</span>`;
     }).join('');
 
+    const renamable = this._renameCb && SLOTS.includes(unit.id);
     this.el.unit.innerHTML = `
       <div class="label">${unit.hp > 0 ? 'Selected' : 'Killed in action'}</div>
-      <div class="unit-name">${esc(def.name)}</div>
-      <div class="unit-sub">Aim ${statValue(unit, 'aim')} &middot; Mobility ${statValue(unit, 'mobility')} &middot; Defense ${statValue(unit, 'defense')}</div>
+      <div class="unit-name${renamable ? ' renamable' : ''}"${slotStyle(unit.id)}${renamable ? ' title="Click to rename"' : ''}>${esc(this._name(unit))}</div>
+      <div class="unit-sub">${esc(def.name)} &middot; Aim ${statValue(unit, 'aim')} &middot; Mobility ${statValue(unit, 'mobility')} &middot; Defense ${statValue(unit, 'defense')}</div>
       <div class="bars">${hpBars(unit)}</div>
       <div class="ap">${pips}&nbsp;${actionsText(unit.ap)} &middot; ${esc(ammo)}</div>
       ${statuses ? `<div class="chips">${statuses}</div>` : ''}`;
@@ -170,11 +200,12 @@ export class Hud {
       const dead = u.hp <= 0;
       const chev = dead || u.ap <= 0 ? '' : `<span class="chev ${u.ap === 1 ? 'one' : ''}">${u.ap === 1 ? '&gt;' : '&gt;&gt;'}</span>`;
       const ow = u.statuses.some((s) => s.id === 'overwatch') ? ' &middot; overwatch' : '';
-      const sub = dead ? 'Killed in action' : `${actionsText(u.ap)}${ow}`;
+      const sub = dead ? 'Killed in action' : `${esc(def.name)} &middot; ${actionsText(u.ap)}${ow}`;
       const cls = `panel squadrow${id === selectedId ? ' sel' : ''}${dead ? ' dead' : ''}`;
-      return `<button type="button" class="${cls}" data-unit="${id}">
-        <span class="por">${icon(CLASS_ICON[u.defId] ?? 'shoot')}${chev}</span>
-        <span class="who">${esc(def.name)}<small>${sub}</small><span class="bars">${hpBars(u)}</span></span>
+      const k = SLOTS.indexOf(id);
+      return `<button type="button" class="${cls}" data-unit="${id}"${slotStyle(id)}>
+        <span class="por">${k === -1 ? '' : `<span class="num">${k + 1}</span>`}${icon(CLASS_ICON[u.defId] ?? 'shoot')}${chev}</span>
+        <span class="who"><span class="nm">${esc(this._name(u))}</span><small>${sub}</small><span class="bars">${hpBars(u)}</span></span>
       </button>`;
     }).join('');
   }
@@ -187,10 +218,12 @@ export class Hud {
   /**
    * R8 overhead bars. project(unitId) -> canvas pixels { x, y } above the head, or null when off screen. Call every frame.
    * hpOf(unit) -> the hit points to draw, so playback can show HP as of the last damage event it played.
+   * shows(unit) -> false for units the fog hides; their bars are hidden too.
    * @created Claude (claude-opus-5-5) - 2026-10-21
-   * @modified Claude (claude-opus-5-5) - 2026-10-22 - hpOf
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - hpOf, shows
    */
-  updateUnitBars(state, project, hpOf = (u) => u.hp) {
+  updateUnitBars(state, project, hpOf = (u) => u.hp, shows = () => true, projectTile = null) {
+    this._placeBadge(state, shows, projectTile);
     for (const [id, entry] of this._barEls) {
       if (!state.units[id]) {
         entry.el.remove();
@@ -208,7 +241,7 @@ export class Hud {
         this._barEls.set(id, entry);
       }
       const hp = hpOf(u);
-      const p = hp > 0 ? project(id) : null;
+      const p = hp > 0 && shows(u) ? project(id) : null;
       if (!p) {
         entry.el.hidden = true;
         continue;
@@ -262,6 +295,47 @@ export class Hud {
       ${rows}
       ${info.note ? `<div class="note">${esc(info.note)}</div>` : ''}`;
     el.hidden = false;
+  }
+
+  /**
+   * Plan 0003 ConfirmBar: a pill button with the label (Move, Dash, Shoot 72%) and key hints. keys are the confirm keys shown
+   * on the right; tab adds a "Tab next target" hint on the left. The button never takes focus.
+   * @created Claude (claude-opus-5-5) - 2026-10-22
+   */
+  showConfirm(label, onConfirm, { keys = ['Enter'], tab = false } = {}) {
+    this._confirmCb = onConfirm;
+    this.el.confirm.innerHTML = `${tab ? '<span class="hint"><kbd>Tab</kbd> next target</span>' : ''}<button type="button" class="go">${esc(label)}</button><span class="hint">${keysHtml(keys)}</span>`;
+    this.el.confirm.hidden = false;
+  }
+
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  hideConfirm() {
+    this._confirmCb = null;
+    this.el.confirm.hidden = true;
+    this.el.confirm.innerHTML = '';
+  }
+
+  /** Reticle and hit chance over anchor ({ unitId } or { tile }); null hides. Placed by updateUnitBars. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  setHitBadge(anchor, pct) {
+    if (!anchor || pct === null || pct === undefined) {
+      this._badge?.el.remove();
+      this._badge = null;
+      return;
+    }
+    if (!this._badge) {
+      const el = document.createElement('div');
+      el.className = 'hitbadge';
+      el.hidden = true;
+      this.el.bars.appendChild(el);
+      this._badge = { el, anchor: null };
+    }
+    this._badge.anchor = anchor;
+    this._badge.el.innerHTML = `${RETICLE}<b>${pct}%</b>`;
+  }
+
+  /** callback(unitId, text) when a rename commits (Enter, the tick, or blur). @created Claude (claude-opus-5-5) - 2026-10-22 */
+  onRename(callback) {
+    this._renameCb = callback;
   }
 
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -327,6 +401,59 @@ export class Hud {
   /** callback(unitId) on a squad row click. @created Claude (claude-opus-5-5) - 2026-10-21 */
   onSelectUnit(callback) {
     this._selectCb = callback;
+  }
+
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _name(unit) {
+    return this.roster ? this.roster.nameOf(unit) : unitDef(unit).name;
+  }
+
+  // The badge sits on the anchor's tile; a unit anchor follows the unit's drawn tile and hides with the fog.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _placeBadge(state, shows, projectTile) {
+    if (!this._badge) return;
+    const { el, anchor } = this._badge;
+    const unit = anchor.unitId ? state.units[anchor.unitId] : null;
+    const tile = unit ? unit.tile : anchor.tile;
+    const p = projectTile && (!unit || shows(unit)) ? projectTile(tile, unit) : null;
+    el.hidden = !p;
+    if (!p) return;
+    const transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
+    if (transform !== this._badge.transform) {
+      this._badge.transform = transform;
+      el.style.transform = transform;
+    }
+  }
+
+  // Swaps the name plate for a boxed input. Enter or the tick commits, Esc cancels, blur commits.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _startRename() {
+    const plate = this.el.unit.querySelector('.unit-name');
+    const unitId = this._unitId;
+    if (!plate || !unitId) return;
+    const form = document.createElement('div');
+    form.className = 'rename';
+    form.setAttribute('style', plate.getAttribute('style') ?? '');
+    form.innerHTML = `<input type="text" maxlength="${NAME_MAX}" aria-label="Soldier name"><button type="button" aria-label="Save name">&#10003;</button>`;
+    const input = form.querySelector('input');
+    input.value = plate.textContent;
+    plate.replaceWith(form);
+    let done = false;
+    const finish = (commit) => {
+      if (done) return;
+      done = true;
+      if (commit) this._renameCb?.(unitId, input.value);
+      else form.replaceWith(plate);
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') finish(true);
+      else if (e.key === 'Escape') finish(false);
+    });
+    input.addEventListener('blur', () => finish(true));
+    form.querySelector('button').addEventListener('mousedown', (e) => e.preventDefault());
+    form.querySelector('button').addEventListener('click', () => finish(true));
+    input.focus();
+    input.select();
   }
 
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */

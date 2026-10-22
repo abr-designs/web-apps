@@ -18,6 +18,8 @@ import { Picker } from './view/picker.js';
 import { EventPlayer } from './view/event-player.js';
 import { Hud } from './view/hud.js';
 import { InputController } from './view/input.js';
+import { Fog } from './view/fog.js';
+import { Roster } from './view/roster.js';
 
 const ENEMY_SPEED = 3;
 const OBJECTIVE = 'Eliminate all hostiles';
@@ -40,16 +42,30 @@ setHooks({ detection: Detection, reactions: Reactions, abilities: { validate: Ab
 
 const canvas = document.getElementById('viewport');
 const renderer = new Renderer(canvas);
-renderer.build(state);
+const roster = new Roster();
+buildView(state);
 const rig = new CameraRig(renderer.camera, canvas);
 const picker = new Picker(renderer, renderer.camera, canvas);
-const hud = new Hud(document);
-const player = new EventPlayer(renderer, rig, hud, { getState: () => state, container: canvas.parentElement });
-const input = new InputController({ getState: () => state, picker, renderer, cameraRig: rig, hud, onCommand: runCommand, player });
+const fog = new Fog({ renderer });
+const hud = new Hud(document, roster);
+const player = new EventPlayer(renderer, rig, hud, { getState: () => state, container: canvas.parentElement, fog });
+const input = new InputController({ getState: () => state, picker, renderer, cameraRig: rig, hud, onCommand: runCommand, player, fog, roster });
+hud.onRename((unitId, text) => {
+  roster.rename(unitId, text);
+  refreshHud();
+  // showUnit rebuilds the ability list, so an armed ability keeps its highlight.
+  if (input.modeName === 'targeting') hud.setActiveAbility(input.data.abilityId);
+});
 player.onBattleEnded = (outcome) => {
   clear();
   hud.showOutcome(outcome, newMission);
 };
+
+/** Builds the scene and tints each soldier's ring in its roster slot colour. @created Claude (claude-opus-5-5) - 2026-10-22 */
+function buildView(battle) {
+  renderer.build(battle);
+  for (const unit of livingUnits(battle, 'xcom')) renderer.setUnitColor(unit.id, roster.colorOf(unit));
+}
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
 function refreshHud() {
@@ -85,7 +101,13 @@ async function runCommand(cmd) {
     }
     console.error('Vigil: command failed', cmd, error);
   }
-  if (id === missionId) input.unlock();
+  if (id === missionId) unlock();
+}
+
+/** Fresh fog for the settled state, then the input mode. @created Claude (claude-opus-5-5) - 2026-10-22 */
+function unlock() {
+  fog.refresh(state);
+  input.unlock();
 }
 
 // Alien commands one at a time at speed 3, then endTurn (the executor never ends the alien side itself).
@@ -121,8 +143,9 @@ async function startBattle(battle, { built = false } = {}) {
   const id = ++missionId;
   state = battle;
   hud.showOutcome(null);
-  if (!built) renderer.build(state);
+  if (!built) buildView(state);
   renderer.syncUnits(state);
+  fog.refresh(state);
   rig.setBounds(state.grid.width, state.grid.depth);
   input.setMode('idle');
 
@@ -142,7 +165,7 @@ async function startBattle(battle, { built = false } = {}) {
       await runEnemyTurn(id);
     }
   }
-  if (id === missionId) input.unlock();
+  if (id === missionId) unlock();
 }
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -158,7 +181,7 @@ function frame(now) {
   last = now;
   rig.update(dt);
   input.update(dt);
-  if (state) hud.updateUnitBars(state, (unitId) => player.project(unitId), (unit) => player.shownHp(unit));
+  if (state) hud.updateUnitBars(state, (unitId) => player.project(unitId), (unit) => player.shownHp(unit), player.shows, player.projectAnchor);
   renderer.render();
   requestAnimationFrame(frame);
 }
@@ -168,5 +191,5 @@ requestAnimationFrame(frame);
 
 window.vigil = {
   get state() { return state; },
-  renderer, rig, picker, player, hud, input, runCommand, newMission,
+  renderer, rig, picker, player, hud, input, fog, roster, runCommand, newMission,
 };

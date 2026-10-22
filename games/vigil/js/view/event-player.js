@@ -7,10 +7,10 @@
 // Flyover text lives in DOM elements over the canvas, projected from world positions each frame. Its small stylesheet is injected here.
 // Optional hud methods used: showTurn, showConcealed, showMessage, updateUnitBars. Every call is skipped when hud is null.
 // Optional getState (a function returning the BattleState) lets the player find pod units and refresh hud unit bars.
+// Optional fog (plan 0003) refreshes after every step and kill from the drawn tiles and HP, since the sim state is already final.
 
 import * as THREE from '../../vendor/three.module.min.js';
 import { EVENT } from '../sim/events.js';
-import { livingUnits } from '../sim/state.js';
 import { canSee } from '../sim/visibility.js';
 
 const STEP_TIME = 0.2;       // seconds per tile moved
@@ -46,11 +46,12 @@ function easeOut(t) {
 
 export class EventPlayer {
   /** options.getState: () => BattleState, used for pod lookups and hud bar refreshes. options.container: element for flyovers, default the canvas parent. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-  constructor(renderer, cameraRig, hud = null, { getState = null, container = null } = {}) {
+  constructor(renderer, cameraRig, hud = null, { getState = null, container = null, fog = null } = {}) {
     this.renderer = renderer;
     this.rig = cameraRig;
     this.hud = hud;
     this.getState = getState;
+    this.fog = fog;
     this.onBattleEnded = null; // (outcome) => void, called after the BattleEnded beat; step 17 shows the overlay
     this.speed = 1;
     this.skipping = false;
@@ -64,7 +65,13 @@ export class EventPlayer {
     this._last = 0;
     this._flyCount = new Map(); // anchor key -> flyovers alive on it
     this._hp = new Map();       // unit id -> hit points as of the last damage or heal event played; empty when idle
+    this._tiles = new Map();    // unit id -> tile it is drawn on while its steps play; empty when idle
     this._hpOf = (unit) => this.shownHp(unit);
+    this._tileOf = (unit) => this.shownTile(unit);
+    this._alive = (unit) => this.shownHp(unit) > 0;
+    // Bound helpers for Hud.updateUnitBars, shared with main's per-frame call.
+    this.shows = (unit) => this.fog?.shows(unit) ?? true;
+    this.projectAnchor = (tile, unit = null) => this.projectTile(unit ? this.shownTile(unit) : tile);
     this._tmp = new THREE.Vector3();
     this._project = (unitId) => this.project(unitId);
 
@@ -107,6 +114,7 @@ export class EventPlayer {
     const run = async () => {
       this.playing = true;
       this._holdHp(events);
+      this._holdTiles(events);
       try {
         for (const event of events) {
           const handler = this._handlers[event.type];
@@ -120,9 +128,11 @@ export class EventPlayer {
             console.error('EventPlayer: handler failed for', event.type, error);
           }
         }
-        this._refreshBars();
       } finally {
         this._hp.clear();
+        this._tiles.clear();
+        this._refreshFog();
+        this._refreshBars();
         this.playing = false;
         this.skipping = false;
       }
@@ -156,6 +166,18 @@ export class EventPlayer {
     return this._hp.get(unit.id) ?? unit.hp;
   }
 
+  /** Tile to draw a unit on: where its steps have reached during playback, else the state's. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  shownTile(unit) {
+    return this._tiles.get(unit.id) ?? unit.tile;
+  }
+
+  /** Screen position (px, relative to the canvas) above a tile, or null when off screen. For the barrel hit badge. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  projectTile(tile) {
+    const p = this.renderer.tileCenter(tile, this._tmp);
+    p.y += HEAD * 0.6;
+    return this._toScreen(p);
+  }
+
   /** Removes the flyover layer and frees shared geometry. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   dispose() {
     this.skipping = true;
@@ -169,9 +191,11 @@ export class EventPlayer {
   // ---- Handlers ----
 
   // Steps no soldier can see at either end snap into place with no camera focus, so unseen patrols cost no time.
+  // A seen alien step shows the alien for the whole hop, so one walking into view is drawn from its first tile; the fog
+  // refresh after the step hides it again when it walked out of sight.
   /**
    * @created Claude (claude-sonnet-5-5) - 2026-10-21
-   * @modified Claude (claude-opus-5-5) - 2026-10-22 - unseen steps snap
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - unseen steps snap, fog
    */
   async _onUnitStepped({ unitId, from, to }) {
     const object = this.renderer.unitObject(unitId);
@@ -180,14 +204,19 @@ export class EventPlayer {
     const b = this.renderer.tileCenter(to);
     if (this._unseenStep(unitId, from, to)) {
       object.position.copy(b);
+      this._tiles.set(unitId, to);
+      this._refreshFog();
       return;
     }
+    if (this.fog && this.getState?.()?.units[unitId]?.team !== 'xcom') this.renderer.setUnitShown(unitId, true);
     this._focus(b);
     await this._tween(STEP_TIME, (t) => {
       object.position.lerpVectors(a, b, t);
       object.position.y += Math.sin(Math.PI * t) * HOP;
     });
     object.position.copy(b);
+    this._tiles.set(unitId, to);
+    this._refreshFog();
   }
 
   /** Squad chevrons live in the hud bars, so an AP change just refreshes them. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -195,11 +224,18 @@ export class EventPlayer {
     this._refreshBars();
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  // A shooter the fog hides gets no camera focus or tracer, so the shot never gives its position away.
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - hidden shooters
+   */
   async _onShotResolved({ attackerId, targetId, result }) {
     const attacker = this.renderer.unitObject(attackerId);
     const target = this.renderer.unitObject(targetId);
-    if (attacker && target) {
+    if (attacker && target && !attacker.visible) {
+      this._focus(target.position);
+      await this._wait(FOCUS_SETTLE);
+    } else if (attacker && target) {
       this._focus(attacker.position.clone().lerp(target.position, 0.5));
       await this._wait(FOCUS_SETTLE);
       const from = attacker.position.clone();
@@ -264,6 +300,8 @@ export class EventPlayer {
       }
       object.position.y = baseY;
       object.visible = false;
+      this._hp.set(unitId, 0);
+      this._refreshFog();
       this._refreshBars();
     }
   }
@@ -328,7 +366,7 @@ export class EventPlayer {
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   async _onOverwatchTriggered({ unitId }) {
     const object = this.renderer.unitObject(unitId);
-    if (object) this._focus(object.position);
+    if (object?.visible) this._focus(object.position);
     this._flyUnit(unitId, 'Overwatch', 'crit');
     await this._wait(0.4);
   }
@@ -471,7 +509,7 @@ export class EventPlayer {
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   _flyUnit(unitId, text, kind = 'info') {
     const object = this.renderer.unitObject(unitId);
-    if (!object || this.skipping) return;
+    if (!object || !object.visible || this.skipping) return;
     const element = document.createElement('div');
     element.className = `vigil-fly vigil-fly-${kind}`;
     element.textContent = text;
@@ -547,18 +585,41 @@ export class EventPlayer {
     }
   }
 
-  /** True for an alien step that no living soldier sees at its start or end tile. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  // The state is final before playback starts, so each mover's tile before the batch is its first UnitStepped.from.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _holdTiles(events) {
+    for (const e of events) {
+      if (e.type === EVENT.UnitStepped && !this._tiles.has(e.unitId)) this._tiles.set(e.unitId, e.from);
+    }
+  }
+
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _refreshFog() {
+    const state = this.getState?.();
+    if (this.fog && state) this.fog.refresh(state, this._tileOf, this._alive);
+  }
+
+  // True for an alien step that no living soldier sees at its start or end tile. Soldiers look from their drawn tiles with
+  // their drawn HP, the same view the fog uses.
+  /**
+   * @created Claude (claude-opus-5-5) - 2026-10-22
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - drawn soldier tiles
+   */
   _unseenStep(unitId, from, to) {
     const state = this.getState?.();
     const unit = state?.units[unitId];
     if (!unit || unit.team === 'xcom') return false;
-    return !livingUnits(state, 'xcom').some((s) => canSee(state, s, unit, { targetTile: from }) || canSee(state, s, unit, { targetTile: to }));
+    const soldiers = Object.values(state.units).filter((s) => s.team === 'xcom' && this.shownHp(s) > 0);
+    return !soldiers.some((s) => {
+      const fromTile = this.shownTile(s);
+      return canSee(state, s, unit, { fromTile, targetTile: from }) || canSee(state, s, unit, { fromTile, targetTile: to });
+    });
   }
 
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   _refreshBars() {
     const state = this.getState?.();
-    if (this.hud && state) this.hud.updateUnitBars?.(state, this._project, this._hpOf);
+    if (this.hud && state) this.hud.updateUnitBars?.(state, this._project, this._hpOf, this.shows, this.projectAnchor);
   }
 
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */

@@ -254,6 +254,8 @@ stateDiagram-v2
 
 ### Input mode (InputController)
 
+Plan 0003 replaces the second-click confirm: a first click arms a tile or target and shows the bottom ConfirmBar, and the bar's button, Enter or the same ability key confirms (`docs/plans/0003-tactical-ui.md`).
+
 ```mermaid
 stateDiagram-v2
   [*] --> Idle

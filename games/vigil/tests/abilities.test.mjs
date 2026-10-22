@@ -651,3 +651,30 @@ test('tilesInRadius is a Euclidean disc clipped to the map', () => {
   assert.equal(tilesInRadius(grid, toIndex(grid, 0, 0), 2).length, 6);
   assert.deepEqual(tilesInRadius(grid, toIndex(grid, 5, 5), 0), [toIndex(grid, 5, 5)]);
 });
+
+// Wall column x = 6, z = 3..5. From (2, 2) the grenadier cannot see (7, 3) or (7, 4); an alien on (7, 3) peeks out to (7, 2).
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function blastLosState() {
+  const state = makeState(12, 9, [[6, 3, 'wall'], [6, 4, 'wall'], [6, 5, 'wall']]);
+  addUnit(state, 'x1', 'grenadier', 2, 2);
+  return state;
+}
+
+test('grenades and rockets refuse a tile in range behind a wall', () => {
+  const state = blastLosState();
+  const hidden = at(state, 7, 4);
+  for (const abilityId of ['launchGrenade', 'rocket']) {
+    assert.deepEqual(validate(state, cmd('x1', abilityId, { targetTile: hidden })), { ok: false, reason: 'No line of sight' }, abilityId);
+    assert.equal(validTargets(state, state.units.x1, abilityId).includes(hidden), false, abilityId);
+  }
+});
+
+test('a blast may target an open tile in sight and an enemy seen only through its own step-out peek', () => {
+  const state = blastLosState();
+  const open = at(state, 4, 2);
+  assert.deepEqual(validate(state, cmd('x1', 'launchGrenade', { targetTile: open })), { ok: true });
+  addUnit(state, 'a01', 'trooper', 7, 3);
+  const peeking = at(state, 7, 3);
+  assert.deepEqual(validate(state, cmd('x1', 'launchGrenade', { targetTile: peeking })), { ok: true });
+  assert.ok(validTargets(state, state.units.x1, 'rocket').includes(peeking));
+});

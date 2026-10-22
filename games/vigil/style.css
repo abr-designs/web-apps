@@ -18,6 +18,15 @@
   --full-cover: #43C4F0;
   --crit: #FFB13B;
 
+  /* Plan 0003 palette 2 Field Muted: soldier slot colours and the hit badge */
+  --slot-1: #8FB8DE;
+  --slot-2: #C9A0DC;
+  --slot-3: #9CCB9A;
+  --slot-4: #E0B27A;
+  --badge-ring: #E6EEF4;
+  --badge-bg: #E6EEF4;
+  --badge-text: #0B1118;
+
   --rail: 320px;
   --cut: 10px;
 }
@@ -79,7 +88,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .end-turn { width: 160px; height: 52px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 
 .outcome { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 80%, transparent); }
-.outcome[hidden], .concealed[hidden], .message[hidden], .breakdown[hidden] { display: none; }
+.outcome[hidden], .concealed[hidden], .message[hidden], .breakdown[hidden], .confirm[hidden], .hitbadge[hidden] { display: none; }
 
 /* Modified by Claude (claude-opus-5-5) - 2026-10-21 */
 /* HUD pieces from docs/mockups/layout.html#c, filled by js/view/hud.js */
@@ -139,7 +148,7 @@ svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none
 
 /* R2 squad list */
 .squadrow { display: grid; grid-template-columns: 54px 1fr; gap: 8px; align-items: center; width: 210px; padding: 6px; text-align: left; }
-.squadrow.sel { box-shadow: inset 3px 0 0 var(--accent); }
+.squadrow.sel { box-shadow: inset 0 0 0 1px var(--c, var(--accent)); }
 .squadrow.dead { opacity: .45; }
 .squad.locked .squadrow { pointer-events: none; }
 .por {
@@ -147,7 +156,7 @@ svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none
   background: radial-gradient(circle at 50% 36%, #9fb3c4 0 10px, transparent 11px), radial-gradient(ellipse 24px 20px at 50% 100%, #61788c 0 100%, transparent 101%), linear-gradient(var(--surface-raised), var(--surface));
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
 }
-.squadrow.sel .por { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.squadrow.sel .por { border-color: var(--c, var(--accent)); }
 .por svg.icon { position: absolute; left: 3px; bottom: 3px; font-size: 14px; color: var(--accent); }
 .por .chev { position: absolute; right: 3px; bottom: 3px; font: 700 12px/1 ui-monospace, monospace; letter-spacing: -2px; color: var(--accent); }
 .por .chev.one { color: var(--move-yellow); }
@@ -185,3 +194,33 @@ svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none
 .outcome-card h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .outcome-card.defeat h1 { color: var(--alien); }
 .outcome-card p { margin: 0 0 8px; color: var(--text-muted); }
+
+/* Modified by Claude (claude-opus-5-5) - 2026-10-22 */
+/* Plan 0003 Layout B Compact pill (docs/mockups/tactical-ui-layout.html#b) */
+
+/* Squad row: slot colour band on the portrait, slot number chip, name in the slot colour */
+.squadrow .por { border-top: 4px solid var(--c, var(--accent)); }
+.squadrow .por .num { position: absolute; left: 3px; top: 3px; display: grid; place-items: center; width: 15px; height: 15px; font: 700 10px/1 ui-monospace, monospace; color: var(--bg); background: var(--c, var(--accent)); }
+.squadrow .who .nm { color: var(--c, var(--text)); }
+
+/* Rail name plate and inline rename */
+.unit-name { color: var(--c, var(--accent)); }
+.unit-name.renamable { cursor: text; }
+.unit-name.renamable:hover { text-decoration: underline dotted; text-underline-offset: 4px; }
+.rename { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+.rename input { flex: 1; min-width: 0; padding: 4px 8px; font: 15px system-ui, sans-serif; color: var(--text); background: var(--bg); border: 1px solid var(--c, var(--accent)); outline: 0; user-select: text; }
+.rename button { padding: 3px 8px; background: none; border: 1px solid color-mix(in srgb, var(--text) 20%, transparent); }
+
+/* ConfirmBar: bottom-centre pill flanked by key hints */
+.confirm { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.confirm .hint { font-size: 11px; color: var(--text-muted); text-shadow: 0 1px 2px #000; }
+.confirm kbd { padding: 1px 5px; border-radius: 2px; font: 11px ui-monospace, monospace; color: var(--text-muted); background: color-mix(in srgb, var(--bg) 80%, transparent); border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); }
+.confirm .go { padding: 9px 22px; border: 0; border-radius: 999px; font-weight: 600; color: var(--bg); background: var(--accent); box-shadow: 0 2px 10px #000a; }
+.confirm .go:hover { filter: brightness(1.1); }
+/* Narrow viewports keep only the button, so the bar never overflows */
+@media (max-width: 640px) { .confirm .hint { display: none; } }
+
+/* Hit badge: reticle round the target, hit chance below it */
+.hitbadge { position: absolute; left: 0; top: 0; width: 56px; height: 56px; pointer-events: none; will-change: transform; }
+.hitbadge svg { width: 100%; height: 100%; overflow: visible; stroke: var(--badge-ring); stroke-width: 2; fill: none; }
+.hitbadge b { position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); padding: 1px 6px; font: 700 13px/1.2 ui-monospace, monospace; color: var(--badge-text); background: var(--badge-bg); border: 1px solid var(--badge-ring); }

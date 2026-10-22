@@ -7,7 +7,9 @@ import { createGrid, toIndex, placeProp, rebuildAllEdgeCover } from '../js/sim/g
 import { createUnit } from '../js/sim/state.js';
 import { CLASSES } from '../js/data/classes.js';
 import { ENEMIES } from '../js/data/enemies.js';
-import { hasLosTiles, hasLos, canSee, visibleEnemies, squadVisible, stepOutTiles, tileDistance } from '../js/sim/visibility.js';
+import {
+  hasLosTiles, hasLos, canSee, visibleEnemies, squadVisible, stepOutTiles, tileDistance, seesTile, squadSightTiles,
+} from '../js/sim/visibility.js';
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
 function makeState(width, depth, props = [], units = []) {
@@ -130,4 +132,31 @@ test('squadVisible unions what every living member sees', () => {
   assert.deepEqual([...squadVisible(s, 'xcom')].sort(), ['a01', 'a02']);
   s.units.x2.hp = 0;
   assert.deepEqual([...squadVisible(s, 'xcom')], ['a01']);
+});
+
+test('seesTile peeks from step-out tiles and accepts a hypothetical viewer tile', () => {
+  const walls = [[0, 2, 'wall'], [1, 2, 'wall'], [2, 2, 'wall'], [3, 2, 'wall']];
+  const s = makeState(6, 5, walls, [['x1', 'xcom', 3, 1]]);
+  const { x1 } = s.units;
+  assert.equal(hasLosTiles(s, x1.tile, at(s, 4, 4)), false);
+  assert.equal(seesTile(s, x1, at(s, 4, 4)), true, 'peek around the east end');
+  assert.equal(seesTile(s, x1, at(s, 0, 4)), false);
+  assert.equal(seesTile(s, x1, at(s, 0, 4), at(s, 0, 3)), true);
+});
+
+test('squadSightTiles is the union of seesTile over living members at their given tiles', () => {
+  const walls = [[2, 0, 'wall'], [2, 1, 'wall'], [2, 2, 'wall'], [2, 3, 'wall']];
+  const s = makeState(8, 6, walls, [['x1', 'xcom', 0, 1], ['x2', 'xcom', 6, 4], ['x3', 'xcom', 7, 0], ['a01', 'alien', 4, 2]]);
+  s.units.x3.hp = 0;
+  const check = (tileOf) => {
+    const seen = squadSightTiles(s, 'xcom', tileOf);
+    const living = [s.units.x1, s.units.x2];
+    for (let t = 0; t < s.grid.heights.length; t++) {
+      assert.equal(seen.has(t), living.some((m) => seesTile(s, m, t, tileOf(m))), `tile ${t}`);
+    }
+    return seen;
+  };
+  check((u) => u.tile);
+  const moved = check((u) => (u.id === 'x1' ? at(s, 0, 5) : u.tile));
+  assert.ok(moved.size > 0);
 });

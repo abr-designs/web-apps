@@ -7,7 +7,7 @@
 //   enemySquadsight  living enemies any squadmate sees
 //   ally             squadmates other than the unit that it can see
 //   allyAny          every living squadmate on the map, the unit included (the drone flies there)
-//   tile             any tile within range of the unit, own tile excluded; no line of sight needed in v1
+//   tile             tiles within range of the unit (own tile excluded) that it sees by seesTile, or that hold an enemy it canSee
 //   melee            visible enemies with a free tile next to them inside the 1 AP band; cmd.targetTile picks that tile
 //   prop             tiles of burstable props (barrels) within the unit's sight with LOS from it or a step-out tile
 // Abilities that heal only list wounded allies. Active abilities need at least 1 AP even when apCost is 0 (runAndGun).
@@ -20,7 +20,7 @@ import { EVENT } from './events.js';
 import { livingUnits } from './state.js';
 import { reachable, pathTo } from './pathfinder.js';
 import { neighbours8, isWalkable } from './grid.js';
-import { canSee, squadVisible, tileDistance, hasLosTiles, stepOutTiles } from './visibility.js';
+import { canSee, squadVisible, tileDistance, seesTile } from './visibility.js';
 import { compute, unitDef } from './hit.js';
 import { EFFECTS, newRun, runEffects, flushNoise } from './effects.js';
 import { breakConcealment } from './detection.js';
@@ -92,7 +92,7 @@ export function validTargets(state, unit, abilityId) {
     }
     case 'tile': {
       const out = [];
-      for (let t = 0; t < state.grid.heights.length; t++) if (tileInRange(state, unit, def, t)) out.push(t);
+      for (let t = 0; t < state.grid.heights.length; t++) if (tileTargetable(state, unit, def, t)) out.push(t);
       return out;
     }
     case 'prop': {
@@ -112,17 +112,18 @@ export function validTargets(state, unit, abilityId) {
   }
 }
 
-// Sight radius from the unit's own tile, LOS from it or a step-out tile (the target tile's own prop never blocks).
-/** @created Claude (claude-opus-5-5) - 2026-10-22 */
-function seesTile(state, unit, tile) {
-  if (tileDistance(state.grid, unit.tile, tile) > unit.stats.sight) return false;
-  return [unit.tile, ...stepOutTiles(state, unit.tile, unit.id)].some((o) => hasLosTiles(state, o, tile));
-}
-
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
 function tileInRange(state, unit, def, tile) {
   if (!Number.isInteger(tile) || tile < 0 || tile >= state.grid.heights.length || tile === unit.tile) return false;
   return tileDistance(state.grid, unit.tile, tile) <= def.range;
+}
+
+// In range, and either seen by the unit or holding an enemy it canSee (an alien visible only through its own step-out peek).
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function tileTargetable(state, unit, def, tile) {
+  if (!tileInRange(state, unit, def, tile)) return false;
+  if (seesTile(state, unit, tile)) return true;
+  return enemiesOf(state, unit).some((e) => e.tile === tile && canSee(state, unit, e));
 }
 
 // Checks that depend only on the unit and the ability, never on a target. -> player-facing reason or null.
@@ -161,7 +162,8 @@ function targetReason(state, unit, cmd) {
   if (def.targeting === 'self') return null;
   if (def.targeting === 'tile') {
     if (!Number.isInteger(cmd.targetTile)) return 'Pick a tile';
-    return tileInRange(state, unit, def, cmd.targetTile) ? null : 'Target is out of range';
+    if (!tileInRange(state, unit, def, cmd.targetTile)) return 'Target is out of range';
+    return tileTargetable(state, unit, def, cmd.targetTile) ? null : 'No line of sight';
   }
   if (def.targeting === 'prop') {
     if (!Number.isInteger(cmd.targetTile)) return 'Pick a target';

@@ -128,3 +128,32 @@ export function squadVisible(state, team) {
   }
   return seen;
 }
+
+// Sight radius from fromTile, LOS from it or one of its step-out tiles; the target tile's own prop never blocks.
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-22
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - moved from abilities.js, fromTile added
+ */
+export function seesTile(state, unit, tile, fromTile = unit.tile) {
+  if (tileDistance(state.grid, fromTile, tile) > unit.stats.sight) return false;
+  return [fromTile, ...stepOutTiles(state, fromTile, unit.id)].some((o) => hasLosTiles(state, o, tile));
+}
+
+// -> Set of tiles any living team member sees by seesTile. tileOf and alive give drawn positions and HP during playback.
+// Fog dimming only; whether a unit is seen stays canSee. Same rule as seesTile, with each member's origins built once.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+export function squadSightTiles(state, team, tileOf = (u) => u.tile, alive = (u) => u.hp > 0) {
+  const seen = new Set();
+  const viewers = Object.values(state.units)
+    .filter((u) => u.team === team && alive(u))
+    .map((m) => {
+      const from = tileOf(m);
+      return { from, sight: m.stats.sight, origins: [from, ...stepOutTiles(state, from, m.id)] };
+    });
+  for (let t = 0; t < state.grid.heights.length; t++) {
+    const visible = viewers.some(({ from, sight, origins }) =>
+      tileDistance(state.grid, from, t) <= sight && origins.some((o) => hasLosTiles(state, o, t)));
+    if (visible) seen.add(t);
+  }
+  return seen;
+}
