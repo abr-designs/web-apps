@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-21 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigil</title>
+  <link rel="stylesheet" href="logo/logo.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <img class="app-logo" src="logo/senor_claude.png" alt="">
+
+  <!-- Layout C Tactical Rail: the 3D viewport fills the window minus the right rail. -->
+  <main class="viewport">
+    <canvas id="viewport"></canvas>
+    <div id="unit-bars" class="unit-bars" aria-hidden="true"></div>
+    <nav id="squad" class="squad" aria-label="Squad"></nav>
+    <div class="banners">
+      <div id="turn" class="panel turn"></div>
+      <div id="concealed" class="concealed" hidden>Squad concealed</div>
+      <div id="message" class="message" role="status" hidden></div>
+    </div>
+    <div id="objective" class="panel objective"></div>
+  </main>
+
+  <aside class="rail" aria-label="Selected soldier">
+    <header class="rail-head">
+      <section id="unit" class="unit"></section>
+      <button id="pause" class="panel icon-btn" type="button" aria-label="Pause">II</button>
+    </header>
+    <h2 class="label">Abilities</h2>
+    <section id="abilities" class="abilities"></section>
+    <section id="breakdown" class="panel breakdown" hidden></section>
+    <footer class="rail-foot">
+      <button id="end-turn" class="panel end-turn" type="button">End turn</button>
+    </footer>
+  </aside>
+
+  <div id="outcome" class="outcome" hidden></div>
+</body>
+</html>

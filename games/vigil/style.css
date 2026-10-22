@@ -1,0 +1,82 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-10-21 */
+
+/* Palette A Command Cyan (plan U-001) */
+:root {
+  --bg: #0B1118;
+  --surface: #121C26;
+  --surface-raised: #1B2834;
+  --text: #E6EEF4;
+  --text-muted: #8A9BAA;
+  --accent: #3FD0E8;
+  --xcom: #4AA8FF;
+  --alien: #E5484D;
+  --move-blue: #2F8CFF;
+  --move-yellow: #F2C94C;
+  --danger: #FF3B3B;
+  --half-cover: #6E9BB8;
+  --full-cover: #43C4F0;
+  --crit: #FFB13B;
+
+  --rail: 320px;
+  --cut: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.panel {
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+
+.label { margin: 0; font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+
+/* Viewport: window minus the rail */
+.viewport { position: fixed; inset: 0 var(--rail) 0 0; overflow: hidden; }
+#viewport { display: block; width: 100%; height: 100%; }
+.unit-bars { position: absolute; inset: 0; pointer-events: none; }
+
+.squad { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; }
+
+.banners { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.turn { padding: 6px 26px; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--xcom); }
+.turn:empty { display: none; }
+.concealed {
+  padding: 4px 12px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--xcom);
+  background: color-mix(in srgb, var(--xcom) 12%, transparent); border: 1px solid color-mix(in srgb, var(--xcom) 45%, transparent);
+}
+.message { padding: 4px 12px; font-size: 12px; color: var(--danger); }
+
+.objective { position: absolute; bottom: 14px; left: 12px; padding: 8px 14px; }
+.objective:empty { display: none; }
+
+/* Right rail */
+.rail {
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--rail);
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.rail-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.icon-btn { width: 40px; height: 40px; flex: none; color: var(--accent); }
+.abilities { display: grid; gap: 4px; }
+.breakdown { padding: 10px 12px; }
+/* Leave the bottom-right corner to the logo */
+.rail-foot { margin-top: auto; padding-bottom: 6px; }
+.end-turn { width: 160px; height: 52px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+
+.outcome { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 80%, transparent); }
+.outcome[hidden], .concealed[hidden], .message[hidden], .breakdown[hidden] { display: none; }

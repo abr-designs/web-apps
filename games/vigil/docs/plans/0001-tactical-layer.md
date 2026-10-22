@@ -12,13 +12,15 @@ date: 2026-10-21
 | Updated | 2026-10-21 |
 | Proficiency | 5-7/10 |
 | Engine | JavaScript (ES modules, no build step) + three.js, static page in `games/vigil/` |
-| Revisions | 1 (latest: U-001) |
+| Revisions | 3 (latest: U-003) |
 | Summary | XCOM 2 style turn-based squad combat in the browser: heightmap grid, cover, hit chances, overwatch, concealment and pods, four classes, destructible cover, one Sweep mission. |
 
 ## Revision Log
 
 | ID | Date | Type | Change |
 |---|---|---|---|
+| U-003 | 2026-10-21 | Update | Layout gate (step 2): picked C Tactical Rail from docs/mockups/layout.html. v1 is desktop only (mouse and keyboard); touch Open Question closed. UI Reference records where each piece sits in the rail layout. |
+| U-002 | 2026-10-21 | Update | Added UI Reference (R1 to R15) from the user's XCOM 2 screenshot. Hud gains showSquad, showObjective, updateUnitBars. Move range draws as perimeter outlines. Step 2 prompt cites the reference. |
 | U-001 | 2026-10-21 | Update | Palette gate (step 1): picked A Command Cyan from docs/mockups/palette.html. Tokens: background #0B1118, surface #121C26, surface-raised #1B2834, text #E6EEF4, text-muted #8A9BAA, accent #3FD0E8, xcom-team #4AA8FF, alien-team #E5484D, move-blue #2F8CFF, move-yellow #F2C94C, danger/detection-red #FF3B3B, half-cover #6E9BB8, full-cover #43C4F0, crit #FFB13B. |
 
 ---
@@ -282,6 +284,30 @@ stateDiagram-v2
 - **Squadsight** (Sharpshooter passive) lets the unit target any enemy visible to any squadmate, with `RULES.squadsightAimPerTile` penalty beyond its own sight radius.
 - **Single writer**: only `CommandExecutor` mutates `BattleState`. Systems take `(state, ctx, ...)` and change state only through the handlers the executor calls, pushing events onto `ctx`.
 - **Save**: after every command the full `BattleState` (with `rngState`) is written to localStorage, so reloading does not reroll a shot.
+
+## UI Reference
+
+Source: an XCOM 2 tactical screenshot the user supplied on 2026-10-21 (mobile port, WotC era), kept out of the repo. Each piece has an ID so steps 2, 14 and 16 can cite it. "Owner" is the Vigil module that draws it; "v1" marks whether it ships in this plan.
+
+| ID | Piece | What it shows in XCOM 2 | Owner | v1 |
+|---|---|---|---|---|
+| R1 | Soldier name plate (top-left) | Selected soldier's name, nickname in quotes, rank badge, class badge, promotion chevron | `Hud.showUnit` | yes, without promotion |
+| R2 | Squad portrait strip (top, left of centre) | One portrait per soldier with class icon, rank, action chevrons (`>>` two actions, `>` one) and a segmented HP bar under each; selected one framed; collapse arrow at the end | `Hud.showSquad` | yes, 4 soldiers |
+| R3 | System buttons (top-right) | Square icon buttons: tactical overview, evac, cancel, pause menu | `Hud` | end turn and pause only (evac out of scope) |
+| R4 | Mission timer ring (top-right, under R3) | Objective name, "Turns until destroyed", turn count in a ring | `Hud.showObjective` | slot only: Sweep shows "Eliminate all hostiles" and remaining count |
+| R5 | Ability grid (left column) | Two-column grid of large square ability tiles: shoot, melee, overwatch, specials; charges as `x2`, disabled tiles greyed; scroll and collapse handle | `Hud.showUnit` ability buttons | yes |
+| R6 | SITREP label (left, under R5) | Mission modifier name | none | no |
+| R7 | Weapon panel (bottom-left) | Render of the equipped weapon and a segmented ammo bar | `Hud.showUnit` | yes, icon instead of render |
+| R8 | Unit overhead bars (world space) | Per-unit HP segments with an armor/shield row beneath, team-coloured (orange squad, red enemies), action chevrons, status icons | `Hud.updateUnitBars` (DOM projected each frame) | yes |
+| R9 | Move range outline (world space) | Cyan perimeter line around the 1-action area and a yellow one around the dash area, faint fill only | `Renderer.showMoveRange` | yes |
+| R10 | Destination reticle (world space) | Bracket corners on the hovered tile plus the cover shields that tile would grant (half outline, full solid, yellow when flanked) | `Renderer.showCoverShields` | yes |
+| R11 | Danger tiles (world space) | Red hatched tiles where enemies would detect or hit the squad | `Renderer.showDetection` | yes, detection only |
+| R12 | Enemy and objective markers (world space) | Pod head-cluster icon above unrevealed pods, hex objective marker, loot markers | `Renderer` | pod marker only |
+| R13 | Hit chance readout (bottom-centre) | Large percentage in a framed box while targeting | `Hud.showBreakdown` | yes, expands into the modifier list |
+| R14 | Confirm and objectives (bottom-right) | Big confirm button (running figure for move) and an OBJECTIVES button | `Hud` | confirm yes; objectives folds into R4. Bottom-right is the logo's corner, so Vigil moves both |
+| R15 | Camera level slider (right edge) | Vertical slider to cut away upper floors | `CameraRig` | no, heights 0-3 stay visible |
+
+Chosen layout (step 2): **C Tactical Rail** from `docs/mockups/layout.html#c`. A 320px rail on the right holds, top to bottom: R1 name plate with hp bar, action pips and weapon ammo (R7 folds in as text), pause button in the rail header (R3), R5 as a vertical ability list (icon, name, cost or cooldown line, key), R13 as the breakdown panel with the hit percentage, and End Turn at the rail foot left of the logo. R2 is a vertical squad list top-left of the viewport, the turn banner and concealment indicator sit top-centre of the viewport, and R4 sits bottom-left. R14 has no button: a second click on the previewed tile or target, or Enter, confirms. The viewport is the window minus the rail, so `Renderer` and `CameraRig` size to that area.
 
 ## Components
 
@@ -627,7 +653,7 @@ export class Renderer {
   build(state) {}                            // terrain, props and units from BattleState
   unitObject(unitId) {}                      // -> Object3D for EventPlayer tweens
   tileCenter(tile) {}                        // -> THREE.Vector3 on the tile's top surface
-  showMoveRange(reachMap) {}                 // blue and yellow tile overlays
+  showMoveRange(reachMap) {}                 // R9 blue and yellow perimeter outlines with faint fill
   showCoverShields(state, tile) {}           // half and full shield icons on the hovered tile's edges
   showDetection(state) {}                    // red tiles inside enemy detection radii while concealed
   showTargetLine(fromTile, toTile) {}
@@ -675,13 +701,16 @@ export class EventPlayer {
 ```
 
 ### Hud (`js/view/hud.js`)
-Responsibility: DOM layer for unit card, ability bar, hit breakdown, turn banner, concealment indicator, end-of-battle overlay.
+Responsibility: DOM layer for the right rail (unit block, ability list, hit breakdown, End Turn), the left squad list, turn banner, concealment indicator, objective slot, overhead unit bars and the end-of-battle overlay, placed per the chosen layout in UI Reference.
 Stub:
 ```js
 export class Hud {
   constructor(root) {}
-  showUnit(state, unit, abilities) {}  // hp pips, armor, ammo, AP, statuses, ability buttons with disabled reasons
-  showBreakdown(breakdown) {}          // hit, crit, graze and each modifier label
+  showUnit(state, unit, abilities) {}  // R1 name plate, R5 ability grid with disabled reasons and charges, R7 weapon and ammo, AP, statuses
+  showSquad(state, selectedId) {}      // R2 portrait strip: class, action chevrons, hp bar; click selects
+  showObjective(text, count) {}        // R4 slot: objective name and remaining count
+  updateUnitBars(state, project) {}    // R8 overhead hp and armor bars; project(unitId) -> screen {x, y} or null when off screen
+  showBreakdown(breakdown) {}          // R13 hit chance readout, crit, graze and each modifier label
   showTurn(side, turn) {}
   showConcealed(isConcealed) {}
   showMessage(text) {}                 // InvalidCommand reasons, flyover text
@@ -734,7 +763,7 @@ function newMission() {}          // SaveStore.clear, buildMission with a new se
 - [ ] AI weights `w1` to `w4` per profile: set starting values in step 12, tune in the step 17 playtest.
 - [ ] Sight 14 and detection 4 tiles on a 24x24 map: confirm in playtest that scouting while concealed feels tense without being trivial.
 - [ ] Destroyed walls leave half-cover rubble (`PROPS.wall.rubble`): keep, or leave open ground?
-- [ ] Touch support: decide during the step 2 layout mockups whether v1 targets mouse and keyboard only.
+- [x] Touch support: v1 is desktop only (mouse and keyboard). Touch moves to a later plan.
 - [ ] `game.json` color and tags: suggested `"color": "blue"`, `"tags": ["tactics", "turn-based", "strategy"]`.
 
 ## Steps
@@ -772,7 +801,7 @@ Read games/vigil/docs/plans/0001-tactical-layer.md (Overview) and the repo CLAUD
 
 **Step 2: Layout**
 ```text
-Read games/vigil/docs/plans/0001-tactical-layer.md (Hud, InputController, Open Questions) and the palette chosen in step 1. Create games/vigil/docs/mockups/layout.html with at least 3 distinct static layouts of the tactical screen in that palette: 3D viewport placeholder, unit card, ability bar, hit-chance breakdown, turn banner, concealment indicator, end-turn control, and the shared logo fixed bottom-right (see CLAUDE.md Logo; set --logo-floor if a layout has a bottom bar). No logic. Ask me to pick with AskUserQuestion and whether v1 supports touch (Open Questions). Record both answers in the plan's Revision Log and tick the Open Question.
+Read games/vigil/docs/plans/0001-tactical-layer.md (UI Reference, Hud, InputController, Open Questions) and the palette chosen in step 1. Create games/vigil/docs/mockups/layout.html with at least 3 distinct static layouts of the tactical screen in that palette: 3D viewport placeholder, unit card, ability bar, hit-chance breakdown, turn banner, concealment indicator, end-turn control, and the shared logo fixed bottom-right (see CLAUDE.md Logo; set --logo-floor if a layout has a bottom bar). No logic. Ask me to pick with AskUserQuestion and whether v1 supports touch (Open Questions). Record both answers in the plan's Revision Log and tick the Open Question.
 ```
 
 **Step 3: Scaffold**
