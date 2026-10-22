@@ -76,6 +76,16 @@ test('a version other than STATE_VERSION loads as null', () => {
   assert.equal(load(), null);
 });
 
+test('a version 2 battle from before per-soldier utility is dropped', () => {
+  assert.equal(STATE_VERSION, 3);
+  const state = buildMission(42);
+  state.version = 2;
+  for (const unit of Object.values(state.units)) delete unit.utility;
+  save(state);
+  assert.equal(load(), null);
+  assert.equal(store.map.has(SAVE_KEY), false, 'the stale save is removed');
+});
+
 test('clear removes the key and a later load returns null', () => {
   save(buildMission(42));
   assert.equal(store.map.has(SAVE_KEY), true);

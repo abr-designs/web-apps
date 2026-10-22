@@ -34,11 +34,14 @@ function makeState(width = 24, depth = 9, props = []) {
   };
 }
 
-// Units start with 2 AP, like the first turn of their side.
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-function addUnit(state, id, defId, x, z) {
+// Units start with 2 AP, like the first turn of their side. Soldiers carry a Frag Grenade unless utility says otherwise.
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - utility parameter (plan 0002 loadout)
+ */
+function addUnit(state, id, defId, x, z, utility = CLASSES[defId] ? ['fragGrenade'] : []) {
   const team = CLASSES[defId] ? 'xcom' : 'alien';
-  const unit = createUnit(id, team, defId, CLASSES[defId] ?? ENEMIES[defId], toIndex(state.grid, x, z));
+  const unit = createUnit(id, team, defId, CLASSES[defId] ?? ENEMIES[defId], toIndex(state.grid, x, z), utility);
   unit.ap = 2;
   state.units[id] = unit;
   return unit;
@@ -287,7 +290,7 @@ test('launchGrenade destroys cover, shreds armor, hurts everyone in the radius a
 
 test('grenades never topple walls; a rocket does, leaves open ground and a kill emits UnitKilled', () => {
   const state = makeState(12, 9, [[6, 4, 'wall']]);
-  const gren = addUnit(state, 'x1', 'grenadier', 1, 4);
+  const gren = addUnit(state, 'x1', 'grenadier', 1, 4, ['rocket']);
   const lone = addUnit(state, 'a01', 'trooper', 6, 5);
   lone.hp = 40;
   const target = at(state, 6, 4);
@@ -656,7 +659,7 @@ test('tilesInRadius is a Euclidean disc clipped to the map', () => {
 /** @created Claude (claude-opus-5-5) - 2026-10-22 */
 function blastLosState() {
   const state = makeState(12, 9, [[6, 3, 'wall'], [6, 4, 'wall'], [6, 5, 'wall']]);
-  addUnit(state, 'x1', 'grenadier', 2, 2);
+  addUnit(state, 'x1', 'grenadier', 2, 2, ['rocket']);
   return state;
 }
 

@@ -9,6 +9,7 @@ import { PARCELS, PROP_CODES } from '../data/parcels.js';
 import { seedState, nextInt, pick } from './rng.js';
 import { createGrid, toIndex, toXZ, isWalkable, placeProp, rebuildAllEdgeCover, DIRS } from './grid.js';
 import { STATE_VERSION, createUnit, unitAt } from './state.js';
+import { defaultLoadout, normalizeLoadout } from './loadout.js';
 
 const PARCEL_SIZE = 8;
 // Tiles between every pod member or patrol tile and every squad start. Tried in order: when the pods do not fit at one
@@ -21,8 +22,12 @@ const PATROL_MAX_STEPS = 8;
 export const DEFAULT_SQUAD = Object.freeze(['ranger', 'sharpshooter', 'grenadier', 'specialist']);
 export const DEFAULT_ENEMY_POOL = Object.freeze(['trooper', 'trooper', 'trooper', 'officer', 'stunLancer', 'sectoid']);
 
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
-export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQUAD, enemyPool = DEFAULT_ENEMY_POOL } = {}) {
+// loadout maps squad ids to one utility item each; it draws no RNG, so the same seed builds the same map for any loadout.
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - loadout option
+ */
+export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQUAD, enemyPool = DEFAULT_ENEMY_POOL, loadout = defaultLoadout() } = {}) {
   const size = plotSize * PARCEL_SIZE;
   const grid = createGrid(size, size);
   const state = {
@@ -47,9 +52,10 @@ export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQU
 
   if (markers.S.length < squad.length) throw new Error(`spawn parcel has ${markers.S.length} S tiles for ${squad.length} soldiers`);
   const squadTiles = markers.S.slice(0, squad.length);
+  const items = normalizeLoadout(loadout);
   squad.forEach((classId, k) => {
     const id = `x${k + 1}`;
-    state.units[id] = createUnit(id, 'xcom', classId, CLASSES[classId], squadTiles[k]);
+    state.units[id] = createUnit(id, 'xcom', classId, CLASSES[classId], squadTiles[k], [items[id] ?? RULES.loadout.defaultItem]);
   });
 
   const rngState = state.rngState;

@@ -39,8 +39,11 @@ const ABILITY_ICON = {
 const CLASS_ICON = { ranger: 'slash', sharpshooter: 'shoot', grenadier: 'grenade', specialist: 'drone' };
 const STATUS_SHORT = { overwatch: 'OW', hunkered: 'HD', stunned: 'STN', aided: 'AID', marked: 'MRK', disoriented: 'DIS' };
 
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
-function esc(text) {
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - exported for the loadout screen
+ */
+export function esc(text) {
   return String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
@@ -338,8 +341,12 @@ export class Hud {
     this._renameCb = callback;
   }
 
-  /** @created Claude (claude-opus-5-5) - 2026-10-21 */
+  /**
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - hidden for turn 0
+   */
   showTurn(side, turn) {
+    this.el.turn.hidden = !turn; // turn 0 is the deploy phase: no banner yet
     this.el.turn.textContent = `${side === 'xcom' ? 'XCOM' : 'Alien'} turn ${turn}`;
     this.el.turn.dataset.side = side;
   }

@@ -1,14 +1,16 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-22
-// Roster: per-slot soldier names that survive new missions (plan 0003). View-only: BattleState and the battle save never see it.
+// Roster: per-slot soldier names and utility items that survive new missions (plans 0003 and 0002). Slot records are { name, utility }.
+// View-only: BattleState and the battle save never see it; main passes loadout() to buildMission.
 // Names start as random picks from NAME_POOL and live in localStorage under ROSTER_KEY. Every storage call is wrapped in
 // try/catch like save.js, so private mode, quota errors and corrupt JSON fall back to fresh random names.
 // Slot colours are the CSS tokens --slot-1..--slot-4 in style.css (palette 2 Field Muted), read like readPalette().
 
 import { unitDef } from '../sim/hit.js';
+import { SQUAD_SLOTS, defaultLoadout, normalizeLoadout } from '../sim/loadout.js';
 
 export const ROSTER_KEY = 'vigil.roster.v1';
-export const SLOTS = Object.freeze(['x1', 'x2', 'x3', 'x4']);
+export const SLOTS = SQUAD_SLOTS;
 export const NAME_MAX = 16;
 export const NAME_POOL = Object.freeze([
   'Okafor', 'Vasquez', 'Lindqvist', 'Mbeki', 'Novak', 'Haddad', 'Tanaka', 'Moreau', 'Kowalski', 'Adeyemi', 'Reyes', 'Ivanova',
@@ -77,6 +79,19 @@ export class Roster {
     return name;
   }
 
+  /** -> { x1..x4: itemId }, always normalized. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  loadout() {
+    return Object.fromEntries(SLOTS.map((id) => [id, this.slots[id].utility]));
+  }
+
+  /** Normalizes, stores and saves. -> the stored loadout. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  setLoadout(loadout) {
+    const items = normalizeLoadout(loadout);
+    for (const id of SLOTS) this.slots[id] = { ...this.slots[id], utility: items[id] };
+    this._save();
+    return this.loadout();
+  }
+
   // A pool name no other slot holds (the pool is larger than the squad, so one always exists).
   /** @created Claude (claude-opus-5-5) - 2026-10-22 */
   _randomName(taken) {
@@ -85,8 +100,12 @@ export class Roster {
   }
 
   // Stored names that pass cleanName and are not already used by an earlier slot are kept; missing, bad or repeated ones get
-  // random names, and the result is saved when anything changed.
-  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  // random names. A slot with no stored utility takes its defaultLoadout item, then normalizeLoadout repairs bad or over-cap
+  // items. The result is saved when anything changed.
+  /**
+   * @created Claude (claude-opus-5-5) - 2026-10-22
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - utility per slot (plan 0002)
+   */
   _load() {
     let stored = null;
     try {
@@ -104,6 +123,12 @@ export class Roster {
     }
     for (const id of SLOTS) {
       if (!slots[id]) slots[id] = { name: this._randomName(Object.values(slots).map((s) => s.name)) };
+    }
+    const defaults = defaultLoadout();
+    const items = normalizeLoadout(Object.fromEntries(SLOTS.map((id) => [id, stored?.[id]?.utility ?? defaults[id]])));
+    for (const id of SLOTS) {
+      slots[id].utility = items[id];
+      if (stored?.[id]?.utility !== items[id]) changed = true;
     }
     this.slots = slots;
     if (changed) this._save();

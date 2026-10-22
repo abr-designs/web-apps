@@ -7,6 +7,7 @@ import { Roster, ROSTER_KEY, SLOTS, NAME_POOL } from '../js/view/roster.js';
 import { createUnit } from '../js/sim/state.js';
 import { CLASSES } from '../js/data/classes.js';
 import { ENEMIES } from '../js/data/enemies.js';
+import { defaultLoadout } from '../js/sim/loadout.js';
 
 /** @created Claude (claude-opus-5-5) - 2026-10-22 */
 function memoryStorage(initial = {}) {
@@ -82,4 +83,29 @@ test('stored names are capped at 16 and repeats are replaced; renaming to a take
   assert.equal(new Set(names(roster)).size, 4);
   const before = roster.slots.x4.name;
   assert.equal(roster.rename('x4', 'Hudson'), before);
+});
+
+test('a fresh roster holds the default loadout and setLoadout round-trips through storage', () => {
+  const store = memoryStorage();
+  const roster = new Roster(store, () => 0);
+  assert.deepEqual(roster.loadout(), defaultLoadout());
+  const moved = { x1: 'rocket', x2: 'fragGrenade', x3: 'fragGrenade', x4: 'fragGrenade' };
+  assert.deepEqual(roster.setLoadout(moved), moved);
+  const reloaded = new Roster(store, () => 0.5);
+  assert.deepEqual(reloaded.loadout(), moved);
+  assert.deepEqual(names(reloaded), names(roster), 'names untouched');
+  assert.equal(roster.rename('x1', 'Hicks'), 'Hicks');
+  assert.equal(new Roster(store).slots.x1.utility, 'rocket', 'rename keeps the item');
+});
+
+test('stored utility that is unknown or past the Rocket cap is repaired and saved; a plan 0003 roster gets the defaults', () => {
+  const stored = { slots: { x1: { name: 'Ripley', utility: 'rocket' }, x2: { name: 'Hicks', utility: 'rocket' }, x3: { name: 'Hudson', utility: 'laser' }, x4: { name: 'Vasquez', utility: 'fragGrenade' } } };
+  const store = memoryStorage({ [ROSTER_KEY]: JSON.stringify(stored) });
+  const roster = new Roster(store, () => 0);
+  assert.deepEqual(roster.loadout(), { x1: 'rocket', x2: 'fragGrenade', x3: 'fragGrenade', x4: 'fragGrenade' });
+  assert.deepEqual(JSON.parse(store.data[ROSTER_KEY]).slots.x2, { name: 'Hicks', utility: 'fragGrenade' });
+  assert.deepEqual(roster.setLoadout({ x1: 'rocket', x2: 'rocket' }), { x1: 'rocket', x2: 'fragGrenade', x3: 'fragGrenade', x4: 'fragGrenade' });
+
+  const old = { slots: { x1: { name: 'Ripley' }, x2: { name: 'Hicks' }, x3: { name: 'Hudson' }, x4: { name: 'Vasquez' } } };
+  assert.deepEqual(new Roster(memoryStorage({ [ROSTER_KEY]: JSON.stringify(old) })).loadout(), defaultLoadout());
 });

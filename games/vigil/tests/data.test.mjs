@@ -45,7 +45,7 @@ test('the plan lists four classes, four enemies and all its abilities', () => {
 test('classes and enemies reference real weapons and abilities', () => {
   for (const [id, def] of [...Object.entries(CLASSES), ...Object.entries(ENEMIES)]) {
     assert.ok(WEAPONS[def.weapon], `${id}: unknown weapon ${def.weapon}`);
-    for (const a of [...def.abilities, ...(def.utility ?? [])]) assert.ok(ABILITIES[a], `${id}: unknown ability ${a}`);
+    for (const a of def.abilities) assert.ok(ABILITIES[a], `${id}: unknown ability ${a}`);
     for (const stat of ['aim', 'hp', 'armor', 'mobility', 'sight', 'defense', 'dodge']) {
       assert.ok(Number.isInteger(def.stats[stat]), `${id}: stat ${stat} missing`);
     }

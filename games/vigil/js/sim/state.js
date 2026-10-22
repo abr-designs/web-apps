@@ -9,19 +9,23 @@
 // Unit.cooldowns: { abilityId: turns } with the same countdown; the ability is ready when its key is absent.
 // Unit.idleTurns: alien sides begun while engaged since the unit's last hostile ability (TurnManager adds, AbilitySystem
 //   resets); EnemyAI turns aggressive once it reaches RESTLESS_TURNS. Unaware aliens hold 0.
+// Unit.utility: the soldier's utility ability ids from the loadout (plan 0002); empty for aliens.
 
 import { ABILITIES } from '../data/abilities.js';
 import { WEAPONS } from '../data/weapons.js';
 
-export const STATE_VERSION = 2;
+export const STATE_VERSION = 3;
 
 // deploy -> playerTurn <-> enemyTurn -> ended (Battle phase diagram; Victory and Defeat are ended plus outcome).
 export const PHASE = Object.freeze({ deploy: 'deploy', playerTurn: 'playerTurn', enemyTurn: 'enemyTurn', ended: 'ended' });
 
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
-export function createUnit(id, team, defId, def, tile) {
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - utility parameter stored on the unit
+ */
+export function createUnit(id, team, defId, def, tile, utility = def.utility ?? []) {
   const charges = {};
-  for (const abilityId of [...def.abilities, ...(def.utility ?? [])]) {
+  for (const abilityId of [...def.abilities, ...utility]) {
     const max = ABILITIES[abilityId].charges;
     if (max) charges[abilityId] = (charges[abilityId] ?? 0) + max;
   }
@@ -39,6 +43,7 @@ export function createUnit(id, team, defId, def, tile) {
     statuses: [],
     cooldowns: {},
     charges,
+    utility: [...utility],
     idleTurns: 0,
   };
 }

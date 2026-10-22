@@ -2,7 +2,8 @@
 // Date: 2026-10-21
 // Vigil bootstrap and mission loop (plan step 17). Wires the sim hooks, builds or loads a BattleState, builds the view, and drives
 // every command through execute -> lock -> play -> enemy turn -> unlock. The enemy turn pulls EnemyAI commands one at a time.
-// A saved battle resumes on load; a finished or abandoned one starts fresh. window.vigil exposes the live parts for console play.
+// A saved battle resumes on load. Anything else, and New Mission, opens the loadout screen (plan 0002) over the new mission's map;
+// Launch rebuilds that map from the same seed with the chosen loadout and deploys. window.vigil exposes the live parts for console play.
 
 import { buildMission } from './sim/map-builder.js';
 import { execute, setHooks, InvalidCommand } from './sim/executor.js';
@@ -20,15 +21,18 @@ import { Hud } from './view/hud.js';
 import { InputController } from './view/input.js';
 import { Fog } from './view/fog.js';
 import { Roster } from './view/roster.js';
+import { LoadoutScreen } from './view/loadout-screen.js';
 
 const ENEMY_SPEED = 3;
 const OBJECTIVE = 'Eliminate all hostiles';
 const MAX_AI_COMMANDS = 200; // far above any real turn; stops a misbehaving AI from hanging the page
 const MAX_SIDE_SWITCHES = 50;
 
+const roster = new Roster();
 const saved = load();
+const resuming = Boolean(saved && !saved.outcome);
 // InputController draws its first mode from the state in its constructor, so the opening battle exists before the view does.
-let state = saved && !saved.outcome ? saved : buildMission(Date.now() >>> 0);
+let state = resuming ? saved : buildMission(Date.now() >>> 0, { loadout: roster.loadout() });
 let missionId = 0; // bumped by every new mission so a command still playing from the old one stops touching the page
 
 // Autosave while the battle lasts; a finished battle leaves no save behind.
@@ -42,12 +46,12 @@ setHooks({ detection: Detection, reactions: Reactions, abilities: { validate: Ab
 
 const canvas = document.getElementById('viewport');
 const renderer = new Renderer(canvas);
-const roster = new Roster();
 buildView(state);
 const rig = new CameraRig(renderer.camera, canvas);
 const picker = new Picker(renderer, renderer.camera, canvas);
 const fog = new Fog({ renderer });
 const hud = new Hud(document, roster);
+const loadoutScreen = new LoadoutScreen(document.getElementById('loadout'), roster);
 const player = new EventPlayer(renderer, rig, hud, { getState: () => state, container: canvas.parentElement, fog });
 const input = new InputController({ getState: () => state, picker, renderer, cameraRig: rig, hud, onCommand: runCommand, player, fog, roster });
 hud.onRename((unitId, text) => {
@@ -137,28 +141,53 @@ async function runEnemyTurn(id) {
   }
 }
 
-// Builds the view for `battle` and starts play: a loaded battle resumes where it stopped, a fresh one deploys first.
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-async function startBattle(battle, { built = false } = {}) {
-  const id = ++missionId;
+// Makes `battle` the live state and shows its map with input in idle; startBattle and openLoadout both start here.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function showMap(battle, { built = false } = {}) {
   state = battle;
   hud.showOutcome(null);
   if (!built) buildView(state);
   renderer.syncUnits(state);
   fog.refresh(state);
   rig.setBounds(state.grid.width, state.grid.depth);
+  // A new map starts with this battle's banners, so the last mission's turn line and messages never linger.
+  hud.showTurn(state.activeSide, state.turn);
+  hud.showConcealed(state.squadConcealed);
+  hud.showMessage(null);
   input.setMode('idle');
+}
+
+// The loadout screen over the mission's map: input stays locked, nothing deploys or autosaves until Launch.
+/** @created Claude (claude-opus-5-5) - 2026-10-22 */
+function openLoadout(seed, { built = false } = {}) {
+  const id = ++missionId;
+  showMap(built ? state : buildMission(seed, { loadout: roster.loadout() }), { built });
+  input.lock();
+  rig.focusTile(renderer.tileCenter(state.units.x1.tile), { animate: false });
+  refreshHud();
+  loadoutScreen.open(state, (loadout) => {
+    if (id !== missionId) return;
+    startBattle(buildMission(seed, { loadout })).catch((error) => console.error('Vigil: start failed', error));
+  });
+}
+
+// Builds the view for `battle` and starts play: a loaded battle resumes where it stopped, a fresh one deploys first.
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - map setup split out into showMap
+ */
+async function startBattle(battle, { built = false } = {}) {
+  const id = ++missionId;
+  showMap(battle, { built });
 
   if (state.phase === PHASE.deploy) {
     input.lock();
     rig.focusTile(renderer.tileCenter(state.units.x1.tile), { animate: false });
     await play({ type: 'deploy' });
   } else {
-    // A loaded battle never replays its TurnStarted, so the banner, concealment light and objective are set by hand.
+    // A loaded battle never replays its TurnStarted; showMap set the banner and concealment light, the objective is set here.
     const soldier = livingUnits(state, 'xcom')[0];
     if (soldier) rig.focusTile(renderer.tileCenter(soldier.tile), { animate: false });
-    hud.showTurn(state.activeSide, state.turn);
-    hud.showConcealed(state.squadConcealed);
     refreshHud();
     if (state.phase === PHASE.enemyTurn) {
       input.lock();
@@ -168,10 +197,13 @@ async function startBattle(battle, { built = false } = {}) {
   if (id === missionId) unlock();
 }
 
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - opens the loadout screen first
+ */
 function newMission() {
   clear();
-  startBattle(buildMission(Date.now() >>> 0)).catch((error) => console.error('Vigil: start failed', error));
+  openLoadout(Date.now() >>> 0);
 }
 
 let last = performance.now();
@@ -186,10 +218,11 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-startBattle(state, { built: true }).catch((error) => console.error('Vigil: start failed', error));
+if (resuming) startBattle(state, { built: true }).catch((error) => console.error('Vigil: start failed', error));
+else openLoadout(state.seed, { built: true });
 requestAnimationFrame(frame);
 
 window.vigil = {
   get state() { return state; },
-  renderer, rig, picker, player, hud, input, fog, roster, runCommand, newMission,
+  renderer, rig, picker, player, hud, input, fog, roster, loadoutScreen, runCommand, newMission,
 };

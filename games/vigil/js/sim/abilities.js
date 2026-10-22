@@ -28,10 +28,12 @@ import { breakConcealment } from './detection.js';
 // Targeting kinds that aim at the enemy; using one resets the unit's idleTurns (EnemyAI aggression ramp).
 const HOSTILE_TARGETING = Object.freeze(['enemyLos', 'enemySquadsight', 'melee', 'tile', 'prop']);
 
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - utility read from the unit's loadout
+ */
 function abilityIds(unit) {
-  const def = unitDef(unit);
-  return [...new Set([...def.abilities, ...(def.utility ?? [])])];
+  return [...new Set([...unitDef(unit).abilities, ...(unit.utility ?? [])])];
 }
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */

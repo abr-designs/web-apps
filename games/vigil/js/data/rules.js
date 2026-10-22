@@ -27,4 +27,6 @@ export const RULES = deepFreeze({
     cannon:  [0, 30, 27, 24, 21, 18, 15, 12, 9, 6, 3, 0, -2, -4, -6, -8, -10, -12, -14, -16],
     pistol:  [0, 30, 26, 22, 18, 14, 10, 6, 2, 0, 0, 0, -3, -6, -9, -12, -15, -18, -21, -24],
   },
+  // Utility items a soldier picks on the loadout screen (plan 0002): one per soldier, caps limit an item per squad.
+  loadout: { items: ['fragGrenade', 'rocket'], caps: { rocket: 1 }, defaultItem: 'fragGrenade' },
 });

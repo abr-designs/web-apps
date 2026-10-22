@@ -27,8 +27,12 @@ export function save(state) {
   }
 }
 
-// -> BattleState | null. Null on a missing key, corrupt JSON, a non-object, or a version other than STATE_VERSION.
-/** @created Claude (claude-haiku-5-5) - 2026-10-21 */
+// -> BattleState | null. Null on a missing key, corrupt JSON, a non-object, or a version other than STATE_VERSION;
+// a save from another version is also removed, since it can never load.
+/**
+ * @created Claude (claude-haiku-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - removes a save from another version
+ */
 export function load() {
   try {
     const store = storage();
@@ -37,7 +41,10 @@ export function load() {
     if (raw === null) return null;
     const state = JSON.parse(raw);
     if (!state || typeof state !== 'object' || Array.isArray(state)) return null;
-    if (state.version !== STATE_VERSION) return null;
+    if (state.version !== STATE_VERSION) {
+      store.removeItem(SAVE_KEY);
+      return null;
+    }
     // The RNG reads rngState as a uint32; a hand-edited or legacy value is coerced here.
     state.rngState = state.rngState >>> 0;
     return state;

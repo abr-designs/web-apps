@@ -98,7 +98,8 @@ test('units start with full hp and ammo, zero AP and their charges', () => {
   assert.equal(grenadier.hp, grenadier.stats.hp);
   assert.equal(grenadier.ammo, 3);
   assert.equal(grenadier.ap, 0);
-  assert.deepEqual(grenadier.charges, { launchGrenade: 2, fragGrenade: 1, rocket: 1 });
+  assert.deepEqual(grenadier.charges, { launchGrenade: 2, rocket: 1 }, 'the default loadout gives the grenadier the Rocket');
+  assert.deepEqual(grenadier.utility, ['rocket']);
   assert.deepEqual(s.units.x2.charges, { fragGrenade: 1 });
 });
 
