@@ -3,7 +3,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Roster, ROSTER_KEY, SLOTS, NAME_POOL } from '../js/view/roster.js';
+import { Roster, ROSTER_KEY, SLOTS, NAME_POOL, DEFAULT_COLORS } from '../js/view/roster.js';
 import { createUnit } from '../js/sim/state.js';
 import { CLASSES } from '../js/data/classes.js';
 import { ENEMIES } from '../js/data/enemies.js';
@@ -103,9 +103,30 @@ test('stored utility that is unknown or past the Rocket cap is repaired and save
   const store = memoryStorage({ [ROSTER_KEY]: JSON.stringify(stored) });
   const roster = new Roster(store, () => 0);
   assert.deepEqual(roster.loadout(), { x1: 'rocket', x2: 'fragGrenade', x3: 'fragGrenade', x4: 'fragGrenade' });
-  assert.deepEqual(JSON.parse(store.data[ROSTER_KEY]).slots.x2, { name: 'Hicks', utility: 'fragGrenade' });
+  assert.deepEqual(JSON.parse(store.data[ROSTER_KEY]).slots.x2, { name: 'Hicks', utility: 'fragGrenade', color: DEFAULT_COLORS.x2 });
   assert.deepEqual(roster.setLoadout({ x1: 'rocket', x2: 'rocket' }), { x1: 'rocket', x2: 'fragGrenade', x3: 'fragGrenade', x4: 'fragGrenade' });
 
   const old = { slots: { x1: { name: 'Ripley' }, x2: { name: 'Hicks' }, x3: { name: 'Hudson' }, x4: { name: 'Vasquez' } } };
   assert.deepEqual(new Roster(memoryStorage({ [ROSTER_KEY]: JSON.stringify(old) })).loadout(), defaultLoadout());
+});
+
+test('recolor stores an upper-case hex and persists; bad input keeps the colour; aliens get null', () => {
+  const store = memoryStorage();
+  const roster = new Roster(store, () => 0);
+  assert.equal(roster.colorOf(soldier('x3')), DEFAULT_COLORS.x3);
+  assert.equal(roster.recolor('x3', ' #e08f8f '), '#E08F8F');
+  assert.equal(new Roster(store).colorOf(soldier('x3')), '#E08F8F');
+  assert.equal(roster.recolor('x3', 'red'), '#E08F8F');
+  assert.equal(roster.recolor('x3', '#fff'), '#E08F8F');
+  assert.equal(roster.recolor('a01', '#000000'), null);
+  assert.equal(new Roster(store).slots.x3.name, roster.slots.x3.name, 'recolor keeps the name');
+});
+
+test('a missing or bad stored colour falls back to the slot default and is saved', () => {
+  const stored = { slots: { x1: { name: 'Ripley', color: '#123456' }, x2: { name: 'Hicks', color: 'blue' }, x3: { name: 'Hudson' }, x4: { name: 'Vasquez' } } };
+  const store = memoryStorage({ [ROSTER_KEY]: JSON.stringify(stored) });
+  const roster = new Roster(store, () => 0);
+  assert.equal(roster.slots.x1.color, '#123456');
+  assert.equal(roster.slots.x2.color, DEFAULT_COLORS.x2);
+  assert.equal(JSON.parse(store.data[ROSTER_KEY]).slots.x3.color, DEFAULT_COLORS.x3);
 });

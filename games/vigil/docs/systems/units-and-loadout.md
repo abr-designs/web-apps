@@ -7,7 +7,7 @@ date: 2026-10-23
 
 ## Purpose
 
-Soldier classes and enemy types are data templates that `createUnit` turns into units. Before each mission the loadout screen lets the player give each soldier one utility item (Frag Grenade or Rocket). The roster remembers each squad slot's name and item across missions, and supplies each slot's colour. Roster and loadout are view-side preferences; the battle only sees the resulting `unit.utility`.
+Soldier classes and enemy types are data templates that `createUnit` turns into units. Before each mission the loadout screen lets the player rename each soldier, pick its colour, and give it one utility item (Frag Grenade or Rocket). The roster remembers each squad slot's name, colour and item across missions. Roster and loadout are view-side preferences; the battle only sees the resulting `unit.utility`.
 
 ## Where it lives
 
@@ -18,7 +18,7 @@ Soldier classes and enemy types are data templates that `createUnit` turns into 
 | `js/data/rules.js` | `RULES.loadout`: `items`, per-squad `caps`, `defaultItem` |
 | `js/sim/loadout.js` | `SQUAD_SLOTS`, `defaultLoadout`, `normalizeLoadout`, `itemAllowed` (pure) |
 | `js/sim/map-builder.js` | `DEFAULT_SQUAD` (slot order of classes), `DEFAULT_ENEMY_POOL` |
-| `js/view/roster.js` | `Roster`: names, utility per slot, slot colours; localStorage key `ROSTER_KEY` |
+| `js/view/roster.js` | `Roster`: name, colour and utility per slot, `SWATCHES`; localStorage key `ROSTER_KEY` |
 | `js/view/loadout-screen.js` | `LoadoutScreen`: pre-mission overlay in `#loadout` |
 | Tests | `tests/loadout.test.mjs`, `tests/roster.test.mjs`, `tests/data.test.mjs` |
 
@@ -26,8 +26,8 @@ Soldier classes and enemy types are data templates that `createUnit` turns into 
 
 - A loadout is `{ x1: itemId, x2: ..., x3: ..., x4: ... }`. `normalizeLoadout` replaces unknown items with `defaultItem` and enforces caps in slot order (one Rocket per squad, which slot `x3` holds by default).
 - `buildMission(seed, { loadout })` passes each slot's item to `createUnit` as `unit.utility`. `abilitiesFor` merges class abilities and utility, so loadout items behave like any ability.
-- Flow in `main.js`: a new mission builds the map and opens `LoadoutScreen` over it with input locked. Launch saves the draft to the Roster, rebuilds the same seed with the chosen loadout, and deploys. There is no cancel.
-- `Roster` stores `{ name, utility }` per slot. Names start as random picks from `NAME_POOL`, are capped at `NAME_MAX`, and can be renamed by clicking the rail name plate. Colours come from CSS tokens `--slot-1`..`--slot-4` in `style.css`.
+- Flow in `main.js`: a new mission builds the map and opens `LoadoutScreen` over it with input locked. Launch saves the draft names, colours and loadout to the Roster, rebuilds the same seed with the chosen loadout, and deploys. There is no cancel.
+- `Roster` stores `{ name, utility, color }` per slot. Names start as random picks from `NAME_POOL`, are capped at `NAME_MAX`, and can be renamed on the loadout screen or by clicking the rail name plate. Colours start as `DEFAULT_COLORS`; the loadout screen offers `SWATCHES` (a swatch another slot wears is disabled) plus a custom picker that accepts any hex. The roster writes each colour onto the CSS tokens `--slot-1`..`--slot-4`, so every `var(--slot-N)` follows it.
 - Aliens have no roster entry; the HUD names them by their `ENEMIES` name.
 
 ## How to interact
@@ -36,6 +36,7 @@ Soldier classes and enemy types are data templates that `createUnit` turns into 
 vigil.roster.loadout();              // { x1: 'fragGrenade', ..., x3: 'rocket', ... }
 vigil.roster.nameOf(unit);           // display name
 vigil.roster.colorOf(unit);          // slot colour hex, null for aliens
+vigil.roster.recolor('x1', '#E08F8F'); // stores and applies a colour
 itemAllowed(loadout, 'x2', 'rocket');  // false while x3 holds the only rocket
 ```
 
@@ -63,4 +64,4 @@ itemAllowed(loadout, 'x2', 'rocket');  // false while x3 holds the only rocket
 
 ### Change squad size
 
-`SQUAD_SLOTS` (`sim/loadout.js`), `DEFAULT_SQUAD`, the `S` markers in spawn parcels, the `--slot-N` tokens and `FALLBACK_COLORS` in `roster.js` all assume 4. Change them together.
+`SQUAD_SLOTS` (`sim/loadout.js`), `DEFAULT_SQUAD`, the `S` markers in spawn parcels, the `--slot-N` tokens and `DEFAULT_COLORS` in `roster.js` all assume 4. Change them together.

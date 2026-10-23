@@ -253,7 +253,17 @@ svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none
 .lo-slot { display: grid; grid-template-columns: 4px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px 8px 0; background: color-mix(in srgb, var(--bg) 70%, var(--surface)); border: 1px solid var(--line-off); }
 .lo-slot::before { content: ""; align-self: stretch; background: var(--c); }
 .lo-who { min-width: 0; }
-.lo-name { font-size: 15px; color: var(--c); }
+.lo-name { width: 14ch; max-width: 100%; padding: 1px 0; font: 15px system-ui, sans-serif; color: var(--c); background: none; border: 0; border-bottom: 1px dashed transparent; outline: 0; user-select: text; }
+.lo-name:hover { border-bottom-color: var(--line-off); }
+.lo-name:focus { border-bottom: 1px solid var(--c); }
+.lo-colors { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.lo-swatch { position: relative; width: 16px; height: 16px; padding: 0; border-radius: 50%; background: var(--s); border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); cursor: pointer; }
+.lo-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
+.lo-swatch:disabled { opacity: .25; cursor: not-allowed; }
+.lo-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lo-custom { overflow: hidden; background: conic-gradient(#E08F8F, #E6D27A, #9CCB9A, #7FCFC9, #8FB8DE, #C9A0DC, #E08F8F); }
+.lo-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.lo-custom:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .lo-cls { font-size: 11px; color: var(--text-muted); }
 .lo-item { padding: 7px 12px; background: color-mix(in srgb, var(--bg) 70%, var(--surface)); color: var(--text-muted); border: 1px solid var(--line-off); }
 .lo-item.on { color: var(--text); border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, var(--surface)); }
