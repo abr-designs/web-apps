@@ -14,7 +14,7 @@ import { EVENT } from './events.js';
 import { nextInt } from './rng.js';
 import { livingUnits } from './state.js';
 import { tileDistance } from './visibility.js';
-import { compute, unitDef } from './hit.js';
+import { abilityId, compute, unitDef } from './hit.js';
 import { resolve, applyDamage, shredArmor, hitProp, tilesInRadius } from './combat.js';
 import { walkPath, getHooks } from './executor.js';
 
@@ -96,14 +96,16 @@ export const EFFECTS = {
   },
 
   // Explosion, then hitProp on every prop in the radius, ascending tile order (barrels caught in it burst and chain).
+  // The Explosion names its source and ability so the view can play the throw or fire clip.
   /**
    * @created Claude (claude-sonnet-5-5) - 2026-10-21
    * @modified Claude (claude-opus-5-5) - 2026-10-22 - props hit through hitProp
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - Explosion carries sourceId and abilityId
    */
   destroyCover(state, ctx, src, tile, effect, ability, run) {
     const radius = ability.radius ?? 0;
     const tiles = tilesInRadius(state.grid, tile, radius);
-    ctx.emit(EVENT.Explosion, { center: tile, radius, tiles });
+    ctx.emit(EVENT.Explosion, { center: tile, radius, tiles, sourceId: src.id, abilityId: abilityId(ability) });
     run.noise.push(tile);
     for (const t of tiles) if (state.grid.props[t]) hitProp(state, ctx, t, effect.damage ?? EXPLOSION_PROP_DAMAGE, run.noise);
   },

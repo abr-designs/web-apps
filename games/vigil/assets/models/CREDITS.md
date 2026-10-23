@@ -1,5 +1,6 @@
 <!-- Created by Claude (claude-opus-5-5) -->
 <!-- Date: 2026-10-22 -->
+<!-- Modified by Claude (claude-opus-5-5) - 2026-10-23 - mannequin source confirmed -->
 
 # Model Credits
 
@@ -7,7 +8,7 @@ Every file here is CC0 (public domain, https://creativecommons.org/publicdomain/
 
 | File | Source pack | Notes |
 |---|---|---|
-| `mannequin.glb` | KayKit Mannequin Character (`Mannequin_Medium.glb`) | squad soldiers |
+| `mannequin.glb` | KayKit Character Animations (`Mannequin_Medium.glb`, https://kaylousberg.itch.io/kaykit-character-animations) | squad soldiers |
 | `skeleton-warrior.glb`, `skeleton-minion.glb`, `skeleton-rogue.glb`, `skeleton-mage.glb` | KayKit Character Pack: Skeletons 1.1 FREE | enemies; licence in the pack's `License.txt` |
 | `gear/crossbow.glb`, `gear/blade.glb`, `gear/staff.glb` | KayKit Character Pack: Skeletons 1.1 FREE (`assets/gltf`) | converted from .gltf to .glb |
 | `clips.glb` | KayKit Character Animations, `Rig_Medium` (https://kaylousberg.itch.io/kaykit-character-animations) | 16 clips kept from the General, MovementBasic, MovementAdvanced, CombatRanged, CombatMelee and Special files; meshes removed |

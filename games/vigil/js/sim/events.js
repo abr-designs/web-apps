@@ -14,7 +14,7 @@ export const EVENT = Object.freeze({
   StatusExpired: 'StatusExpired',         // { unitId, status }
   CoverDamaged: 'CoverDamaged',           // { tile, hp }
   CoverDestroyed: 'CoverDestroyed',       // { tile, rubbleKind }
-  Explosion: 'Explosion',                 // { center, radius, tiles }
+  Explosion: 'Explosion',                 // { center, radius, tiles, sourceId?, abilityId? } source fields only on an ability's blast
   OverwatchSet: 'OverwatchSet',           // { unitId }
   OverwatchTriggered: 'OverwatchTriggered', // { unitId, targetId }
   ConcealmentBroken: 'ConcealmentBroken', // { byUnitId, reason }

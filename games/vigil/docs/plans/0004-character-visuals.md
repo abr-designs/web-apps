@@ -9,16 +9,17 @@ date: 2026-10-22
 |---|---|
 | Status | Implemented |
 | Created | 2026-10-22 |
-| Updated | 2026-10-22 |
+| Updated | 2026-10-23 |
 | Proficiency | 5-7/10 |
 | Engine | JavaScript (ES modules, no build step) + three.js r160, static page in `games/vigil/` |
-| Revisions | 7 (latest: U-007) |
+| Revisions | 8 (latest: U-008) |
 | Summary | Replace the capsule-plus-ring unit look with CC0 rigged glTF characters on one shared skeleton (mannequins for the squad, skeletons for enemies) that wear per-class and per-enemy gear, faces its moves and targets, and plays clips (idle, walk, aim, fire, hit, crouch, throw, death) driven by battle events. |
 
 ## Revision Log
 
 | ID | Date | Type | Change |
 |---|---|---|---|
+| U-008 | 2026-10-23 | Update | Follow-ups: ability blasts name their source (`Explosion.sourceId`, `abilityId`), so the thrower faces the blast and plays `throw` (frag grenade) or `fire` (launcher, rocket) during the camera ease; `tests/event-player.test.mjs` covers the step 7 wiring; the mannequin is confirmed as `Mannequin_Medium.glb` from KayKit Character Animations (CC0) |
 | U-007 | 2026-10-22 | Update | Step 8 done: tests and logo check pass, walk, fire, melee, hit, death, overwatch and hunker poses, reload resume, skip, fog-hidden aliens, New Mission rebuild and the capsule fallback verified in the browser; squad slot colours read apart at 1400x850 |
 | U-006 | 2026-10-22 | Fix | Step 7 done: the shot clip starts with the camera ease so the weapon is up when the tracer leaves the muzzle; slash, Stun Lance and the pistol play their own clips (`SHOT_CLIPS`); death waits `DEATH_CLIP` on the tween clock and then `finish()`, since clips advance only in the frame loop, which stops in a background tab; clips run at the player speed; only capsules hop; poses refresh from the state after every batch |
 | U-005 | 2026-10-22 | Improvement | Step 6 done: with models the capsule stays as an invisible pick hitbox and model meshes skip raycasts, so hover picking never walks skinned meshes; `#loading` line in `index.html` |
@@ -37,10 +38,10 @@ Settled decisions:
 
 - Models are glTF (`.glb`), loaded with `GLTFLoader` vendored from three r160 beside `vendor/three.module.min.js`. A procedural primitive style was mocked (`docs/mockups/characters-style.html`, styles A Chunky, B Slim, C Faceted) and rejected.
 - Assets (step 1 intake, source folder `C:/Users/alex_/Desktop/Characters/`): every model and clip uses the KayKit `Rig_Medium` skeleton (bones `root`, `hips`, `spine`, `chest`, `head`, `upperarm`/`lowerarm`/`wrist`/`hand` `.l`/`.r`, `upperleg`/`lowerleg`/`foot`/`toes` `.l`/`.r`), so models and clips share one rig with no retargeting.
-  - Soldiers use `Mannequin_Medium.glb` (KayKit Mannequin Character, 21 joints, one `Character_Material` with `mannequin_texture.png`).
+  - Soldiers use `Mannequin_Medium.glb` (KayKit Character Animations, 21 joints, one `Character_Material` with `mannequin_texture.png`).
   - Enemies use the KayKit Skeletons 1.1 FREE characters (`Skeleton_Warrior`, `Skeleton_Minion`, `Skeleton_Rogue`, `Skeleton_Mage`; 23 joints adding `handslot.l`/`handslot.r`; materials `skeleton` and `Glow`). Their own weapons (`Skeleton_Blade`, `Skeleton_Crossbow`, `Skeleton_Staff` and others) are available as gear.
   - Clips come from the KayKit Character Animations `Rig_Medium` files (General, MovementBasic, MovementAdvanced, CombatRanged, CombatMelee, Special and others); the skeleton pack's two clip files are byte-identical copies of the same set.
-  - Licences: KayKit Skeletons 1.1 is CC0 per its `License.txt`. KayKit Character Animations is CC0 per its itch.io page; the mannequin ships without a licence file and is taken to come from the same pack (confirm at intake).
+  - Licences: KayKit Skeletons 1.1 is CC0 per its `License.txt`. KayKit Character Animations is CC0 per its itch.io page; the mannequin ships in that pack (confirmed with the user, U-008).
 - Identity comes from the base model (mannequin for the squad, one skeleton variant per enemy type), gear on hand and back bones, and material tints. A new class is new data in `UNIT_LOOKS`.
 - Motion: units face their move direction and their target; clips play through `THREE.AnimationMixer`. Base pose comes from statuses (overwatch aims, hunkered crouches), so a resumed battle shows the right pose.
 - Roster slot colour stays on the ground ring (which also carries selection) and also tints the model's trim material.

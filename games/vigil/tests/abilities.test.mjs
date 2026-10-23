@@ -269,7 +269,7 @@ test('launchGrenade destroys cover, shreds armor, hurts everyone in the radius a
   const ctx = run(state, cmd('x1', 'launchGrenade', { targetTile: target }));
   const e = ctx.events;
   assert.deepEqual(e.find((x) => x.type === 'Explosion'), {
-    type: 'Explosion', center: target, radius: 2, tiles: tilesInRadius(state.grid, target, 2),
+    type: 'Explosion', center: target, radius: 2, tiles: tilesInRadius(state.grid, target, 2), sourceId: 'x1', abilityId: 'launchGrenade',
   });
   assert.equal(state.grid.props[target], null, 'crate (3 hp) destroyed');
   assert.ok(e.some((x) => x.type === 'CoverDestroyed' && x.tile === target));

@@ -30,6 +30,8 @@ const MUZZLE = 0.7;          // world height tracers start and end at
 const FOCUS_SETTLE = 0.3;    // seconds to let the camera ease after a focus
 // One-shot clip per ability that hits (UnitModel logical names); every other shot plays 'fire'.
 const SHOT_CLIPS = Object.freeze({ slash: 'melee', stunLance: 'stab', pistolShot: 'pistol' });
+// One-shot clip per ability that explodes; launchers and rockets play 'fire'. A barrel's blast has no source and plays none.
+const BLAST_CLIPS = Object.freeze({ fragGrenade: 'throw' });
 const STYLE_ID = 'vigil-event-player-style';
 const STYLE = `
 .vigil-fly-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 6; }
@@ -402,11 +404,21 @@ export class EventPlayer {
     await debris;
   }
 
-  // center is a tile index; the flash spans the blast radius in tiles.
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-  async _onExplosion({ center, radius = 1 }) {
+  // center is a tile index; the flash spans the blast radius in tiles. The source's model faces the blast and plays its clip
+  // during the camera ease.
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - source model throws or fires
+   */
+  async _onExplosion({ center, radius = 1, sourceId = null, abilityId = null }) {
     if (!Number.isInteger(center)) return;
     const origin = this.renderer.tileCenter(center);
+    const source = sourceId ? this.renderer.unitObject(sourceId) : null;
+    const model = sourceId ? this.renderer.unitModel?.(sourceId) ?? null : null;
+    if (model) {
+      model.face(origin, { instant: this.skipping || !source?.visible });
+      if (source?.visible) this._playClip(model, BLAST_CLIPS[abilityId] ?? 'fire');
+    }
     origin.y += 0.5;
     this._focus(origin);
     await this._wait(FOCUS_SETTLE);
