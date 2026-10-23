@@ -49,10 +49,12 @@ jobs:
       group: pages-build
       cancel-in-progress: false
     steps:
+      # lfs: the site copies binaries from main and from PR heads, so the LFS filter must be installed.
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
+          lfs: true
 
       - uses: actions/setup-node@v4
         with:
