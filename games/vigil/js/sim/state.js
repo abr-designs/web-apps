@@ -1,5 +1,6 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // The serializable battle root. units is keyed by id; ids sort in turn order (x1..x4 squad, a01.. aliens).
 // phase is one of PHASE; activeSide is 'xcom' | 'alien'; outcome is null | 'victory' | 'defeat' | 'forfeit' (set with phase 'ended').
 // Unit.statuses: [{ id, turns }] in application order. turns counts the owner's side starts left: TurnManager.beginSide
@@ -10,6 +11,9 @@
 // Unit.idleTurns: alien sides begun while engaged since the unit's last hostile ability (TurnManager adds, AbilitySystem
 //   resets); EnemyAI turns aggressive once it reaches RESTLESS_TURNS. Unaware aliens hold 0.
 // Unit.utility: the soldier's utility ability ids from the loadout (plan 0002); empty for aliens.
+// state.threat: the mission's THREAT level (data/threat.js); a state without one reads as THREAT.baseline. Aliens below or
+//   above the baseline also carry damageBonus (added to each weapon hit) and scale (model size, view only); both are absent
+//   at their defaults of 0 and 1.
 
 import { ABILITIES } from '../data/abilities.js';
 import { WEAPONS } from '../data/weapons.js';

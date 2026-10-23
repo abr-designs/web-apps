@@ -1,24 +1,29 @@
 ---
 created_by: Claude (claude-opus-5-5)
 date: 2026-10-23
+modified_by: Claude (claude-opus-5-5) - 2026-10-23
 ---
 
 # Enemy balance
 
 ## Purpose
 
-This page gathers every number that sets how hard a mission is: enemy stats, how many aliens spawn and where, how fast pods join the fight, and how the AI weighs its choices. It records the current values, why they were picked, and the order to try them in when retuning. The code is the source of truth; update this page when you change a value it lists.
+This page gathers every number that sets how hard a mission is: the threat level, enemy stats, how many aliens spawn and where, how fast pods join the fight, and how the AI weighs its choices. It records the current values, why they were picked, and the order to try them in when retuning. The code is the source of truth; update this page when you change a value it lists.
 
 ## Where the knobs live
 
 | Knob | File | Current value |
 | --- | --- | --- |
+| Threat levels: pods, pod size, pool, stat and damage offsets, model size, AI multipliers | `THREAT` in `js/data/threat.js` | see [Threat levels](#threat-levels) |
+| Player's current threat level | `Progress` in `js/view/progress.js` (localStorage `vigil.progress.v1`) | starts at 1 |
+| Squad carried between missions | `Progress.squad`; after a victory Next mission fields only the survivors at their hp; a defeat or forfeit brings the full squad back | survivors only |
+| Healing between victories | `HEAL_PER_WIN` in `js/view/progress.js` | +2 HP per survivor, up to max |
 | Enemy stats, weapon, abilities, AI profile | `js/data/enemies.js` (`ENEMIES`) | see [Enemy roster](#enemy-roster) |
 | Enemy weapon damage and range | `js/data/weapons.js`, `RULES.rangeTables` in `js/data/rules.js` | rifle 3-5, pistol 1-3, stun baton 2-4 |
 | Enemy ability numbers | `js/data/abilities.js` (`markTarget`, `stunLance`, `psiDisorient`) | see [Enemy roster](#enemy-roster) |
-| Pods per mission | `buildMission(seed, { pods })` in `js/sim/map-builder.js` | 3 |
-| Aliens per pod | `placePods` in `js/sim/map-builder.js` (`nextInt(state, 2, 3)`) | 2 or 3 |
-| Enemy type weights | `DEFAULT_ENEMY_POOL` in `js/sim/map-builder.js` | trooper x3, officer, stunLancer, sectoid |
+| Pods per mission | the level's `pods`; `buildMission(seed, { pods })` overrides | 2 to 3 |
+| Aliens per pod | the level's `podSize` | 2 to 3 |
+| Enemy type weights | the level's `pool`; `buildMission(seed, { enemyPool })` overrides | see [Threat levels](#threat-levels) |
 | Pod distance from the squad | `POD_MIN_DISTANCES` in `js/sim/map-builder.js` | 15, then 14, then 12 tiles |
 | Spacing between pod anchors | `POD_SPACING` in `js/sim/map-builder.js` | 6 tiles |
 | Noise reveal radius | `RULES.hearingRadius` | 6 tiles |
@@ -28,7 +33,25 @@ This page gathers every number that sets how hard a mission is: enemy stats, how
 | Aggression ramp | `RESTLESS_TURNS` in `js/sim/ai.js` | 3 |
 | Attack bonuses | `KILL_BONUS`, `STATUS_BONUS`, `DEBUFF_VALUE` in `js/sim/ai.js` | 2, 1, 1.5 |
 
+## Threat levels
+
+Every mission is built at the player's threat level. A new player starts at level 1; a victory raises the level by 1 (up to 5) and a defeat or forfeit lowers it by 1 (down to 1). The loadout screen, the objective panel and the outcome card show the level. Level 4 (`THREAT.baseline`) is the game as it was tuned before threat levels: its aliens, pods and AI weights match the tables below exactly, and `buildMission` without a `threat` option builds at it.
+
+| Level | Name | Pods x size | Pool | HP | Aim | Damage | Size | AI |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Stragglers | 2 x 2 | trooper | -1 | -20 | -1 | 75% | cover 0, flank 0, exposure 0, minHit 1, no overwatch, no debuffs; detection -1 |
+| 2 | Patrols | 3 x 2 | trooper x3, officer | -1 | -12 | -1 | 85% | cover 0.5, flank 0, exposure 0.5, no overwatch, no debuffs |
+| 3 | Garrison | 3 x 2 | trooper x2, officer, stunLancer | 0 | -6 | 0 | 95% | cover 1, flank 0.5, exposure 1 |
+| 4 | Strike force | 3 x 2-3 | trooper x3, officer, stunLancer, sectoid | 0 | 0 | 0 | 100% | baseline |
+| 5 | Vanguard | 3 x 3 | trooper, officer, stunLancer, sectoid | +1 | +5 | 0 | 110% | cover 1, flank 1.5, exposure 1.3 |
+
+- **Stats:** offsets add to each alien's base stats when `buildMission` places it (each stat at least 1). `damage` adds to every weapon hit before graze and crit, with at least 1 left (`unit.damageBonus`). `scale` sizes the alien's model (`unit.scale`).
+- **AI:** the level's `cover`, `flank` and `exposure` multiply a profile's `w1`, `w3` and `w4`; `minHit` replaces the profile's when set. With all three at 0 a level 1 alien scores tiles on shot chance alone, so it walks toward the squad and shoots. A level without `overwatch` closes in where it would have overwatched; one without `debuffs` never casts Mark Target or Mindspin.
+- **Size over 500 seeds:** level 1 averages 4 aliens with 12 total HP and aim 45; level 2, 6 aliens, 19.5 HP, aim 54; level 3, 6 aliens, 27 HP, aim 60; level 4, 7.5 aliens, 37 HP, aim 66; level 5, 9 aliens, 58.5 HP, aim 71.
+
 ## Enemy roster
+
+Base stats, before the threat level's offsets.
 
 | Enemy | HP | Aim | Mobility | Defense / dodge | Weapon | Special | AI |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -41,7 +64,7 @@ Every alien has sight 14 and detection 4, and no armor. Soldiers have 4 or 5 HP 
 
 ## Mission size
 
-A mission has 3 pods of 2 or 3 aliens each, so 6 to 9 aliens against 4 soldiers. Each alien is drawn from `DEFAULT_ENEMY_POOL`, which repeats `trooper` three times: on average half the aliens are troopers and one in six is each of the other types. Repeat an id in the pool to weight it more; pass `enemyPool` or `pods` to `buildMission` to change one mission without touching the defaults.
+At the baseline a mission has 3 pods of 2 or 3 aliens each, so 6 to 9 aliens against 4 soldiers; [Threat levels](#threat-levels) lists the other levels. Each alien is drawn from the level's `pool`; the baseline pool repeats `trooper` three times, so on average half the aliens are troopers and one in six is each of the other types. Repeat an id in the pool to weight it more; pass `enemyPool` or `pods` to `buildMission` to change one mission without touching the levels.
 
 ## Pacing
 
@@ -67,15 +90,15 @@ caster:   { w1: 1.2, w2: 0.8, w3: 0.3, w4: 1.0, minHit: 30 }
 
 ## Current baseline
 
-The last balance pass (plan 0001, revision U-011) ran 400 headless missions with a scripted player bot: it won 49% with a bold policy and 47% with a careful one, and the AI weights were kept as set. The bot harness was a throwaway script and is not in the repo. Plan 0001 marks the weights for a retune once a strategy layer changes squad strength.
+The last balance pass (plan 0001, revision U-011) ran 400 headless missions with a scripted player bot: it won 49% with a bold policy and 47% with a careful one, and the AI weights were kept as set. Those numbers are for level 4. Players found it extremely hard, so threat levels now start new players at level 1 and ramp up with wins; no bot sweep has been run on levels 1 to 3 or 5 yet. The bot harness was a throwaway script and is not in the repo. Plan 0001 marks the weights for a retune once a strategy layer changes squad strength.
 
 Known gap: a restless alien with no path toward the squad (cut off by terrain) still idles; seen in 1 of 200 bot runs.
 
 ## Retune
 
-1. Change one knob at a time, and start with mission size and pacing (pod count, pod size, pool weights, `hearingRadius`), since they move difficulty more than per-unit stats.
-2. Run `node --test "games/vigil/tests/*.test.mjs"` from the repo root. `tests/data.test.mjs` checks the enemy tables; `tests/map-builder.test.mjs` and `tests/ai.test.mjs` pin pod placement and AI choices, so update the expected values when a change is intended.
-3. Play several missions in the browser (`vigil.newMission()` for a fresh seed), or script a bot sweep over many seeds with `buildMission`, `Ai.nextCommand` and `execute`, and compare the win rate with the baseline above.
+1. Change one knob at a time, and start with mission size and pacing (the level's pods, podSize and pool, then `hearingRadius`), since they move difficulty more than per-unit stats. To retune one level, edit its `THREAT.levels` entry; to retune them all, edit `ENEMIES` or `AI_PROFILES`.
+2. Run `node --test "games/vigil/tests/*.test.mjs"` from the repo root. `tests/data.test.mjs` checks the enemy tables; `tests/map-builder.test.mjs` and `tests/ai.test.mjs` pin pod placement and AI choices at the baseline, and `tests/threat.test.mjs` checks every level, so update the expected values when a change is intended.
+3. Play several missions in the browser (`vigil.newMission()` for a fresh seed; set `vigil.progress.level` first to try a level), or script a bot sweep over many seeds with `buildMission`, `Ai.nextCommand` and `execute`, and compare the win rate with the baseline above.
 4. Record the change and the new win rate in the relevant plan's Revision Log, and update the tables on this page.
 
 [`docs/reference/xcom2/enemies.md`](../reference/xcom2/enemies.md) has XCOM 2's enemy stats per difficulty for comparison; none of it is wired into the game.

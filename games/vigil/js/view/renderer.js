@@ -1,5 +1,6 @@
 // Created by Claude (claude-sonnet-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // three.js scene built from a BattleState grid, plus the world-space overlays (move range, cover shields, detection, target line).
 // World scale: 1 unit per tile horizontally, HEIGHT_STEP (0.5) per height level. Tile i = z * width + x occupies [x, x+1] x [z, z+1]
 // (x east, z south), so grid coordinates and world coordinates line up and the map spans (0,0) to (width, depth).
@@ -566,15 +567,19 @@ export class Renderer {
   /**
    * @created Claude (claude-sonnet-5-5) - 2026-10-21
    * @modified Claude (claude-opus-5-5) - 2026-10-22 - glTF model
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - threat scale
    */
   _addUnit(unit) {
     const group = new THREE.Group();
     group.userData.unitId = unit.id;
     const body = new THREE.Mesh(this.unitGeometry, this.unitMaterials[unit.team]);
     body.position.y = UNIT_BODY / 2;
+    body.scale.setScalar(unit.scale ?? 1);
+    body.position.y *= unit.scale ?? 1;
     if (this.assets) {
       body.visible = false;
       const model = new UnitModel(this.assets, lookFor(unit.defId), this.colors);
+      model.root.scale.setScalar(unit.scale ?? 1);
       model.root.traverse((o) => { o.raycast = () => {}; });
       group.add(model.root);
       this.unitModels.set(unit.id, model);

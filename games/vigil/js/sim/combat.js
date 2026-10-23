@@ -1,5 +1,6 @@
 // Created by Claude (claude-sonnet-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // Rolls a hit breakdown into an outcome, applies damage with armor and shred, and handles stray cover hits.
 // Armor model: unit.armor is the base value and unit.shred the points lost, so effective armor is armor - shred.
 // Armor absorbs up to its value from every hit; pierce ignores that many armor points; shred is permanent.
@@ -35,12 +36,17 @@ export function rollOutcome(state, breakdown) {
   return rollShot(state, breakdown).outcome;
 }
 
-// mult scales the base roll (deadeye 1.5, rounded) before the graze halving or crit bonus.
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-export function rollDamage(state, weapon, outcome, { mult = 1 } = {}) {
+// mult scales the base roll (deadeye 1.5, rounded) and bonus (the attacker's threat damage offset) is added after it, with
+// at least 1 left, both before the graze halving or crit bonus.
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - bonus option
+ */
+export function rollDamage(state, weapon, outcome, { mult = 1, bonus = 0 } = {}) {
   if (outcome === 'miss') return 0;
   let damage = nextInt(state, weapon.damage[0], weapon.damage[1]);
   if (mult !== 1) damage = Math.round(damage * mult);
+  if (bonus) damage = Math.max(1, damage + bonus);
   if (outcome === 'graze') return Math.ceil(damage / 2);
   if (outcome === 'crit') return damage + weapon.critDamage;
   return damage;
@@ -142,7 +148,10 @@ function strayCoverHit(state, ctx, breakdown) {
 
 // Full weapon shot. ability is an id or a def; the weapon and damageMult come from its weaponDamage effect.
 // Returns { outcome, roll, damage, absorbed, shredded, killed, coverHit }; damage is hit points lost.
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - attacker damageBonus
+ */
 export function resolve(state, ctx, attacker, target, breakdown, ability) {
   const def = abilityDef(ability);
   const weapon = abilityWeapon(attacker, def);
@@ -161,7 +170,7 @@ export function resolve(state, ctx, attacker, target, breakdown, ability) {
     result.coverHit = strayCoverHit(state, ctx, breakdown);
     return result;
   }
-  const amount = rollDamage(state, weapon, outcome, { mult: weaponEffect(def)?.damageMult ?? 1 });
+  const amount = rollDamage(state, weapon, outcome, { mult: weaponEffect(def)?.damageMult ?? 1, bonus: attacker.damageBonus ?? 0 });
   const hit = applyDamage(state, ctx, target, amount, {
     shred: weapon.shred + passiveShred(attacker),
     pierce: weapon.pierce ?? 0,

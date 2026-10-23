@@ -1,10 +1,12 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // Assembles a plot of 8x8 parcels into one grid and places the squad and the alien pods. Pure and seeded.
 
 import { RULES } from '../data/rules.js';
 import { CLASSES } from '../data/classes.js';
 import { ENEMIES } from '../data/enemies.js';
+import { THREAT, threatLevel, threatOf } from '../data/threat.js';
 import { PARCELS, PROP_CODES } from '../data/parcels.js';
 import { seedState, nextInt, pick } from './rng.js';
 import { createGrid, toIndex, toXZ, isWalkable, placeProp, rebuildAllEdgeCover, DIRS } from './grid.js';
@@ -20,19 +22,24 @@ const PATROL_MIN_STEPS = 3;
 const PATROL_MAX_STEPS = 8;
 
 export const DEFAULT_SQUAD = Object.freeze(['ranger', 'sharpshooter', 'grenadier', 'specialist']);
-export const DEFAULT_ENEMY_POOL = Object.freeze(['trooper', 'trooper', 'trooper', 'officer', 'stunLancer', 'sectoid']);
+export const DEFAULT_ENEMY_POOL = THREAT.levels[THREAT.baseline].pool;
 
 // loadout maps squad ids to one utility item each; it draws no RNG, so the same seed builds the same map for any loadout.
+// threat (a THREAT level, default the baseline) sets the pod count, pod size, enemy pool and alien stat offsets; pods and
+// enemyPool override the level's values. survivors (a { squadId: hp } map, default null for the full squad) builds only those
+// soldiers, each at that hp within 1..max; the map and pods stay the same as for the full squad.
 /**
  * @created Claude (claude-opus-5-5) - 2026-10-21
  * @modified Claude (claude-opus-5-5) - 2026-10-22 - loadout option
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - threat option
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - survivors option
  */
-export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQUAD, enemyPool = DEFAULT_ENEMY_POOL, loadout = defaultLoadout() } = {}) {
+export function buildMission(seed, { plotSize = 3, threat = THREAT.baseline, pods = threatOf(threat).pods, squad = DEFAULT_SQUAD, enemyPool = threatOf(threat).pool, loadout = defaultLoadout(), survivors = null } = {}) {
   const size = plotSize * PARCEL_SIZE;
   const grid = createGrid(size, size);
   const state = {
     version: STATE_VERSION, seed: seed >>> 0, rngState: seedState(seed), turn: 0, activeSide: 'xcom', phase: 'deploy',
-    grid, units: {}, pods: [], squadConcealed: true, outcome: null,
+    grid, units: {}, pods: [], squadConcealed: true, outcome: null, threat: threatLevel(threat),
   };
 
   // Parcels: one spawn parcel in a random corner, the rest drawn from the others, each with a random rotation.
@@ -55,7 +62,10 @@ export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQU
   const items = normalizeLoadout(loadout);
   squad.forEach((classId, k) => {
     const id = `x${k + 1}`;
-    state.units[id] = createUnit(id, 'xcom', classId, CLASSES[classId], squadTiles[k], [items[id] ?? RULES.loadout.defaultItem]);
+    if (survivors && !(id in survivors)) return;
+    const unit = createUnit(id, 'xcom', classId, CLASSES[classId], squadTiles[k], [items[id] ?? RULES.loadout.defaultItem]);
+    if (survivors) unit.hp = Math.max(1, Math.min(unit.stats.hp, survivors[id]));
+    state.units[id] = unit;
   });
 
   const rngState = state.rngState;
@@ -78,6 +88,7 @@ export function buildMission(seed, { plotSize = 3, pods = 3, squad = DEFAULT_SQU
 /** @created Claude (claude-opus-5-5) - 2026-10-22 */
 function placePods(state, seed, squadTiles, podMarkers, pods, enemyPool, minDistance) {
   const grid = state.grid;
+  const level = threatOf(state.threat);
   const farFromSquad = (tile) => squadTiles.every((s) => distance(grid, s, tile) >= minDistance);
   const anchors = [];
   for (const a of shuffle(state, podMarkers.filter(farFromSquad))) {
@@ -91,12 +102,12 @@ function placePods(state, seed, squadTiles, podMarkers, pods, enemyPool, minDist
     const reach = reachableFrom(grid, anchor, PATROL_MAX_STEPS);
     // BFS order puts the anchor first, then its nearest tiles.
     const spots = [...reach.keys()].filter((t) => reach.get(t) <= 2 && farFromSquad(t) && !unitAt(state, t));
-    const memberTiles = spots.slice(0, nextInt(state, 2, 3));
+    const memberTiles = spots.slice(0, nextInt(state, ...level.podSize));
     if (memberTiles.length < 2) throw new Error(`seed ${seed}: no room for pod at tile ${anchor}`);
     const unitIds = memberTiles.map((tile) => {
       const id = `a${String(++alienCount).padStart(2, '0')}`;
       const defId = pick(state, enemyPool);
-      state.units[id] = createUnit(id, 'alien', defId, ENEMIES[defId], tile);
+      state.units[id] = applyThreat(createUnit(id, 'alien', defId, ENEMIES[defId], tile), level);
       return id;
     });
 
@@ -105,6 +116,17 @@ function placePods(state, seed, squadTiles, podMarkers, pods, enemyPool, minDist
     if (patrolRoute.length < 3) throw new Error(`seed ${seed}: no patrol route for pod at tile ${anchor}`);
     state.pods.push({ id: `p${k + 1}`, unitIds, alert: 'unaware', patrolRoute, patrolIndex: 0 });
   });
+}
+
+// The level's stat offsets (each stat at least 1, hp refilled to the new max), damage offset and model scale. A baseline
+// level adds no fields, so its aliens match createUnit exactly. -> unit.
+/** @created Claude (claude-opus-5-5) - 2026-10-23 */
+function applyThreat(unit, level) {
+  for (const [stat, delta] of Object.entries(level.stats)) unit.stats[stat] = Math.max(1, unit.stats[stat] + delta);
+  unit.hp = unit.stats.hp;
+  if (level.damage) unit.damageBonus = level.damage;
+  if (level.scale !== 1) unit.scale = level.scale;
+  return unit;
 }
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */

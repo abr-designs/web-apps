@@ -1,5 +1,6 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // EnemyAI: picks the next alien command, one at a time, so every choice sees the latest state (Enemy turn diagram).
 // Pure: nothing here writes BattleState or draws from the Rng. Ties break on fixed keys (score, then path cost, then tile
 // index or unit id), so the same state always gives the same command without spending an rngState draw.
@@ -11,10 +12,13 @@
 // Aliens know where every living soldier is once their pod is engaged (v1 has no alien-side fog of war).
 // Aggression ramp: an engaged alien whose idleTurns reaches RESTLESS_TURNS (its third engaged turn in a row without a hostile
 // ability) stops overwatching, takes any attack with a hit chance above 0, and otherwise closes on the nearest soldier.
+// Threat level (state.threat, data/threat.js): a named profile's weights are scaled by the level's ai multipliers. A level
+// without overwatch closes in where it would have overwatched, and one without debuffs never picks Mark Target or Mindspin.
 
 import { RULES } from '../data/rules.js';
 import { ABILITIES } from '../data/abilities.js';
 import { ENEMIES } from '../data/enemies.js';
+import { threatLevel, threatOf } from '../data/threat.js';
 import { PHASE, livingUnits, hasStatus } from './state.js';
 import { neighbours8 } from './grid.js';
 import { reachable, stepCost } from './pathfinder.js';
@@ -76,9 +80,25 @@ export function profileOf(unit) {
   return Object.hasOwn(AI_PROFILES, name ?? '') ? name : 'rifleman';
 }
 
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
-function weightsOf(profile) {
-  return typeof profile === 'string' ? AI_PROFILES[profile] : profile;
+// Named profiles tuned per threat level, built once: "level:profile" -> weights.
+const tunedProfiles = new Map();
+
+// A named profile scaled by the state's threat level; a weights object passes through untouched.
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - threat level
+ */
+function weightsOf(state, profile) {
+  if (typeof profile !== 'string') return profile;
+  const key = `${threatLevel(state.threat)}:${profile}`;
+  let w = tunedProfiles.get(key);
+  if (!w) {
+    const base = AI_PROFILES[profile];
+    const ai = threatOf(state.threat).ai;
+    w = Object.freeze({ w1: base.w1 * ai.cover, w2: base.w2, w3: base.w3 * ai.flank, w4: base.w4 * ai.exposure, minHit: ai.minHit ?? base.minHit });
+    tunedProfiles.set(key, w);
+  }
+  return w;
 }
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -178,7 +198,7 @@ function scoreCache(state, unit, cache) {
 //   exposure       sum of every enemy's standardShot hit chance against the unit standing on the tile
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
 export function scoreTile(state, unit, tile, profile = profileOf(unit), cache = {}) {
-  const w = weightsOf(profile);
+  const w = weightsOf(state, profile);
   const { enemies, field } = scoreCache(state, unit, cache);
   if (enemies.length === 0) return 0;
 
@@ -232,7 +252,10 @@ function hasEffect(effects, type) {
 }
 
 // Expected value of one attack in hit points, and whether the profile accepts it. -> { value, acceptable } or null.
-/** @created Claude (claude-opus-5-5) - 2026-10-21 */
+/**
+ * @created Claude (claude-opus-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - threat level debuffs
+ */
 function attackValue(state, unit, abilityId, target, fromTile, w, restless = false) {
   const def = ABILITIES[abilityId];
   if (weaponEffect(def)) {
@@ -247,7 +270,7 @@ function attackValue(state, unit, abilityId, target, fromTile, w, restless = fal
     return { value, acceptable: b.hit >= w.minHit || (restless && b.hit > 0) };
   }
   const debuff = def.effects.find((e) => e.type === 'modifyStat' || e.type === 'applyStatus');
-  if (!debuff || hasStatus(target, debuff.status)) return null;
+  if (!debuff || hasStatus(target, debuff.status) || !threatOf(state.threat).ai.debuffs) return null;
   return { value: DEBUFF_VALUE, acceptable: true };
 }
 
@@ -256,9 +279,10 @@ function attackValue(state, unit, abilityId, target, fromTile, w, restless = fal
 /**
  * @created Claude (claude-opus-5-5) - 2026-10-21
  * @modified Claude (claude-opus-5-5) - 2026-10-22 - restless
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - threat level weights
  */
 function attackOptions(state, unit, profile, cache, melee, restless = false) {
-  const w = weightsOf(profile);
+  const w = weightsOf(state, profile);
   const options = [];
   for (const abilityId of unitDef(unit).abilities) {
     const def = ABILITIES[abilityId];
@@ -297,16 +321,19 @@ function bestTileOf(state, unit, tiles, profile, cache) {
 //   other profiles: (2+ AP) reposition when the best tile beats staying put
 //   then ranged attacks, reload when empty, overwatch, a 1 AP reposition, reload when not full.
 //   Restless (idleTurns >= RESTLESS_TURNS): no overwatch; after the 1 AP reposition, a 1 AP step toward the nearest soldier.
+//   A threat level without overwatch takes the same no-overwatch tail without accepting the restless long shots.
 // -> command or null when the unit cannot usefully act.
 /**
  * @created Claude (claude-opus-5-5) - 2026-10-21
  * @modified Claude (claude-opus-5-5) - 2026-10-22 - aggression ramp
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - threat level overwatch
  */
 export function chooseAction(state, unit, profile = profileOf(unit)) {
   if (!unit || unit.hp <= 0 || unit.ap <= 0) return null;
   const cache = {};
   const self = (abilityId) => ({ type: 'ability', unitId: unit.id, abilityId });
   const restless = (unit.idleTurns ?? 0) >= RESTLESS_TURNS;
+  const closeIn = restless || !threatOf(state.threat).ai.overwatch;
   const meleeAttacks = profile === 'melee' ? attackOptions(state, unit, profile, cache, true, restless) : [];
   const attacks = attackOptions(state, unit, profile, cache, false, restless);
   const here = scoreTile(state, unit, unit.tile, profile, cache);
@@ -318,7 +345,7 @@ export function chooseAction(state, unit, profile = profileOf(unit)) {
   if (unit.ap >= 2) candidates.push(moveCmd);
   candidates.push(...attacks);
   if (unit.ammo === 0) candidates.push(self('reload'));
-  if (restless) candidates.push(moveCmd, () => stepToward(state, unit, scoreCache(state, unit, cache).field, ADJACENT_COST));
+  if (closeIn) candidates.push(moveCmd, () => stepToward(state, unit, scoreCache(state, unit, cache).field, ADJACENT_COST));
   else candidates.push(self('overwatch'), moveCmd);
   candidates.push(self('reload'));
 

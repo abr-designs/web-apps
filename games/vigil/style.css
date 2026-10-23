@@ -205,6 +205,7 @@ svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none
 .outcome-card h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .outcome-card.defeat h1, .outcome-card.forfeit h1 { color: var(--alien); }
 .outcome-card p { margin: 0 0 8px; color: var(--text-muted); }
+.outcome-card .outcome-threat { margin-top: -4px; color: var(--text); letter-spacing: .06em; }
 
 /* Modified by Claude (claude-opus-5-5) - 2026-10-22 */
 /* Plan 0003 Layout B Compact pill (docs/mockups/tactical-ui-layout.html#b) */

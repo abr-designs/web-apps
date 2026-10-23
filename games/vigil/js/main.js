@@ -1,10 +1,13 @@
 // Created by Claude (claude-sonnet-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // Vigil bootstrap and mission loop (plan step 17). Wires the sim hooks, builds or loads a BattleState, builds the view, and drives
 // every command through execute -> lock -> play -> enemy turn -> unlock. The enemy turn pulls EnemyAI commands one at a time.
 // A saved battle resumes on load. Anything else, and New Mission, opens the loadout screen (plan 0002) over the new mission's map;
 // Launch rebuilds that map from the same seed with the chosen loadout and deploys. window.vigil exposes the live parts for console play.
 // The unit models (plan 0004) load before the first build; if they fail, every build draws capsules instead.
+// Every new mission is built at the Progress threat level, which each finished battle steps up (victory) or down, with the
+// soldiers who survived the last victory (Next mission); after a defeat or forfeit New mission brings the full squad back.
 
 import { buildMission } from './sim/map-builder.js';
 import { execute, setHooks, InvalidCommand } from './sim/executor.js';
@@ -18,10 +21,11 @@ import { Renderer } from './view/renderer.js';
 import { CameraRig } from './view/camera.js';
 import { Picker } from './view/picker.js';
 import { EventPlayer } from './view/event-player.js';
-import { Hud } from './view/hud.js';
+import { Hud, threatLabel } from './view/hud.js';
 import { InputController } from './view/input.js';
 import { Fog } from './view/fog.js';
 import { Roster } from './view/roster.js';
+import { Progress } from './view/progress.js';
 import { LoadoutScreen } from './view/loadout-screen.js';
 import { AssetLibrary } from './view/assets.js';
 
@@ -31,10 +35,11 @@ const MAX_AI_COMMANDS = 200; // far above any real turn; stops a misbehaving AI 
 const MAX_SIDE_SWITCHES = 50;
 
 const roster = new Roster();
+const progress = new Progress();
 const saved = load();
 const resuming = Boolean(saved && !saved.outcome);
 // InputController draws its first mode from the state in its constructor, so the opening battle exists before the view does.
-let state = resuming ? saved : buildMission(Date.now() >>> 0, { loadout: roster.loadout() });
+let state = resuming ? saved : buildMission(Date.now() >>> 0, { loadout: roster.loadout(), threat: progress.level, survivors: progress.squad });
 let missionId = 0; // bumped by every new mission so a command still playing from the old one stops touching the page
 
 // Autosave while the battle lasts; a finished battle leaves no save behind.
@@ -71,7 +76,7 @@ hud.onRename((unitId, text) => {
 });
 player.onBattleEnded = (outcome) => {
   clear();
-  hud.showOutcome(outcome, newMission);
+  hud.showOutcome(outcome, newMission, progress.record(outcome, state));
 };
 
 /**
@@ -86,7 +91,7 @@ function buildView(battle) {
 
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
 function refreshHud() {
-  hud.showObjective(OBJECTIVE, livingUnits(state, 'alien').length);
+  hud.showObjective(OBJECTIVE, livingUnits(state, 'alien').length, `${threatLabel(state.threat)} · hostiles remaining`);
   hud.showSquad(state, input.selectedId);
   const selected = input.selected;
   if (selected) hud.showUnit(state, selected, Abilities.abilitiesFor(state, selected));
@@ -182,13 +187,13 @@ function showMap(battle, { built = false } = {}) {
 /** @created Claude (claude-opus-5-5) - 2026-10-22 */
 function openLoadout(seed, { built = false } = {}) {
   const id = ++missionId;
-  showMap(built ? state : buildMission(seed, { loadout: roster.loadout() }), { built });
+  showMap(built ? state : buildMission(seed, { loadout: roster.loadout(), threat: progress.level, survivors: progress.squad }), { built });
   input.lock();
-  rig.focusTile(renderer.tileCenter(state.units.x1.tile), { animate: false });
+  rig.focusTile(renderer.tileCenter(livingUnits(state, 'xcom')[0].tile), { animate: false });
   refreshHud();
   loadoutScreen.open(state, (loadout) => {
     if (id !== missionId) return;
-    startBattle(buildMission(seed, { loadout })).catch((error) => console.error('Vigil: start failed', error));
+    startBattle(buildMission(seed, { loadout, threat: progress.level, survivors: progress.squad })).catch((error) => console.error('Vigil: start failed', error));
   });
 }
 
@@ -203,7 +208,7 @@ async function startBattle(battle, { built = false } = {}) {
 
   if (state.phase === PHASE.deploy) {
     input.lock();
-    rig.focusTile(renderer.tileCenter(state.units.x1.tile), { animate: false });
+    rig.focusTile(renderer.tileCenter(livingUnits(state, 'xcom')[0].tile), { animate: false });
     await play({ type: 'deploy' });
   } else {
     // A loaded battle never replays its TurnStarted; showMap set the banner and concealment light, the objective is set here.
@@ -249,5 +254,5 @@ requestAnimationFrame(frame);
 
 window.vigil = {
   get state() { return state; },
-  renderer, rig, picker, player, hud, input, fog, roster, loadoutScreen, assets, runCommand, newMission,
+  renderer, rig, picker, player, hud, input, fog, roster, progress, loadoutScreen, assets, runCommand, newMission,
 };

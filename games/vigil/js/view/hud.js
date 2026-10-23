@@ -10,6 +10,7 @@
 
 import { RULES } from '../data/rules.js';
 import { WEAPONS } from '../data/weapons.js';
+import { threatLevel, threatOf } from '../data/threat.js';
 import { statValue } from '../sim/state.js';
 
 const FORFEIT_ARM_MS = 3000; // an armed Forfeit button waits this long for the confirming click
@@ -48,6 +49,17 @@ const STATUS_SHORT = { overwatch: 'OW', hunkered: 'HD', stunned: 'STN', aided: '
  */
 export function esc(text) {
   return String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+/** -> 'Threat 2 · Patrols' for a THREAT level. @created Claude (claude-opus-5-5) - 2026-10-23 */
+export function threatLabel(level) {
+  return `Threat ${threatLevel(level)} · ${threatOf(level).name}`;
+}
+
+/** -> the outcome card's line for a { from, to } threat change. @created Claude (claude-opus-5-5) - 2026-10-23 */
+function threatLine({ from, to }) {
+  const verb = to > from ? 'rises to' : to < from ? 'drops to' : 'holds at';
+  return `Threat ${verb} ${to} · ${esc(threatOf(to).name)}`;
 }
 
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -384,8 +396,14 @@ export class Hud {
     this._messageTimer = setTimeout(() => { el.hidden = true; }, MESSAGE_TIME);
   }
 
-  /** End-of-battle overlay with a New mission button; outcome null hides it. @created Claude (claude-opus-5-5) - 2026-10-21 */
-  showOutcome(outcome, onNewMission) {
+  /**
+   * End-of-battle overlay with a Next mission (victory) or New mission button; outcome null hides it. threat { from, to } adds
+   * the threat level change.
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - threat line
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - Next mission label
+   */
+  showOutcome(outcome, onNewMission, threat = null) {
     const el = this.el.outcome;
     if (!outcome) {
       el.hidden = true;
@@ -400,7 +418,8 @@ export class Hud {
       <div class="label">Mission ${win ? 'complete' : 'failed'}</div>
       <h1>${title}</h1>
       <p>${text}</p>
-      <button type="button" class="panel end-turn">New mission</button>
+      ${threat ? `<p class="outcome-threat">${threatLine(threat)}</p>` : ''}
+      <button type="button" class="panel end-turn">${win ? 'Next mission' : 'New mission'}</button>
     </div>`;
     el.querySelector('button').addEventListener('click', () => onNewMission?.());
     el.hidden = false;
