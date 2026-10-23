@@ -59,6 +59,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .viewport { position: fixed; inset: 0 var(--rail) 0 0; overflow: hidden; }
 #viewport { display: block; width: 100%; height: 100%; }
 .unit-bars { position: absolute; inset: 0; pointer-events: none; }
+/* Plan 0004: shown while the unit models load, over the empty canvas. */
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--text-muted); pointer-events: none; }
 
 .squad { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; }
 
@@ -90,7 +92,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .end-turn { width: 160px; height: 52px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 
 .outcome { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 80%, transparent); }
-.outcome[hidden], .loadout[hidden], .turn[hidden], .concealed[hidden], .message[hidden], .breakdown[hidden], .confirm[hidden], .hitbadge[hidden] { display: none; }
+.outcome[hidden], .loadout[hidden], .loading[hidden], .turn[hidden], .concealed[hidden], .message[hidden], .breakdown[hidden], .confirm[hidden], .hitbadge[hidden] { display: none; }
 
 /* Modified by Claude (claude-opus-5-5) - 2026-10-21 */
 /* HUD pieces from docs/mockups/layout.html#c, filled by js/view/hud.js */

@@ -4,6 +4,7 @@
 // every command through execute -> lock -> play -> enemy turn -> unlock. The enemy turn pulls EnemyAI commands one at a time.
 // A saved battle resumes on load. Anything else, and New Mission, opens the loadout screen (plan 0002) over the new mission's map;
 // Launch rebuilds that map from the same seed with the chosen loadout and deploys. window.vigil exposes the live parts for console play.
+// The unit models (plan 0004) load before the first build; if they fail, every build draws capsules instead.
 
 import { buildMission } from './sim/map-builder.js';
 import { execute, setHooks, InvalidCommand } from './sim/executor.js';
@@ -22,6 +23,7 @@ import { InputController } from './view/input.js';
 import { Fog } from './view/fog.js';
 import { Roster } from './view/roster.js';
 import { LoadoutScreen } from './view/loadout-screen.js';
+import { AssetLibrary } from './view/assets.js';
 
 const ENEMY_SPEED = 3;
 const OBJECTIVE = 'Eliminate all hostiles';
@@ -44,6 +46,13 @@ function autosave(battle) {
 
 setHooks({ detection: Detection, reactions: Reactions, abilities: { validate: Abilities.validate, use: Abilities.use }, save: autosave });
 
+const assets = new AssetLibrary();
+const modelsLoaded = await assets.load().then(() => true, (error) => {
+  console.warn('Vigil: unit models failed to load, drawing capsules', error);
+  return false;
+});
+document.getElementById('loading').hidden = true;
+
 const canvas = document.getElementById('viewport');
 const renderer = new Renderer(canvas);
 buildView(state);
@@ -65,9 +74,13 @@ player.onBattleEnded = (outcome) => {
   hud.showOutcome(outcome, newMission);
 };
 
-/** Builds the scene and tints each soldier's ring in its roster slot colour. @created Claude (claude-opus-5-5) - 2026-10-22 */
+/**
+ * Builds the scene and tints each soldier's ring (and model) in its roster slot colour.
+ * @created Claude (claude-opus-5-5) - 2026-10-22
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - unit models
+ */
 function buildView(battle) {
-  renderer.build(battle);
+  renderer.build(battle, { assets: modelsLoaded ? assets : null });
   for (const unit of livingUnits(battle, 'xcom')) renderer.setUnitColor(unit.id, roster.colorOf(unit));
 }
 
@@ -207,12 +220,16 @@ function newMission() {
 }
 
 let last = performance.now();
-/** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+/**
+ * @created Claude (claude-sonnet-5-5) - 2026-10-21
+ * @modified Claude (claude-opus-5-5) - 2026-10-22 - unit model clips
+ */
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
   rig.update(dt);
   input.update(dt);
+  renderer.update(player.playing ? dt * player.speed : dt); // clips keep pace with fast enemy turns
   if (state) hud.updateUnitBars(state, (unitId) => player.project(unitId), (unit) => player.shownHp(unit), player.shows, player.projectAnchor);
   renderer.render();
   requestAnimationFrame(frame);
@@ -224,5 +241,5 @@ requestAnimationFrame(frame);
 
 window.vigil = {
   get state() { return state; },
-  renderer, rig, picker, player, hud, input, fog, roster, loadoutScreen, runCommand, newMission,
+  renderer, rig, picker, player, hud, input, fog, roster, loadoutScreen, assets, runCommand, newMission,
 };

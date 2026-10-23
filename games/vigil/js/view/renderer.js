@@ -8,6 +8,8 @@
 import * as THREE from '../../vendor/three.module.min.js';
 import { PROPS } from '../data/props.js';
 import { toXZ, toIndex, DIRS } from '../sim/grid.js';
+import { lookFor } from '../data/looks.js';
+import { UnitModel } from './unit-model.js';
 
 export const HEIGHT_STEP = 0.5;
 const BASE_DEPTH = 0.5;         // slab thickness below height 0, so cliffs show a face
@@ -77,6 +79,8 @@ export class Renderer {
     this.terrainMeshes = [];
     this.propObjects = new Map(); // tile -> Group
     this.unitObjects = new Map(); // unit id -> Group
+    this.unitModels = new Map();  // unit id -> UnitModel (plan 0004); empty when built without assets
+    this.assets = null;           // the AssetLibrary of the last build, or null for capsules
     this.layers = {};
     for (const name of ['fog', 'move', 'path', 'cover', 'detection', 'target']) {
       this.layers[name] = new THREE.Group();
@@ -96,12 +100,18 @@ export class Renderer {
     this._resize();
   }
 
-  /** Rebuilds terrain, props and units from a BattleState. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-  build(state) {
+  /**
+   * Rebuilds terrain, props and units from a BattleState. With a loaded AssetLibrary units get glTF models; without, capsules.
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - unit models
+   */
+  build(state, { assets = null } = {}) {
     this.clearOverlays();
     this._clearLayer('fog');
     this._fogTiles = null;
     this.setSelected(null);
+    this._disposeModels();
+    this.assets = assets;
     this._disposeGroup(this.terrainGroup);
     this._disposeGroup(this.propGroup);
     this._disposeGroup(this.unitGroup);
@@ -122,14 +132,29 @@ export class Renderer {
     return this.unitObjects.get(unitId);
   }
 
-  /** Snaps every unit object to its state tile and visibility (after load, or when tweens finish). @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /** The unit's UnitModel, or null when built without assets. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  unitModel(unitId) {
+    return this.unitModels.get(unitId) ?? null;
+  }
+
+  /**
+   * Snaps every unit object to its state tile and visibility (after load, or when tweens finish), and its model to the base pose its statuses call for.
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - base pose
+   */
   syncUnits(state) {
     for (const unit of Object.values(state.units)) {
       const object = this.unitObjects.get(unit.id);
       if (!object) continue;
       this.tileCenter(unit.tile, object.position);
       object.visible = unit.hp > 0;
+      this.unitModels.get(unit.id)?.setBasePose(unit.statuses);
     }
+  }
+
+  /** Advances the clips and facing of every shown unit model; hidden ones (dead or fogged) pause. @created Claude (claude-opus-5-5) - 2026-10-22 */
+  update(dt) {
+    for (const [unitId, model] of this.unitModels) if (this.unitObjects.get(unitId)?.visible) model.update(dt);
   }
 
   /** Middle of the tile on its terrain top surface. Pass target to avoid an allocation. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -257,10 +282,15 @@ export class Renderer {
     layer.add(mesh);
   }
 
-  /** Gives one unit its own ring colour (soldier slot colours from the Roster). @created Claude (claude-opus-5-5) - 2026-10-22 */
+  /**
+   * Gives one unit its own ring colour (soldier slot colours from the Roster), and its model's trim the same colour.
+   * @created Claude (claude-opus-5-5) - 2026-10-22
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - model trim
+   */
   setUnitColor(unitId, color) {
     const object = this.unitObjects.get(unitId);
     if (!object || !color) return;
+    this.unitModels.get(unitId)?.setTrim(color);
     let material = this.unitRingMaterials.get(unitId);
     if (!material) {
       material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
@@ -393,9 +423,17 @@ export class Renderer {
     this.setSelected(null);
     this._disposeGroup(this.terrainGroup);
     this._disposeGroup(this.propGroup);
+    this._disposeModels();
     this._disposeGroup(this.unitGroup);
     for (const material of this.unitRingMaterials.values()) material.dispose();
     this.webgl.dispose();
+  }
+
+  // Resolves any clip a caller still awaits (a death mid-play when a new mission builds) and frees each model's own materials.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _disposeModels() {
+    for (const model of this.unitModels.values()) model.dispose();
+    this.unitModels.clear();
   }
 
   // Geometry and materials reused across builds.
@@ -523,12 +561,24 @@ export class Renderer {
     this.propObjects.set(tile, group);
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  // With assets the capsule stays as an invisible hitbox (raycasts still test hidden meshes), so picking never walks the
+  // skinned model; the model's meshes opt out of raycasts.
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - glTF model
+   */
   _addUnit(unit) {
     const group = new THREE.Group();
     group.userData.unitId = unit.id;
     const body = new THREE.Mesh(this.unitGeometry, this.unitMaterials[unit.team]);
     body.position.y = UNIT_BODY / 2;
+    if (this.assets) {
+      body.visible = false;
+      const model = new UnitModel(this.assets, lookFor(unit.defId), this.colors);
+      model.root.traverse((o) => { o.raycast = () => {}; });
+      group.add(model.root);
+      this.unitModels.set(unit.id, model);
+    }
     const ring = new THREE.Mesh(this.ringGeometry, this.ringMaterials[unit.team]);
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.02;

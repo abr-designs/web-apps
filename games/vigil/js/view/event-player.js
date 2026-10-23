@@ -8,6 +8,8 @@
 // Optional hud methods used: showTurn, showConcealed, showMessage, updateUnitBars. Every call is skipped when hud is null.
 // Optional getState (a function returning the BattleState) lets the player find pod units and refresh hud unit bars.
 // Optional fog (plan 0003) refreshes after every step and kill from the drawn tiles and HP, since the sim state is already final.
+// Unit models (plan 0004), when the renderer has them: steps face and walk, shots face the target and play their clip with the tracer
+// leaving the muzzle, damage plays hit, death plays before the fade, and statuses set the base pose. Every call skips a capsule unit.
 
 import * as THREE from '../../vendor/three.module.min.js';
 import { EVENT } from '../sim/events.js';
@@ -19,12 +21,15 @@ const TRACER_TIME = 0.18;
 const TRACER_LENGTH = 0.9;
 const SHAKE_TIME = 0.22;
 const DEATH_TIME = 0.55;
+const DEATH_CLIP = 0.8;      // seconds of the Death_A clip a unit model plays before the fade
 const FLY_TIME = 1.1;
 const FLY_RISE = 40;         // px a flyover climbs
 const FLY_STACK = 20;        // px between flyovers on the same anchor
 const HEAD = 1.35;           // world height of the anchor above a unit's feet
 const MUZZLE = 0.7;          // world height tracers start and end at
 const FOCUS_SETTLE = 0.3;    // seconds to let the camera ease after a focus
+// One-shot clip per ability that hits (UnitModel logical names); every other shot plays 'fire'.
+const SHOT_CLIPS = Object.freeze({ slash: 'melee', stunLance: 'stab', pistolShot: 'pistol' });
 const STYLE_ID = 'vigil-event-player-style';
 const STYLE = `
 .vigil-fly-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 6; }
@@ -66,6 +71,7 @@ export class EventPlayer {
     this._flyCount = new Map(); // anchor key -> flyovers alive on it
     this._hp = new Map();       // unit id -> hit points as of the last damage or heal event played; empty when idle
     this._tiles = new Map();    // unit id -> tile it is drawn on while its steps play; empty when idle
+    this._walking = new Set();  // unit ids whose models walk; settled before any other event and at batch end
     this._hpOf = (unit) => this.shownHp(unit);
     this._tileOf = (unit) => this.shownTile(unit);
     this._alive = (unit) => this.shownHp(unit) > 0;
@@ -109,7 +115,11 @@ export class EventPlayer {
     };
   }
 
-  /** Plays events in order. Calls queue, so overlapping play() calls never interleave. Resolves when the last one is done. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /**
+   * Plays events in order. Calls queue, so overlapping play() calls never interleave. Resolves when the last one is done.
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - unit models settle and take their base poses
+   */
   play(events) {
     const run = async () => {
       this.playing = true;
@@ -122,6 +132,7 @@ export class EventPlayer {
             console.warn('EventPlayer: unknown event type', event.type, event);
             continue;
           }
+          this._settle(event);
           try {
             await handler(event);
           } catch (error) {
@@ -129,6 +140,8 @@ export class EventPlayer {
           }
         }
       } finally {
+        this._settle(null);
+        this._refreshPoses();
         this._hp.clear();
         this._tiles.clear();
         this._refreshFog();
@@ -147,11 +160,16 @@ export class EventPlayer {
     this.speed = Math.max(0.1, Number(multiplier) || 1);
   }
 
-  /** Space: finishes the running tweens and plays the rest of the current play() batch instantly. No effect while idle. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /**
+   * Space: finishes the running tweens and clips and plays the rest of the current play() batch instantly. No effect while idle.
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - unit model clips
+   */
   skip() {
     if (!this.playing) return;
     this.skipping = true;
     for (const tween of [...this._active]) this._finish(tween);
+    for (const model of this.renderer.unitModels?.values() ?? []) model.finish();
   }
 
   /** Screen position (px, relative to the canvas) above a unit's head, or null when off screen or unknown. For hud unit bars. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -196,13 +214,16 @@ export class EventPlayer {
   /**
    * @created Claude (claude-sonnet-5-5) - 2026-10-21
    * @modified Claude (claude-opus-5-5) - 2026-10-22 - unseen steps snap, fog
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - unit models face and walk
    */
   async _onUnitStepped({ unitId, from, to }) {
     const object = this.renderer.unitObject(unitId);
     if (!object) return;
+    const model = this.renderer.unitModel?.(unitId) ?? null;
     const a = this.renderer.tileCenter(from);
     const b = this.renderer.tileCenter(to);
     if (this._unseenStep(unitId, from, to)) {
+      model?.face(b, { instant: true });
       object.position.copy(b);
       this._tiles.set(unitId, to);
       this._refreshFog();
@@ -210,9 +231,16 @@ export class EventPlayer {
     }
     if (this.fog && this.getState?.()?.units[unitId]?.team !== 'xcom') this.renderer.setUnitShown(unitId, true);
     this._focus(b);
+    // A model's walk clip carries its own bob, so only a capsule hops.
+    const hop = model ? 0 : HOP;
+    if (model) {
+      model.face(b, { instant: this.skipping });
+      model.walk();
+      this._walking.add(unitId);
+    }
     await this._tween(STEP_TIME, (t) => {
       object.position.lerpVectors(a, b, t);
-      object.position.y += Math.sin(Math.PI * t) * HOP;
+      object.position.y += Math.sin(Math.PI * t) * hop;
     });
     object.position.copy(b);
     this._tiles.set(unitId, to);
@@ -228,19 +256,24 @@ export class EventPlayer {
   /**
    * @created Claude (claude-sonnet-5-5) - 2026-10-21
    * @modified Claude (claude-opus-5-5) - 2026-10-22 - hidden shooters
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - shooter model faces, plays its clip, tracer from the muzzle
    */
-  async _onShotResolved({ attackerId, targetId, result }) {
+  async _onShotResolved({ attackerId, targetId, abilityId, result }) {
     const attacker = this.renderer.unitObject(attackerId);
     const target = this.renderer.unitObject(targetId);
+    const model = this.renderer.unitModel?.(attackerId) ?? null;
     if (attacker && target && !attacker.visible) {
+      model?.face(target.position, { instant: true });
       this._focus(target.position);
       await this._wait(FOCUS_SETTLE);
     } else if (attacker && target) {
+      // The clip starts with the camera ease, so the weapon is up by the time the tracer leaves its muzzle.
+      model?.face(target.position, { instant: this.skipping });
+      if (model) this._playClip(model, SHOT_CLIPS[abilityId] ?? 'fire');
       this._focus(attacker.position.clone().lerp(target.position, 0.5));
       await this._wait(FOCUS_SETTLE);
-      const from = attacker.position.clone();
+      const from = model ? model.muzzleWorld() : attacker.position.clone().setY(attacker.position.y + MUZZLE);
       const to = target.position.clone();
-      from.y += MUZZLE;
       to.y += MUZZLE;
       if (result === 'miss') {
         // A miss flies wide of the target, past it.
@@ -257,9 +290,14 @@ export class EventPlayer {
     }
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - hit clip
+   */
   async _onUnitDamaged({ unitId, amount, armorAbsorbed = 0, hp }) {
     const object = this.renderer.unitObject(unitId);
+    const model = this.renderer.unitModel?.(unitId) ?? null;
+    if (model && object?.visible) this._playClip(model, 'hit');
     this._hp.set(unitId, hp);
     const text = amount > 0 ? `-${amount}` : 'Blocked';
     this._flyUnit(unitId, armorAbsorbed > 0 ? `${text} (${armorAbsorbed} armor)` : text, 'dmg');
@@ -276,10 +314,21 @@ export class EventPlayer {
   }
 
   // Materials are shared per team, so the fade runs on clones that are swapped back before the unit is hidden.
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  // A model plays its death clip first. The wait runs on the tween clock, which keeps going in a background tab where the frame
+  // loop that drives clips stops, then finish() lands the clip on its last frame (a hidden model never advances at all).
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - death clip before the fade
+   */
   async _onUnitKilled({ unitId }) {
     const object = this.renderer.unitObject(unitId);
     if (!object) return;
+    const model = this.renderer.unitModel?.(unitId) ?? null;
+    if (model) {
+      model.play('death');
+      if (object.visible) await this._wait(DEATH_CLIP);
+      model.finish();
+    }
     const baseY = object.position.y;
     const originals = [];
     object.traverse((o) => {
@@ -313,15 +362,23 @@ export class EventPlayer {
     await this._wait(0.2);
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - base pose
+   */
   async _onStatusApplied({ unitId, status }) {
+    this._refreshPose(unitId);
     this._flyUnit(unitId, status.charAt(0).toUpperCase() + status.slice(1), 'info');
     this._refreshBars();
     await this._wait(0.15);
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
-  async _onStatusExpired() {
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - base pose
+   */
+  async _onStatusExpired({ unitId }) {
+    this._refreshPose(unitId);
     this._refreshBars();
   }
 
@@ -357,14 +414,22 @@ export class EventPlayer {
     await Promise.all([this._flash(origin, radius + 0.5, 0.45), burst]);
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - base pose
+   */
   async _onOverwatchSet({ unitId }) {
+    this._refreshPose(unitId);
     this._flyUnit(unitId, 'Overwatch', 'info');
     await this._wait(0.25);
   }
 
-  /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
+  /**
+   * @created Claude (claude-sonnet-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-22 - base pose
+   */
   async _onOverwatchTriggered({ unitId }) {
+    this._refreshPose(unitId);
     const object = this.renderer.unitObject(unitId);
     if (object?.visible) this._focus(object.position);
     this._flyUnit(unitId, 'Overwatch', 'crit');
@@ -591,6 +656,36 @@ export class EventPlayer {
     for (const e of events) {
       if (e.type === EVENT.UnitStepped && !this._tiles.has(e.unitId)) this._tiles.set(e.unitId, e.from);
     }
+  }
+
+  // Starts a one-shot clip without waiting on it; while skipping it jumps straight to its end.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _playClip(model, name) {
+    const done = model.play(name);
+    if (this.skipping) model.finish();
+    return done;
+  }
+
+  // Walking models go back to their base pose before any event other than their own next step; null settles them all.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _settle(event) {
+    for (const unitId of [...this._walking]) {
+      if (event?.type === EVENT.UnitStepped && event.unitId === unitId) continue;
+      this.renderer.unitModel(unitId)?.settle();
+      this._walking.delete(unitId);
+    }
+  }
+
+  // The state is final before playback starts, so a status event's pose is the unit's pose after the batch.
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _refreshPose(unitId) {
+    const unit = this.getState?.()?.units[unitId];
+    if (unit) this.renderer.unitModel?.(unitId)?.setBasePose(unit.statuses);
+  }
+
+  /** @created Claude (claude-opus-5-5) - 2026-10-22 */
+  _refreshPoses() {
+    for (const unitId of this.renderer.unitModels?.keys() ?? []) this._refreshPose(unitId);
   }
 
   /** @created Claude (claude-opus-5-5) - 2026-10-22 */
