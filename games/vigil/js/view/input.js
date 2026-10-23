@@ -6,7 +6,7 @@
 // the same ability key confirms, and a second click on the armed tile only re-arms it. Hover draws the move path and the hit badge.
 // Every command goes through validate first; a rejected one shows its reason and keeps the mode.
 // Keys: Tab / Shift+Tab next soldier (next target while targeting), 1-9 abilities (the same key again confirms), Enter confirm,
-// Esc or right-click cancel, Backspace end turn, Q / E rotate, WASD pan, Space skip playback. The wheel zoom lives in CameraRig.
+// Esc or right-click cancel, Backspace end turn, Q / E rotate, WASD or edge pan, Space skip playback. The wheel zoom lives in CameraRig.
 // main owns the command loop: onCommand(cmd) executes, calls lock(), plays the events and calls unlock().
 
 import { ABILITIES } from '../data/abilities.js';
@@ -20,6 +20,7 @@ import { squadVisible, tileDistance } from '../sim/visibility.js';
 import { abilitiesFor, validTargets, meleeTiles } from '../sim/abilities.js';
 
 const PAN_SPEED = 14; // tiles per second
+const EDGE_MARGIN = 12; // px from a window edge where the mouse scrolls the camera
 const CONFIRM_NOTE = 'Click to arm, then confirm below or press Enter';
 const ALL_EDGES = [0, 1, 2, 3];
 
@@ -481,6 +482,7 @@ export class InputController {
     this.reach = new Map();  // selected soldier's affordable move tiles (apCost <= ap)
     this.abilities = [];     // abilitiesFor the selected soldier, in hud row order
     this.held = new Set();   // WASD keys down
+    this.edge = null;        // { x, y } mouse position in the window while it is inside, for edge scrolling
     this.modeName = null;
     this.mode = null;
     this.data = {};
@@ -493,9 +495,15 @@ export class InputController {
       this._key({ key: 'Escape', shiftKey: false, preventDefault() {} });
     };
     this._onLeave = () => { if (INTERACTIVE.has(this.modeName)) this.mode.pointerMove(this, null, this.data); };
+    // Tracked on the window, so the HUD panels along the edges still scroll the camera.
+    this._onWindowPointer = (e) => { this.edge = e.pointerType === 'mouse' ? { x: e.clientX, y: e.clientY } : null; };
+    this._onWindowLeave = () => { this.edge = null; };
     this._onKeyDown = (e) => this._keyDown(e);
     this._onKeyUp = (e) => this.held.delete(e.key.toLowerCase());
-    this._onBlur = () => this.held.clear();
+    this._onBlur = () => {
+      this.held.clear();
+      this.edge = null;
+    };
     el.addEventListener('pointermove', this._onPointerMove);
     el.addEventListener('click', this._onClick);
     el.addEventListener('contextmenu', this._onContextMenu);
@@ -503,6 +511,8 @@ export class InputController {
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
     window.addEventListener('blur', this._onBlur);
+    window.addEventListener('pointermove', this._onWindowPointer);
+    document.documentElement.addEventListener('pointerleave', this._onWindowLeave);
 
     hud.onAbility((id) => this.chooseAbility(id));
     hud.onEndTurn(() => this.endTurn());
@@ -543,8 +553,13 @@ export class InputController {
     this.setMode(this.state.phase === PHASE.playerTurn ? 'animating' : 'locked');
   }
 
-  /** Keeps the selected soldier when it has AP, else selects the next one that does, else Idle. Stays Locked outside the player turn. @created Claude (claude-opus-5-5) - 2026-10-21 */
-  unlock() {
+  /**
+   * Keeps the selected soldier when it has AP, else selects the next one that does, else Idle. Stays Locked outside the player turn.
+   * focus moves the camera onto a kept soldier too (after an enemy turn).
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - focus option
+   */
+  unlock({ focus = false } = {}) {
     const state = this.state;
     if (state.phase !== PHASE.playerTurn) {
       this.setMode('locked');
@@ -552,7 +567,7 @@ export class InputController {
     }
     const current = this.selected;
     if (current && current.hp > 0 && current.ap > 0) {
-      this.select(current.id, { focus: false });
+      this.select(current.id, { focus });
       return;
     }
     const next = livingUnits(state, 'xcom').find((u) => u.ap > 0);
@@ -647,12 +662,24 @@ export class InputController {
     this.rig.focusTile(this.renderer.tileCenter(tile));
   }
 
-  /** Call every frame with elapsed seconds: WASD pan. @created Claude (claude-opus-5-5) - 2026-10-21 */
+  /**
+   * Call every frame with elapsed seconds: WASD and edge pan.
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - edge scrolling
+   */
   update(dt) {
-    if (this.held.size === 0) return;
-    const step = PAN_SPEED * dt;
     const h = this.held;
-    this.rig.pan((h.has('d') ? step : 0) - (h.has('a') ? step : 0), (h.has('s') ? step : 0) - (h.has('w') ? step : 0));
+    let dx = (h.has('d') ? 1 : 0) - (h.has('a') ? 1 : 0);
+    let dz = (h.has('s') ? 1 : 0) - (h.has('w') ? 1 : 0);
+    if (this.edge) {
+      if (this.edge.x < EDGE_MARGIN) dx = -1;
+      else if (this.edge.x > window.innerWidth - EDGE_MARGIN) dx = 1;
+      if (this.edge.y < EDGE_MARGIN) dz = -1;
+      else if (this.edge.y > window.innerHeight - EDGE_MARGIN) dz = 1;
+    }
+    if (dx === 0 && dz === 0) return;
+    const step = PAN_SPEED * dt;
+    this.rig.pan(dx * step, dz * step);
   }
 
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -665,6 +692,8 @@ export class InputController {
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
     window.removeEventListener('blur', this._onBlur);
+    window.removeEventListener('pointermove', this._onWindowPointer);
+    document.documentElement.removeEventListener('pointerleave', this._onWindowLeave);
   }
 
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */

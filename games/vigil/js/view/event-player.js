@@ -217,6 +217,7 @@ export class EventPlayer {
    * @created Claude (claude-sonnet-5-5) - 2026-10-21
    * @modified Claude (claude-opus-5-5) - 2026-10-22 - unseen steps snap, fog
    * @modified Claude (claude-opus-5-5) - 2026-10-22 - unit models face and walk
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - camera follows the unit through the step
    */
   async _onUnitStepped({ unitId, from, to }) {
     const object = this.renderer.unitObject(unitId);
@@ -243,6 +244,7 @@ export class EventPlayer {
     await this._tween(STEP_TIME, (t) => {
       object.position.lerpVectors(a, b, t);
       object.position.y += Math.sin(Math.PI * t) * hop;
+      if (!this.skipping) this.rig.focusTile(object.position);
     });
     object.position.copy(b);
     this._tiles.set(unitId, to);

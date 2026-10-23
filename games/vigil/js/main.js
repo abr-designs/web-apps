@@ -104,13 +104,17 @@ async function play(cmd) {
 /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
 async function runCommand(cmd) {
   const id = missionId;
+  let refocus = false;
   try {
     const events = execute(state, cmd);
     input.lock();
     await player.play(events);
     if (id !== missionId) return;
     refreshHud();
-    if (state.phase === PHASE.enemyTurn) await runEnemyTurn(id);
+    if (state.phase === PHASE.enemyTurn) {
+      await runEnemyTurn(id);
+      refocus = true;
+    }
   } catch (error) {
     if (error instanceof InvalidCommand) {
       hud.showMessage(error.reason);
@@ -118,13 +122,17 @@ async function runCommand(cmd) {
     }
     console.error('Vigil: command failed', cmd, error);
   }
-  if (id === missionId) unlock();
+  if (id === missionId) unlock({ focus: refocus });
 }
 
-/** Fresh fog for the settled state, then the input mode. @created Claude (claude-opus-5-5) - 2026-10-22 */
-function unlock() {
+/**
+ * Fresh fog for the settled state, then the input mode. focus brings the camera back to the squad after an enemy turn.
+ * @created Claude (claude-opus-5-5) - 2026-10-22
+ * @modified Claude (claude-opus-5-5) - 2026-10-23 - focus option
+ */
+function unlock({ focus = false } = {}) {
   fog.refresh(state);
-  input.unlock();
+  input.unlock({ focus });
 }
 
 // Alien commands one at a time at speed 3, then endTurn (the executor never ends the alien side itself).
@@ -207,7 +215,7 @@ async function startBattle(battle, { built = false } = {}) {
       await runEnemyTurn(id);
     }
   }
-  if (id === missionId) unlock();
+  if (id === missionId) unlock({ focus: true });
 }
 
 /**

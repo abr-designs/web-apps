@@ -63,7 +63,7 @@ Modes in `js/view/input.js`, each `{ enter, exit, pointerMove, click, key }`:
 | `animating` | the player's own command is playing |
 | `locked` | enemy turn, loadout screen or battle over |
 
-Clicks arm a tile or target and show the confirm bar; the confirm button, Enter, or the same ability key executes. Keys: Tab / Shift+Tab next soldier or target, 1-9 abilities, Enter confirm, Esc or right-click back, Backspace end turn, Q / E rotate, WASD pan, wheel zoom, Space skip.
+Clicks arm a tile or target and show the confirm bar; the confirm button, Enter, or the same ability key executes. Keys: Tab / Shift+Tab next soldier or target, 1-9 abilities, Enter confirm, Esc or right-click back, Backspace end turn, Q / E rotate, WASD or mouse at a screen edge pan, wheel zoom, Space skip. The camera follows a walking unit and returns to the selected soldier when an enemy turn ends.
 
 ## HUD
 
