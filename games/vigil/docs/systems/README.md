@@ -31,6 +31,7 @@ The one rule that holds everything together: **only `execute(state, cmd)` in `js
 | [abilities-and-combat.md](abilities-and-combat.md) | Ability definitions, targeting, effects, hit chance, damage, armor, explosions | `data/abilities.js`, `sim/abilities.js`, `sim/effects.js`, `sim/hit.js`, `sim/combat.js`, `data/weapons.js`, `data/rules.js` |
 | [map-and-movement.md](map-and-movement.md) | Grid, props, parcels, mission generation, pathfinding, cover, line of sight | `sim/grid.js`, `sim/map-builder.js`, `sim/pathfinder.js`, `sim/cover.js`, `sim/visibility.js`, `data/parcels.js`, `data/props.js` |
 | [detection-reactions-ai.md](detection-reactions-ai.md) | Concealment, pods, scamper, overwatch, enemy AI | `sim/detection.js`, `sim/reactions.js`, `sim/ai.js`, `data/enemies.js` |
+| [enemy-balance.md](enemy-balance.md) | Every difficulty knob: enemy stats, mission size, pod pacing, AI weights, the last balance baseline and how to retune | `data/enemies.js`, `sim/map-builder.js`, `sim/ai.js`, `data/rules.js` |
 | [units-and-loadout.md](units-and-loadout.md) | Soldier classes, enemy types, loadout rules, roster names and colours, loadout screen | `data/classes.js`, `data/enemies.js`, `sim/loadout.js`, `view/roster.js`, `view/loadout-screen.js` |
 | [view-and-input.md](view-and-input.md) | Mission loop, renderer, camera, picker, fog, event playback, HUD, input modes | `main.js`, `view/renderer.js`, `view/camera.js`, `view/picker.js`, `view/fog.js`, `view/event-player.js`, `view/hud.js`, `view/input.js` |
 | [unit-models.md](unit-models.md) | Rigged character models, gear, animation clips, tints | `data/looks.js`, `view/assets.js`, `view/unit-model.js`, `assets/models/` |
@@ -41,6 +42,7 @@ The one rule that holds everything together: **only `execute(state, cmd)` in `js
 | --- | --- |
 | Change a number (aim, damage, cover bonus, AP) | `js/data/rules.js`, `js/data/weapons.js`, `js/data/classes.js`, `js/data/enemies.js` |
 | Add or change an ability | [abilities-and-combat.md](abilities-and-combat.md#extend) |
+| Make missions harder or easier | [enemy-balance.md](enemy-balance.md#retune) |
 | Add a soldier class or enemy | [units-and-loadout.md](units-and-loadout.md#extend) |
 | Add a new kind of event the view animates | [sim-core.md](sim-core.md#add-an-event) |
 | Add a new command type | [sim-core.md](sim-core.md#add-a-command) |
