@@ -200,7 +200,8 @@ export function collectDev(prs, run, workDir) {
           for (const file of files) {
             const dest = path.join(workDir, `pr-${n}`, file);
             fs.mkdirSync(path.dirname(dest), { recursive: true });
-            fs.writeFileSync(dest, run(['show', `${pr.headRefOid}:${file}`], { buffer: true }));
+            // --filters runs the LFS smudge filter, so tracked binaries land as content rather than pointer files.
+            fs.writeFileSync(dest, run(['cat-file', '--filters', `${pr.headRefOid}:${file}`], { buffer: true })); // [Claude 2026-10-23]
           }
         }
       }
