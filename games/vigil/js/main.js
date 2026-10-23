@@ -33,6 +33,8 @@ const ENEMY_SPEED = 3;
 const OBJECTIVE = 'Eliminate all hostiles';
 const MAX_AI_COMMANDS = 200; // far above any real turn; stops a misbehaving AI from hanging the page
 const MAX_SIDE_SWITCHES = 50;
+const UI_DESIGN_SIZE = { width: 1280, height: 760 }; // window the HUD is laid out for at --ui 1
+const UI_MIN_SCALE = { fine: 0.55, coarse: 0.75 };   // touch screens pack more CSS px per inch, so they stop shrinking sooner
 
 const roster = new Roster();
 const progress = new Progress();
@@ -48,6 +50,16 @@ function autosave(battle) {
   if (battle.outcome) clear();
   else save(battle);
 }
+
+// Sets --ui, the HUD zoom: below the design size the HUD shrinks to fit, down to a floor that keeps text and touch targets usable.
+/** @created Claude (claude-opus-5-5) - 2026-10-23 */
+function scaleUi() {
+  const fit = Math.min(window.innerWidth / UI_DESIGN_SIZE.width, window.innerHeight / UI_DESIGN_SIZE.height, 1);
+  const floor = window.matchMedia('(pointer: coarse)').matches ? UI_MIN_SCALE.coarse : UI_MIN_SCALE.fine;
+  document.documentElement.style.setProperty('--ui', Math.max(fit, floor).toFixed(3));
+}
+scaleUi();
+window.addEventListener('resize', scaleUi);
 
 setHooks({ detection: Detection, reactions: Reactions, abilities: { validate: Abilities.validate, use: Abilities.use }, save: autosave });
 

@@ -3,6 +3,8 @@
 // Modified by Claude (claude-opus-5-5) - 2026-10-23
 // Tactical camera: a pitched perspective camera orbiting a focus point. Yaw snaps in quarter turns, everything follows its target with SmoothDamp, so a moving target never makes the camera jump.
 // World units: x east, z south, 1 unit per tile (see renderer.js). Yaw 0 puts the camera south of the focus looking north.
+// Press and drag: one finger or the left mouse button pans, two fingers twist to rotate and pinch to zoom, the middle button
+// rotates. A rotation snaps to the nearest quarter turn on release. A press that travels under DRAG_THRESHOLD stays a tap (click).
 
 import * as THREE from '../../vendor/three.module.min.js';
 
@@ -14,6 +16,9 @@ const MAX_DISTANCE = 36;
 const WHEEL_SENSITIVITY = 0.0015; // distance scale per wheel delta unit (one notch is about 100)
 const FOCUS_SMOOTH = 0.25;        // seconds SmoothDamp takes to roughly catch the focus target
 const ORBIT_SMOOTH = 0.15;        // the same for yaw and zoom
+const QUARTER = Math.PI / 2;
+const DRAG_THRESHOLD = 8;         // px a press travels before it counts as a drag
+const MOUSE_ROTATE_SPEED = 0.01;  // radians per px of middle-button drag
 
 export class CameraRig {
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -36,6 +41,20 @@ export class CameraRig {
       this.zoom(e.deltaY);
     };
     domElement.addEventListener('wheel', this._onWheel, { passive: false });
+
+    this.pointers = new Map(); // pointerId -> { x, y } for every press on the canvas
+    this.dragged = false;      // the current (or last) press became a drag; InputController drops its click
+    this._press = null;        // { x, y } where the first pointer went down
+    this._last = null;         // gesture reading at the previous move: { x, y, angle, spread }
+    this._rotating = false;    // middle-button drag
+    this._twisted = false;     // yaw moved during this gesture, so release snaps it
+    this._onPointerDown = (e) => this._pointerDown(e);
+    this._onPointerMove = (e) => this._pointerMove(e);
+    this._onPointerUp = (e) => this._pointerUp(e);
+    domElement.addEventListener('pointerdown', this._onPointerDown);
+    domElement.addEventListener('pointermove', this._onPointerMove);
+    domElement.addEventListener('pointerup', this._onPointerUp);
+    domElement.addEventListener('pointercancel', this._onPointerUp);
     this._apply();
   }
 
@@ -58,7 +77,7 @@ export class CameraRig {
 
   /** direction -1 turns left (Q), +1 turns right (E). @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   rotateQuarter(direction) {
-    this.yawTarget += Math.sign(direction) * Math.PI / 2;
+    this.yawTarget += Math.sign(direction) * QUARTER;
   }
 
   /** dx is screen-right and dz is screen-down, in tiles, relative to the camera's final yaw. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
@@ -73,6 +92,44 @@ export class CameraRig {
   /** delta is a wheel deltaY: positive zooms out. @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   zoom(delta) {
     this.distanceTarget = THREE.MathUtils.clamp(this.distanceTarget * Math.exp(delta * WHEEL_SENSITIVITY), MIN_DISTANCE, MAX_DISTANCE);
+  }
+
+  /** True while a press on the canvas is dragging the camera. @created Claude (claude-opus-5-5) - 2026-10-23 */
+  get dragging() {
+    return this.dragged && this.pointers.size > 0;
+  }
+
+  /** Moves the view so the ground under the pointer follows it by (dx, dy) screen px, without easing. @created Claude (claude-opus-5-5) - 2026-10-23 */
+  dragPixels(dx, dy) {
+    const height = this.domElement.clientHeight;
+    if (height === 0) return;
+    const perPx = 2 * this.distance * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) / height;
+    this.pan(-dx * perPx, -dy * perPx / Math.sin(PITCH));
+    this.focus.copy(this.focusTarget);
+    this.focusVelocity.set(0, 0, 0);
+    this._apply();
+  }
+
+  /** Turns the camera by radians without easing; snapYaw settles it on a quarter turn. @created Claude (claude-opus-5-5) - 2026-10-23 */
+  twist(radians) {
+    this.yaw += radians;
+    this.yawTarget = this.yaw;
+    this.yawVelocity = 0;
+    this._twisted = true;
+    this._apply();
+  }
+
+  /** Eases yaw to the nearest of the four quarter-turn views. @created Claude (claude-opus-5-5) - 2026-10-23 */
+  snapYaw() {
+    this.yawTarget = START_YAW + Math.round((this.yaw - START_YAW) / QUARTER) * QUARTER;
+  }
+
+  /** Pinch: scale > 1 brings the camera closer, without easing. @created Claude (claude-opus-5-5) - 2026-10-23 */
+  pinch(scale) {
+    this.distance = THREE.MathUtils.clamp(this.distance / scale, MIN_DISTANCE, MAX_DISTANCE);
+    this.distanceTarget = this.distance;
+    this.distanceVelocity = 0;
+    this._apply();
   }
 
   /**
@@ -95,6 +152,74 @@ export class CameraRig {
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */
   dispose() {
     this.domElement.removeEventListener('wheel', this._onWheel);
+    this.domElement.removeEventListener('pointerdown', this._onPointerDown);
+    this.domElement.removeEventListener('pointermove', this._onPointerMove);
+    this.domElement.removeEventListener('pointerup', this._onPointerUp);
+    this.domElement.removeEventListener('pointercancel', this._onPointerUp);
+  }
+
+  // Right-click stays InputController's Escape, so only the left and middle buttons start a drag.
+  /** @created Claude (claude-opus-5-5) - 2026-10-23 */
+  _pointerDown(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
+    if (e.button === 1) e.preventDefault(); // no autoscroll
+    this.domElement.setPointerCapture?.(e.pointerId);
+    if (this.pointers.size === 0) {
+      this.dragged = false;
+      this._twisted = false;
+      this._press = { x: e.clientX, y: e.clientY };
+      this._rotating = e.button === 1;
+    }
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.pointers.size > 1) this.dragged = true;
+    this._last = this._reading();
+  }
+
+  /** @created Claude (claude-opus-5-5) - 2026-10-23 */
+  _pointerMove(e) {
+    const p = this.pointers.get(e.pointerId);
+    if (!p) return;
+    p.x = e.clientX;
+    p.y = e.clientY;
+    if (!this.dragged) {
+      if (Math.hypot(e.clientX - this._press.x, e.clientY - this._press.y) < DRAG_THRESHOLD) return;
+      this.dragged = true;
+    }
+    const now = this._reading();
+    const last = this._last;
+    this._last = now;
+    if (this._rotating) {
+      this.twist((now.x - last.x) * MOUSE_ROTATE_SPEED);
+      return;
+    }
+    this.dragPixels(now.x - last.x, now.y - last.y);
+    if (this.pointers.size < 2) return;
+    // Screen y points down, so a clockwise twist grows the angle and turns the map clockwise with the fingers.
+    const turn = Math.atan2(Math.sin(now.angle - last.angle), Math.cos(now.angle - last.angle));
+    if (turn !== 0) this.twist(turn);
+    if (last.spread > 0 && now.spread > 0) this.pinch(now.spread / last.spread);
+  }
+
+  /** @created Claude (claude-opus-5-5) - 2026-10-23 */
+  _pointerUp(e) {
+    if (!this.pointers.delete(e.pointerId)) return;
+    if (this.pointers.size > 0) {
+      this._last = this._reading(); // the remaining finger carries on panning from where it is
+      return;
+    }
+    if (this._twisted) this.snapYaw();
+    this._rotating = false;
+  }
+
+  // Centroid of the pressed pointers, plus the angle and distance between the first two.
+  /** @created Claude (claude-opus-5-5) - 2026-10-23 */
+  _reading() {
+    const pts = [...this.pointers.values()];
+    const x = pts.reduce((sum, p) => sum + p.x, 0) / pts.length;
+    const y = pts.reduce((sum, p) => sum + p.y, 0) / pts.length;
+    if (pts.length < 2) return { x, y, angle: 0, spread: 0 };
+    const [a, b] = pts;
+    return { x, y, angle: Math.atan2(b.y - a.y, b.x - a.x), spread: Math.hypot(b.x - a.x, b.y - a.y) };
   }
 
   /** @created Claude (claude-sonnet-5-5) - 2026-10-21 */

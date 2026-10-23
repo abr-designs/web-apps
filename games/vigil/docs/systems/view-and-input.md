@@ -15,7 +15,7 @@ The view draws the battle in three.js, plays sim events back as animation, shows
 | --- | --- |
 | `js/main.js` | Bootstrap and mission loop: `runCommand`, `runEnemyTurn`, `openLoadout`, `startBattle`, `frame`, `window.vigil` |
 | `js/view/renderer.js` | `Renderer`: scene from the grid, units, props, overlays (move range, path, cover shields, detection, target line, fog, selection) |
-| `js/view/camera.js` | `CameraRig`: pitched orbit camera, quarter-turn yaw, pan, zoom, `focusTile`; focus, yaw and zoom follow their targets through `smoothDamp` |
+| `js/view/camera.js` | `CameraRig`: pitched orbit camera, quarter-turn yaw, pan, zoom, `focusTile`, press and drag gestures; focus, yaw and zoom follow their targets through `smoothDamp` |
 | `js/view/picker.js` | `Picker`: screen point to `{ unitId }` or `{ tile }` |
 | `js/view/fog.js` | `Fog`: which tiles are lit and which aliens are shown |
 | `js/view/event-player.js` | `EventPlayer`: animates `Event[]` in order, with speed and skip |
@@ -63,9 +63,13 @@ Modes in `js/view/input.js`, each `{ enter, exit, pointerMove, click, key }`:
 | `animating` | the player's own command is playing |
 | `locked` | enemy turn, loadout screen or battle over |
 
-Clicks arm a tile or target and show the confirm bar; the confirm button, Enter, or the same ability key executes. Keys: Tab / Shift+Tab next soldier or target, 1-9 abilities, Enter confirm, Esc or right-click back, Backspace end turn, Forfeit (rail footer, click twice) abandons the mission, Q / E rotate, WASD or mouse at a screen edge pan, wheel zoom, Space skip. The camera follows a walking unit without jumps (the step tween moves the focus target and SmoothDamp keeps the velocity) and returns to the selected soldier when an enemy turn ends.
+Clicks arm a tile or target and show the confirm bar; the confirm button, Enter, or the same ability key executes. Keys: Tab / Shift+Tab next soldier or target, 1-9 abilities, Enter confirm, Esc or right-click back, Backspace end turn, Forfeit (rail footer, click twice) abandons the mission, Q / E rotate, WASD or mouse at a screen edge pan, wheel zoom, Space skip.
+
+Press and drag (`CameraRig`): one finger or the left mouse button drags the map, two fingers twist to rotate and pinch to zoom, the middle button rotates. A rotation snaps to the nearest quarter turn on release. A press that travels under 8 px stays a tap, so a tap selects a soldier, arms a tile or picks a target like a click; a press that became a drag (`rig.dragged`) sends no click. Touch has no hover, so on touch the tap is the only pointer input the modes see. The camera follows a walking unit without jumps (the step tween moves the focus target and SmoothDamp keeps the velocity) and returns to the selected soldier when an enemy turn ends.
 
 ## HUD
+
+The HUD panels (rail, squad, banners, objective, confirm bar, loadout and outcome cards) scale with CSS `zoom: var(--ui)`. `scaleUi` in `main.js` sets `--ui` on resize: the HUD is laid out for a 1280 x 760 window and shrinks to fit smaller ones, down to 0.55, or 0.75 on a coarse (touch) pointer, whose screens pack more CSS px per inch. The viewport's right inset is `--rail * --ui`. Touch screens also hide the key hints.
 
 `Hud` only draws and reports clicks through `onAbility`, `onEndTurn`, `onForfeit`, `onSelectUnit` and `onRename`. Main entry points: `showUnit(state, unit, abilities)`, `showSquad`, `showObjective`, `showBreakdown(breakdown)` (from `compute`), `showConfirm(label, onConfirm)`, `updateUnitBars` (every frame), `showTurn`, `showConcealed`, `showMessage`, `showOutcome`. Line icons are an inline SVG sprite in `hud.js` mapped by `ABILITY_ICON`, `CLASS_ICON` and `STATUS_SHORT`.
 

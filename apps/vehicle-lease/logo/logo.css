@@ -1,5 +1,6 @@
 /* Created by Claude (claude-opus-5-5) */
 /* Date: 2026-10-14 */
+/* Modified by Claude (claude-opus-5-5) - 2026-10-23 */
 /* Master copy. Edit here, then run `node scripts/sync-logo.mjs` to update every app. */
 /* An app with a fixed bottom bar sets --logo-floor to the bar's height so the logo sits on the bar's top edge. */
 
@@ -12,4 +13,14 @@
   height: 154px;
   filter: drop-shadow(4px 4px 2px rgba(43, 42, 40, 0.55));
   pointer-events: none;
+}
+
+/* Short windows (landscape phones): a smaller logo keeps clear of the controls along the bottom edge */
+@media (max-height: 500px) {
+  .app-logo {
+    right: -20px;
+    bottom: calc(var(--logo-floor, 0px) - 20px);
+    width: 96px;
+    height: 96px;
+  }
 }
