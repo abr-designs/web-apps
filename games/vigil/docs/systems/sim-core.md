@@ -44,13 +44,14 @@ Phase flow: `deploy -> playerTurn <-> enemyTurn -> ended`.
 
 ## How to interact
 
-**Issue a command.** All four command shapes go through `execute(state, cmd)`, which throws `InvalidCommand` (with a player-facing `reason`) before changing anything, or returns `Event[]`:
+**Issue a command.** All five command shapes go through `execute(state, cmd)`, which throws `InvalidCommand` (with a player-facing `reason`) before changing anything, or returns `Event[]`:
 
 ```js
 { type: 'deploy' }
 { type: 'move', unitId, dest }
 { type: 'ability', unitId, abilityId, targetId?, targetTile? }
 { type: 'endTurn', side? }
+{ type: 'forfeit' }            // player turn only; ends the battle with outcome 'forfeit'
 ```
 
 Use `validate(state, cmd)` for a side-effect-free `{ ok, reason }` (the HUD and input do this before arming a command). `execute(state, cmd, { autosave: false })` skips the save hook, which tests use.

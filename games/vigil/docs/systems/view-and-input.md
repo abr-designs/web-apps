@@ -15,7 +15,7 @@ The view draws the battle in three.js, plays sim events back as animation, shows
 | --- | --- |
 | `js/main.js` | Bootstrap and mission loop: `runCommand`, `runEnemyTurn`, `openLoadout`, `startBattle`, `frame`, `window.vigil` |
 | `js/view/renderer.js` | `Renderer`: scene from the grid, units, props, overlays (move range, path, cover shields, detection, target line, fog, selection) |
-| `js/view/camera.js` | `CameraRig`: pitched orbit camera, quarter-turn yaw, pan, zoom, `focusTile` |
+| `js/view/camera.js` | `CameraRig`: pitched orbit camera, quarter-turn yaw, pan, zoom, `focusTile`; focus, yaw and zoom follow their targets through `smoothDamp` |
 | `js/view/picker.js` | `Picker`: screen point to `{ unitId }` or `{ tile }` |
 | `js/view/fog.js` | `Fog`: which tiles are lit and which aliens are shown |
 | `js/view/event-player.js` | `EventPlayer`: animates `Event[]` in order, with speed and skip |
@@ -63,11 +63,11 @@ Modes in `js/view/input.js`, each `{ enter, exit, pointerMove, click, key }`:
 | `animating` | the player's own command is playing |
 | `locked` | enemy turn, loadout screen or battle over |
 
-Clicks arm a tile or target and show the confirm bar; the confirm button, Enter, or the same ability key executes. Keys: Tab / Shift+Tab next soldier or target, 1-9 abilities, Enter confirm, Esc or right-click back, Backspace end turn, Q / E rotate, WASD or mouse at a screen edge pan, wheel zoom, Space skip. The camera follows a walking unit and returns to the selected soldier when an enemy turn ends.
+Clicks arm a tile or target and show the confirm bar; the confirm button, Enter, or the same ability key executes. Keys: Tab / Shift+Tab next soldier or target, 1-9 abilities, Enter confirm, Esc or right-click back, Backspace end turn, Forfeit (rail footer, click twice) abandons the mission, Q / E rotate, WASD or mouse at a screen edge pan, wheel zoom, Space skip. The camera follows a walking unit without jumps (the step tween moves the focus target and SmoothDamp keeps the velocity) and returns to the selected soldier when an enemy turn ends.
 
 ## HUD
 
-`Hud` only draws and reports clicks through `onAbility`, `onEndTurn`, `onSelectUnit` and `onRename`. Main entry points: `showUnit(state, unit, abilities)`, `showSquad`, `showObjective`, `showBreakdown(breakdown)` (from `compute`), `showConfirm(label, onConfirm)`, `updateUnitBars` (every frame), `showTurn`, `showConcealed`, `showMessage`, `showOutcome`. Line icons are an inline SVG sprite in `hud.js` mapped by `ABILITY_ICON`, `CLASS_ICON` and `STATUS_SHORT`.
+`Hud` only draws and reports clicks through `onAbility`, `onEndTurn`, `onForfeit`, `onSelectUnit` and `onRename`. Main entry points: `showUnit(state, unit, abilities)`, `showSquad`, `showObjective`, `showBreakdown(breakdown)` (from `compute`), `showConfirm(label, onConfirm)`, `updateUnitBars` (every frame), `showTurn`, `showConcealed`, `showMessage`, `showOutcome`. Line icons are an inline SVG sprite in `hud.js` mapped by `ABILITY_ICON`, `CLASS_ICON` and `STATUS_SHORT`.
 
 ## Extend
 

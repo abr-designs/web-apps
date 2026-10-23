@@ -1,11 +1,13 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // CommandExecutor: the one entry point for player and AI commands and the only writer of BattleState.
 // Commands:
 //   { type: 'deploy' }                                          phase deploy only: squad concealed, xcom side begins
 //   { type: 'move', unitId, dest }
 //   { type: 'ability', unitId, abilityId, targetId?, targetTile? }
 //   { type: 'endTurn', side? }                                  side, when given, must be the active side
+//   { type: 'forfeit' }                                         player turn only: the battle ends with outcome 'forfeit'
 // execute validates everything first, so an InvalidCommand leaves state untouched. After the handler it runs
 // TurnManager.check, ends the xcom side once no soldier has AP left, then calls the save hook when autosave is on.
 // Hooks (setHooks merges per group, resetHooks restores these no-op defaults, getHooks reads the live set):
@@ -120,7 +122,15 @@ const HANDLERS = {
   endTurn: (state, ctx) => endSide(state, ctx),
   move: handleMove,
   ability: (state, ctx, cmd) => hooks.abilities.use(state, ctx, cmd),
+  forfeit: handleForfeit,
 };
+
+/** The squad abandons the mission. @created Claude (claude-opus-5-5) - 2026-10-23 */
+function handleForfeit(state, ctx) {
+  state.outcome = 'forfeit';
+  state.phase = PHASE.ended;
+  ctx.emit(EVENT.BattleEnded, { outcome: 'forfeit' });
+}
 
 // AP is paid before the first step, so reactions see the mover's remaining AP; a cut-short path still costs it.
 /** @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -141,6 +151,7 @@ function rejectReason(state, cmd) {
   if (cmd.type === 'deploy') return state.phase === PHASE.deploy ? null : 'The squad is already deployed';
   if (state.phase !== PHASE.playerTurn && state.phase !== PHASE.enemyTurn) return 'The battle has not started';
   if (cmd.type === 'endTurn') return cmd.side === undefined || cmd.side === state.activeSide ? null : 'It is not your turn';
+  if (cmd.type === 'forfeit') return state.phase === PHASE.playerTurn ? null : 'It is not your turn';
 
   const unit = Object.hasOwn(state.units, cmd.unitId) ? state.units[cmd.unitId] : null;
   if (!unit) return 'Unknown unit';

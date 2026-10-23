@@ -88,7 +88,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .abilities { display: grid; gap: 4px; }
 .breakdown { padding: 10px 12px; }
 /* Leave the bottom-right corner to the logo */
-.rail-foot { margin-top: auto; padding-bottom: 6px; }
+.rail-foot { margin-top: auto; padding-bottom: 6px; display: flex; flex-direction: column; align-items: start; gap: 8px; }
 .end-turn { width: 160px; height: 52px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 
 .outcome { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 80%, transparent); }
@@ -148,6 +148,13 @@ svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none
 .end-turn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .end-turn svg.icon { font-size: 20px; }
 .end-turn:disabled { opacity: .4; cursor: default; }
+
+/* Modified by Claude (claude-opus-5-5) - 2026-10-23 */
+/* Forfeit: quiet until armed, then the first click asks for a second */
+.forfeit-btn { width: 160px; height: 32px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+.forfeit-btn:hover:not(:disabled), .forfeit-btn.armed { color: var(--danger); }
+.forfeit-btn.armed { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--surface)); }
+.forfeit-btn:disabled { opacity: .4; cursor: default; }
 .rail.locked .abl { opacity: .4; pointer-events: none; }
 
 /* R2 squad list */
@@ -196,7 +203,7 @@ svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none
 /* End-of-battle overlay */
 .outcome-card { display: grid; justify-items: center; gap: 8px; padding: 28px 40px; text-align: center; }
 .outcome-card h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-.outcome-card.defeat h1 { color: var(--alien); }
+.outcome-card.defeat h1, .outcome-card.forfeit h1 { color: var(--alien); }
 .outcome-card p { margin: 0 0 8px; color: var(--text-muted); }
 
 /* Modified by Claude (claude-opus-5-5) - 2026-10-22 */

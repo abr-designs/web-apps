@@ -233,7 +233,8 @@ export class EventPlayer {
       return;
     }
     if (this.fog && this.getState?.()?.units[unitId]?.team !== 'xcom') this.renderer.setUnitShown(unitId, true);
-    this._focus(b);
+    // The camera tracks the walker during the tween; aiming it at the next tile first would make the target jump every step.
+    if (this.skipping) this._focus(b);
     // A model's walk clip carries its own bob, so only a capsule hops.
     const hop = model ? 0 : HOP;
     if (model) {
@@ -243,8 +244,8 @@ export class EventPlayer {
     }
     await this._tween(STEP_TIME, (t) => {
       object.position.lerpVectors(a, b, t);
-      object.position.y += Math.sin(Math.PI * t) * hop;
       if (!this.skipping) this.rig.focusTile(object.position);
+      object.position.y += Math.sin(Math.PI * t) * hop;
     });
     object.position.copy(b);
     this._tiles.set(unitId, to);

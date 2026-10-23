@@ -1,5 +1,6 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -82,6 +83,18 @@ test('endTurn zeroes AP, switches side, refreshes AP and advances the turn on th
 test('endTurn is valid only for the active side', () => {
   const state = deployed();
   assertRejected(state, { type: 'endTurn', side: 'alien' }, 'It is not your turn');
+});
+
+test('forfeit ends the battle on the player turn only', () => {
+  const state = deployed();
+  execute(state, { type: 'endTurn' }, { autosave: false });
+  assertRejected(state, { type: 'forfeit' }, 'It is not your turn');
+  execute(state, { type: 'endTurn', side: 'alien' }, { autosave: false });
+  const events = execute(state, { type: 'forfeit' }, { autosave: false });
+  assert.deepEqual(events, [{ type: 'BattleEnded', outcome: 'forfeit' }]);
+  assert.equal(state.outcome, 'forfeit');
+  assert.equal(state.phase, PHASE.ended);
+  assertRejected(state, { type: 'forfeit' }, 'The battle is over');
 });
 
 test('move in the blue band spends 1 AP and steps tile by tile', () => {

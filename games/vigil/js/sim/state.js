@@ -1,7 +1,7 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
 // The serializable battle root. units is keyed by id; ids sort in turn order (x1..x4 squad, a01.. aliens).
-// phase is one of PHASE; activeSide is 'xcom' | 'alien'; outcome is null | 'victory' | 'defeat' (set with phase 'ended').
+// phase is one of PHASE; activeSide is 'xcom' | 'alien'; outcome is null | 'victory' | 'defeat' | 'forfeit' (set with phase 'ended').
 // Unit.statuses: [{ id, turns }] in application order. turns counts the owner's side starts left: TurnManager.beginSide
 //   subtracts 1 and expires the status at 0. turns null means no timer (cleared by a rule or an effect).
 //   'overwatch' and 'hunkered' always clear at the start of the owner's side. A 'stunned' unit starts its side with 0 AP.

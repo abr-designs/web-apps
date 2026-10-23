@@ -466,7 +466,11 @@ const MODES = { idle: Idle, unitSelected: UnitSelected, movePreview: MovePreview
 const INTERACTIVE = new Set(['idle', 'unitSelected', 'movePreview', 'targeting']);
 
 export class InputController {
-  /** player is the EventPlayer, used for Space skip. onCommand(cmd) runs the command loop in main. @created Claude (claude-opus-5-5) - 2026-10-21 */
+  /**
+   * player is the EventPlayer, used for Space skip. onCommand(cmd) runs the command loop in main.
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - Forfeit button
+   */
   constructor({ getState, picker, renderer, cameraRig, hud, onCommand, player = null, fog = null, roster = null }) {
     this.getState = getState;
     this.picker = picker;
@@ -516,6 +520,7 @@ export class InputController {
 
     hud.onAbility((id) => this.chooseAbility(id));
     hud.onEndTurn(() => this.endTurn());
+    hud.onForfeit(() => this.forfeit());
     hud.onSelectUnit((id) => { if (INTERACTIVE.has(this.modeName)) this.select(id, { focus: true }); });
 
     this.setMode('idle');
@@ -630,6 +635,11 @@ export class InputController {
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */
   endTurn() {
     if (INTERACTIVE.has(this.modeName)) this.issue({ type: 'endTurn', side: 'xcom' });
+  }
+
+  /** @created Claude (claude-opus-5-5) - 2026-10-23 */
+  forfeit() {
+    if (INTERACTIVE.has(this.modeName)) this.issue({ type: 'forfeit' });
   }
 
   /** Validates, then hands the command to main. A rejection shows its reason and leaves the mode as it is. @created Claude (claude-opus-5-5) - 2026-10-21 */

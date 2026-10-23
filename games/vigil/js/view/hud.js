@@ -1,7 +1,8 @@
 // Created by Claude (claude-opus-5-5)
 // Date: 2026-10-21
+// Modified by Claude (claude-opus-5-5) - 2026-10-23
 // Hud: the DOM layer of layout C Tactical Rail (plan UI Reference). It fills the containers index.html already holds:
-// #unit (R1, R7 as text), #abilities (R5 list), #breakdown (R13), #end-turn, #squad (R2), #turn, #concealed, #message,
+// #unit (R1, R7 as text), #abilities (R5 list), #breakdown (R13), #end-turn, #forfeit, #squad (R2), #turn, #concealed, #message,
 // #objective (R4), #unit-bars (R8), #outcome and plan 0003's #confirm. It only draws and reports clicks; InputController decides what they mean.
 // Plan 0003 Layout B: soldier names and slot colours come from the Roster, the ConfirmBar sits bottom-centre, the hit badge is a
 // reticle positioned in the updateUnitBars pass, and a click on the rail name plate swaps in a rename field.
@@ -10,6 +11,8 @@
 import { RULES } from '../data/rules.js';
 import { WEAPONS } from '../data/weapons.js';
 import { statValue } from '../sim/state.js';
+
+const FORFEIT_ARM_MS = 3000; // an armed Forfeit button waits this long for the confirming click
 import { unitDef } from '../sim/hit.js';
 import { SLOTS, NAME_MAX } from './roster.js';
 
@@ -112,12 +115,14 @@ export class Hud {
    * root is the document (or a node holding the layout C containers). roster gives soldier names (plan 0003).
    * @created Claude (claude-opus-5-5) - 2026-10-21
    * @modified Claude (claude-opus-5-5) - 2026-10-22 - roster, ConfirmBar, hit badge, rename
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - two-click Forfeit button
    */
   constructor(root = document, roster = null) {
     const find = (id) => root.querySelector(`#${id}`);
     this.roster = roster;
     this.el = {
       unit: find('unit'), abilities: find('abilities'), breakdown: find('breakdown'), endTurn: find('end-turn'),
+      forfeit: find('forfeit'),
       squad: find('squad'), turn: find('turn'), concealed: find('concealed'), message: find('message'),
       objective: find('objective'), bars: find('unit-bars'), outcome: find('outcome'), confirm: find('confirm'),
     };
@@ -130,6 +135,8 @@ export class Hud {
     this.rail = this.el.abilities.closest('.rail');
     this._abilityCb = null;
     this._endTurnCb = null;
+    this._forfeitCb = null;
+    this._forfeitTimer = 0;
     this._selectCb = null;
     this._messageTimer = 0;
     this._barEls = new Map(); // unit id -> { el, sig }
@@ -142,6 +149,14 @@ export class Hud {
       if (row) this._abilityCb?.(row.dataset.ability);
     });
     this.el.endTurn.addEventListener('click', () => this._endTurnCb?.());
+    this.el.forfeit.addEventListener('click', () => {
+      if (!this.el.forfeit.classList.contains('armed')) {
+        this._armForfeit(true);
+        return;
+      }
+      this._armForfeit(false);
+      this._forfeitCb?.();
+    });
     this.el.squad.addEventListener('click', (e) => {
       const row = e.target.closest('[data-unit]');
       if (row) this._selectCb?.(row.dataset.unit);
@@ -378,21 +393,38 @@ export class Hud {
       return;
     }
     const win = outcome === 'victory';
+    const [title, text] = win ? ['Area secured', 'Every hostile in the area is down.']
+      : outcome === 'forfeit' ? ['Mission aborted', 'The squad withdrew from the area.']
+      : ['Squad lost', 'No soldier made it out.'];
     el.innerHTML = `<div class="panel outcome-card ${outcome}">
       <div class="label">Mission ${win ? 'complete' : 'failed'}</div>
-      <h1>${win ? 'Area secured' : 'Squad lost'}</h1>
-      <p>${win ? 'Every hostile in the area is down.' : 'No soldier made it out.'}</p>
+      <h1>${title}</h1>
+      <p>${text}</p>
       <button type="button" class="panel end-turn">New mission</button>
     </div>`;
     el.querySelector('button').addEventListener('click', () => onNewMission?.());
     el.hidden = false;
   }
 
-  /** Greys out the rail and squad while events play or the aliens move. @created Claude (claude-opus-5-5) - 2026-10-21 */
+  /**
+   * Greys out the rail and squad while events play or the aliens move.
+   * @created Claude (claude-opus-5-5) - 2026-10-21
+   * @modified Claude (claude-opus-5-5) - 2026-10-23 - Forfeit button
+   */
   setLocked(locked) {
     this.rail.classList.toggle('locked', locked);
     this.el.squad.classList.toggle('locked', locked);
     this.el.endTurn.disabled = locked;
+    this.el.forfeit.disabled = locked;
+    if (locked) this._armForfeit(false);
+  }
+
+  /** First click arms the Forfeit button for FORFEIT_ARM_MS; disarming restores its label. @created Claude (claude-opus-5-5) - 2026-10-23 */
+  _armForfeit(armed) {
+    clearTimeout(this._forfeitTimer);
+    this.el.forfeit.classList.toggle('armed', armed);
+    this.el.forfeit.textContent = armed ? 'Confirm forfeit' : 'Forfeit';
+    if (armed) this._forfeitTimer = setTimeout(() => this._armForfeit(false), FORFEIT_ARM_MS);
   }
 
   /** callback(abilityId) on an ability row click, usable or not. @created Claude (claude-opus-5-5) - 2026-10-21 */
@@ -403,6 +435,11 @@ export class Hud {
   /** @created Claude (claude-opus-5-5) - 2026-10-21 */
   onEndTurn(callback) {
     this._endTurnCb = callback;
+  }
+
+  /** callback() on the confirming second click of the Forfeit button. @created Claude (claude-opus-5-5) - 2026-10-23 */
+  onForfeit(callback) {
+    this._forfeitCb = callback;
   }
 
   /** callback(unitId) on a squad row click. @created Claude (claude-opus-5-5) - 2026-10-21 */
