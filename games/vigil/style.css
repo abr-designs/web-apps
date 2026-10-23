@@ -1,0 +1,293 @@
+/* Created by Claude (claude-opus-5-5) */
+/* Date: 2026-10-21 */
+/* Modified by Claude (claude-opus-5-5) - 2026-10-23 */
+
+/* Palette A Command Cyan (plan U-001) */
+:root {
+  --bg: #0B1118;
+  --surface: #121C26;
+  --surface-raised: #1B2834;
+  --text: #E6EEF4;
+  --text-muted: #8A9BAA;
+  --accent: #3FD0E8;
+  --xcom: #4AA8FF;
+  --alien: #E5484D;
+  --move-blue: #2F8CFF;
+  --move-yellow: #F2C94C;
+  --danger: #FF3B3B;
+  --half-cover: #6E9BB8;
+  --full-cover: #43C4F0;
+  --crit: #FFB13B;
+
+  /* Plan 0003 palette 2 Field Muted: soldier slot colours and the hit badge */
+  --slot-1: #8FB8DE;
+  --slot-2: #C9A0DC;
+  --slot-3: #9CCB9A;
+  --slot-4: #E0B27A;
+  --badge-ring: #E6EEF4;
+  --badge-bg: #E6EEF4;
+  --badge-text: #0B1118;
+  --line-off: #22313F;   /* loadout rows and item borders */
+  --item-off: #3A4A58;   /* loadout item another slot holds at its cap */
+
+  --rail: 320px;
+  --ui: 1;   /* HUD zoom, set from the window size by scaleUi in js/main.js */
+  --cut: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif;
+  user-select: none;
+  touch-action: manipulation; /* no double-tap zoom on the HUD */
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.panel {
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+
+.label { margin: 0; font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+
+/* Viewport: window minus the rail */
+.viewport { position: fixed; inset: 0 calc(var(--rail) * var(--ui)) 0 0; overflow: hidden; }
+#viewport { display: block; width: 100%; height: 100%; touch-action: none; } /* CameraRig handles every gesture */
+.unit-bars { position: absolute; inset: 0; pointer-events: none; }
+/* Plan 0004: shown while the unit models load, over the empty canvas. */
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--text-muted); pointer-events: none; }
+
+.squad { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; }
+
+.banners { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.turn { padding: 6px 26px; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--xcom); }
+.turn:empty { display: none; }
+.concealed {
+  padding: 4px 12px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--xcom);
+  background: color-mix(in srgb, var(--xcom) 12%, transparent); border: 1px solid color-mix(in srgb, var(--xcom) 45%, transparent);
+}
+.message { padding: 4px 12px; font-size: 12px; color: var(--danger); }
+
+.objective { position: absolute; bottom: 14px; left: 12px; padding: 8px 14px; }
+.objective:empty { display: none; }
+
+/* Right rail */
+.rail {
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--rail);
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.rail-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.icon-btn { width: 40px; height: 40px; flex: none; color: var(--accent); }
+.abilities { display: grid; gap: 4px; }
+.breakdown { padding: 10px 12px; }
+/* Leave the bottom-right corner to the logo */
+.rail-foot { margin-top: auto; padding-bottom: 6px; display: flex; flex-direction: column; align-items: start; gap: 8px; }
+.end-turn { width: 160px; height: 52px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+
+.outcome { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 80%, transparent); }
+.outcome[hidden], .loadout[hidden], .loading[hidden], .turn[hidden], .concealed[hidden], .message[hidden], .breakdown[hidden], .confirm[hidden], .hitbadge[hidden] { display: none; }
+
+/* Modified by Claude (claude-opus-5-5) - 2026-10-21 */
+/* HUD pieces from docs/mockups/layout.html#c, filled by js/view/hud.js */
+svg.icon { width: 1em; height: 1em; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.bars { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 6px; }
+.bars i { width: 16px; height: 6px; background: var(--xcom); }
+.bars i.x { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.bars i.arm { background: var(--half-cover); height: 4px; align-self: center; }
+
+/* R1 name plate */
+.unit { min-width: 0; }
+.unit-name { margin-top: 2px; font-size: 17px; color: var(--accent); }
+.unit-sub, .unit-hint { font-size: 12px; color: var(--text-muted); }
+.unit-hint { margin-top: 4px; }
+.ap { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+.ap i { width: 9px; height: 9px; transform: rotate(45deg); background: var(--accent); }
+.ap i.x { background: none; box-shadow: inset 0 0 0 1.5px var(--text-muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip { padding: 1px 6px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* R5 ability list */
+.abilities { min-height: 0; overflow-y: auto; }
+.abl {
+  display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; width: 100%; padding: 6px 8px; text-align: left;
+  background: #0a1016; border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+.abl svg.icon { font-size: 22px; justify-self: center; }
+.abl .nm { font-size: 13px; }
+.abl .nm small { display: block; font-size: 11px; color: var(--text-muted); }
+.abl kbd { padding: 1px 5px; border-radius: 2px; font: 11px ui-monospace, monospace; color: var(--text-muted); border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); }
+.abl:hover:not(.off) { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.abl.on { color: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent); }
+.abl.off { opacity: .4; cursor: default; }
+
+/* R13 breakdown */
+.breakdown .head { display: flex; justify-content: space-between; align-items: end; gap: 10px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+.breakdown .tgt { font-weight: 600; }
+.breakdown .tgt small { display: block; font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.breakdown .tgt small.hostile { color: var(--alien); }
+.breakdown .pc { font: 700 30px/1 ui-monospace, monospace; color: var(--accent); text-align: right; white-space: nowrap; }
+.breakdown .pc small { display: block; margin-top: 3px; font-size: 10px; font-weight: 400; letter-spacing: .08em; text-transform: uppercase; color: var(--crit); }
+.breakdown .r { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: 12px; }
+.breakdown .r span:last-child { font-family: ui-monospace, monospace; }
+.breakdown .r .up { color: var(--move-blue); }
+.breakdown .r .dn { color: var(--danger); }
+.breakdown .r.tot { margin-top: 4px; padding-top: 5px; font-weight: 600; border-top: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+.breakdown .r.mut { color: var(--text-muted); }
+.breakdown .r.crit { color: var(--crit); }
+.breakdown .note { margin-top: 8px; font-size: 11px; color: var(--text-muted); }
+
+/* End turn */
+.end-turn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.end-turn svg.icon { font-size: 20px; }
+.end-turn:disabled { opacity: .4; cursor: default; }
+
+/* Modified by Claude (claude-opus-5-5) - 2026-10-23 */
+/* Forfeit: quiet until armed, then the first click asks for a second */
+.forfeit-btn { width: 160px; height: 32px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+.forfeit-btn:hover:not(:disabled), .forfeit-btn.armed { color: var(--danger); }
+.forfeit-btn.armed { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--surface)); }
+.forfeit-btn:disabled { opacity: .4; cursor: default; }
+.rail.locked .abl { opacity: .4; pointer-events: none; }
+
+/* R2 squad list */
+.squadrow { display: grid; grid-template-columns: 54px 1fr; gap: 8px; align-items: center; width: 210px; padding: 6px; text-align: left; }
+.squadrow.sel { box-shadow: inset 0 0 0 1px var(--c, var(--accent)); }
+.squadrow.dead { opacity: .45; }
+.squad.locked .squadrow { pointer-events: none; }
+.por {
+  position: relative; display: block; width: 54px; height: 56px;
+  background: radial-gradient(circle at 50% 36%, #9fb3c4 0 10px, transparent 11px), radial-gradient(ellipse 24px 20px at 50% 100%, #61788c 0 100%, transparent 101%), linear-gradient(var(--surface-raised), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+.squadrow.sel .por { border-color: var(--c, var(--accent)); }
+.por svg.icon { position: absolute; left: 3px; bottom: 3px; font-size: 14px; color: var(--accent); }
+.por .chev { position: absolute; right: 3px; bottom: 3px; font: 700 12px/1 ui-monospace, monospace; letter-spacing: -2px; color: var(--accent); }
+.por .chev.one { color: var(--move-yellow); }
+.who { font-size: 12px; }
+.who small { display: block; font-size: 11px; color: var(--text-muted); }
+.who .bars i { width: 12px; height: 5px; }
+
+/* Turn banner by side */
+.turn[data-side="alien"] { color: var(--alien); border-color: color-mix(in srgb, var(--alien) 40%, transparent); }
+.message { background: color-mix(in srgb, var(--bg) 80%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+
+/* R4 objective */
+.objective { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; }
+.obj-t { font-size: 15px; letter-spacing: .03em; }
+.obj-s { font-size: 11px; color: var(--text-muted); }
+.ring {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; font: 600 18px/1 ui-monospace, monospace;
+  border: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); outline-offset: 3px;
+}
+
+/* R8 overhead unit bars, positioned by Hud.updateUnitBars */
+.ubar { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 4px; padding: 2px 3px; background: color-mix(in srgb, var(--bg) 80%, transparent); will-change: transform; }
+.ubar[hidden] { display: none; }
+.ubar .segs { display: flex; gap: 2px; }
+.ubar .segs i { width: 9px; height: 5px; background: var(--xcom); }
+.ubar.alien .segs i { background: var(--alien); }
+.ubar .segs i.x { background: color-mix(in srgb, var(--text) 15%, transparent); }
+.ubar .segs i.arm { height: 3px; align-self: center; background: var(--half-cover); }
+.ubar b { font: 700 11px/1 ui-monospace, monospace; letter-spacing: -1px; color: var(--accent); }
+.ubar b.one { color: var(--move-yellow); }
+.ubar em { font: 600 9px/1 ui-monospace, monospace; font-style: normal; letter-spacing: .06em; color: var(--accent); }
+
+/* End-of-battle overlay */
+.outcome-card { display: grid; justify-items: center; gap: 8px; padding: 28px 40px; text-align: center; }
+.outcome-card h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.outcome-card.defeat h1, .outcome-card.forfeit h1 { color: var(--alien); }
+.outcome-card p { margin: 0 0 8px; color: var(--text-muted); }
+.outcome-card .outcome-threat { margin-top: -4px; color: var(--text); letter-spacing: .06em; }
+
+/* Modified by Claude (claude-opus-5-5) - 2026-10-22 */
+/* Plan 0003 Layout B Compact pill (docs/mockups/tactical-ui-layout.html#b) */
+
+/* Squad row: slot colour band on the portrait, slot number chip, name in the slot colour */
+.squadrow .por { border-top: 4px solid var(--c, var(--accent)); }
+.squadrow .por .num { position: absolute; left: 3px; top: 3px; display: grid; place-items: center; width: 15px; height: 15px; font: 700 10px/1 ui-monospace, monospace; color: var(--bg); background: var(--c, var(--accent)); }
+.squadrow .who .nm { color: var(--c, var(--text)); }
+
+/* Rail name plate and inline rename */
+.unit-name { color: var(--c, var(--accent)); }
+.unit-name.renamable { cursor: text; }
+.unit-name.renamable:hover { text-decoration: underline dotted; text-underline-offset: 4px; }
+.rename { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+.rename input { flex: 1; min-width: 0; padding: 4px 8px; font: 15px system-ui, sans-serif; color: var(--text); background: var(--bg); border: 1px solid var(--c, var(--accent)); outline: 0; user-select: text; }
+.rename button { padding: 3px 8px; background: none; border: 1px solid color-mix(in srgb, var(--text) 20%, transparent); }
+
+/* ConfirmBar: bottom-centre pill flanked by key hints */
+.confirm { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.confirm .hint { font-size: 11px; color: var(--text-muted); text-shadow: 0 1px 2px #000; }
+.confirm kbd { padding: 1px 5px; border-radius: 2px; font: 11px ui-monospace, monospace; color: var(--text-muted); background: color-mix(in srgb, var(--bg) 80%, transparent); border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); }
+.confirm .go { padding: 9px 22px; border: 0; border-radius: 999px; font-weight: 600; color: var(--bg); background: var(--accent); box-shadow: 0 2px 10px #000a; }
+.confirm .go:hover { filter: brightness(1.1); }
+/* Modified by Claude (claude-opus-5-5) - 2026-10-23 */
+/* Pulsing accent ring so the armed action reads at a glance */
+.confirm .go { outline: 2px solid var(--accent); outline-offset: 3px; animation: confirm-pulse 1.4s ease-in-out infinite; }
+@keyframes confirm-pulse {
+  0%, 100% { outline-color: color-mix(in srgb, var(--accent) 90%, transparent); outline-offset: 3px; box-shadow: 0 2px 10px #000a, 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+  50% { outline-color: color-mix(in srgb, var(--accent) 30%, transparent); outline-offset: 6px; box-shadow: 0 2px 10px #000a, 0 0 18px 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .confirm .go { animation: none; } }
+/* Narrow viewports keep only the button, so the bar never overflows */
+@media (max-width: 640px) { .confirm .hint { display: none; } }
+
+/* Hit badge: reticle round the target, hit chance below it */
+.hitbadge { position: absolute; left: 0; top: 0; width: 56px; height: 56px; pointer-events: none; will-change: transform; }
+.hitbadge svg { width: 100%; height: 100%; overflow: visible; stroke: var(--badge-ring); stroke-width: 2; fill: none; }
+.hitbadge b { position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); padding: 1px 6px; font: 700 13px/1.2 ui-monospace, monospace; color: var(--badge-text); background: var(--badge-bg); border: 1px solid var(--badge-ring); }
+
+/* Modified by Claude (claude-opus-5-5) - 2026-10-22 */
+/* Plan 0002 loadout: Layout A Briefing card (docs/mockups/loadout-layout.html#a), palette 2 Slot Tinted (docs/mockups/loadout-palette.html) */
+/* z-index 9 keeps the logo (10) above the overlay */
+.loadout { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--bg) 55%, transparent); }
+.lo-card { display: grid; gap: 10px; width: min(560px, 100%); padding: 20px 22px; }
+.lo-card h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--text); }
+.lo-slot { display: grid; grid-template-columns: 4px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px 8px 0; background: color-mix(in srgb, var(--bg) 70%, var(--surface)); border: 1px solid var(--line-off); }
+.lo-slot::before { content: ""; align-self: stretch; background: var(--c); }
+.lo-who { min-width: 0; }
+.lo-name { width: 14ch; max-width: 100%; padding: 1px 0; font: 15px system-ui, sans-serif; color: var(--c); background: none; border: 0; border-bottom: 1px dashed transparent; outline: 0; user-select: text; }
+.lo-name:hover { border-bottom-color: var(--line-off); }
+.lo-name:focus { border-bottom: 1px solid var(--c); }
+.lo-colors { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.lo-swatch { position: relative; width: 16px; height: 16px; padding: 0; border-radius: 50%; background: var(--s); border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); cursor: pointer; }
+.lo-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
+.lo-swatch:disabled { opacity: .25; cursor: not-allowed; }
+.lo-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lo-custom { overflow: hidden; background: conic-gradient(#E08F8F, #E6D27A, #9CCB9A, #7FCFC9, #8FB8DE, #C9A0DC, #E08F8F); }
+.lo-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.lo-custom:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lo-cls { font-size: 11px; color: var(--text-muted); }
+.lo-item { padding: 7px 12px; background: color-mix(in srgb, var(--bg) 70%, var(--surface)); color: var(--text-muted); border: 1px solid var(--line-off); }
+.lo-item.on { color: var(--text); border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, var(--surface)); }
+.lo-item:disabled { color: var(--item-off); border-style: dashed; cursor: not-allowed; }
+.lo-item:focus-visible, .lo-launch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lo-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.lo-launch { padding: 11px 26px; border: 0; background: var(--accent); color: var(--bg); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.lo-launch kbd { margin-left: 6px; padding: 0 4px; border: 1px solid currentColor; border-radius: 2px; font: 10px ui-monospace, monospace; opacity: .7; }
+@media (max-width: 640px) {
+  .lo-card { padding: 16px 14px; }
+  .lo-slot { grid-template-columns: 4px 1fr 1fr; }
+  .lo-slot::before { grid-row: span 2; }
+  .lo-who { grid-column: 2 / -1; }
+  .lo-slot .lo-item:first-of-type { grid-column: 2; }
+  .lo-launch kbd { display: none; }
+}
+
+/* Modified by Claude (claude-opus-5-5) - 2026-10-23 */
+/* Small and landscape phone windows: the HUD scales by --ui; the canvas overlays (unit bars, hit badge) stay at full size */
+.rail, .squad, .banners, .objective, .confirm, .lo-card, .outcome-card { zoom: var(--ui); }
+.loadout { overflow-y: auto; }
+/* Touch has no keyboard, so its key hints go */
+@media (pointer: coarse) { .abl kbd, .confirm .hint, .confirm kbd, .lo-launch kbd { display: none; } }

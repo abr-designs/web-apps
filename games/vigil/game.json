@@ -1,0 +1,10 @@
+{
+  "name": "Vigil",
+  "description": "Turn-based squad tactics in the style of XCOM 2: move soldiers between cover, flank and overwatch, and ambush alien pods while concealed.",
+  "color": "blue",
+  "tags": [
+    "tactics",
+    "turn-based",
+    "strategy"
+  ]
+}
