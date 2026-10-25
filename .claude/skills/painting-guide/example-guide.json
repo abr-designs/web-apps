@@ -1,0 +1,45 @@
+{
+  "id": "example-guard",
+  "title": "Example Guardsmen",
+  "eyebrow": "Astra Militarum · Vallejo conversion",
+  "source": { "credit": "Example Channel", "title": "How to paint Guardsmen", "url": "https://www.youtube.com/watch?v=XXXXXXXXXXX", "length": "12:00", "timecodes": true },
+  "palette": {
+    "light": { "bg": "E9EAE4", "surface": "F6F6F2", "text": "1F2422", "muted": "5E6660", "accent": "3F5F63", "line": "C9CCC3", "accentSoft": "DCE4E2", "warn": "8A5A12", "warnSoft": "F3E8D2", "onAccent": "F6F6F2" },
+    "dark": { "bg": "171A19", "surface": "202423", "text": "E3E5E0", "muted": "9AA29C", "accent": "8DB3B7", "line": "343A38", "accentSoft": "263335", "warn": "E2B76A", "warnSoft": "33291A", "onAccent": "171A19" }
+  },
+  "paintList": {
+    "summary": "Every paint the video uses, converted to Vallejo.",
+    "sameLabel": "Same as video",
+    "groups": [
+      { "src": "project", "title": "Vallejo project", "blurb": "In your Paint Rack project." },
+      { "src": "owned", "title": "Already in your rack", "blurb": "Used by the video and already owned." },
+      { "src": "need", "title": "Not in your rack", "blurb": "Pick one of these up, or use the suggested swap." }
+    ]
+  },
+  "paints": {
+    "prussian": { "name": "Prussian Blue", "code": "70.965", "hex": "1E4468", "src": "project", "was": "Stegadon Scale Green" },
+    "chainmail": { "name": "Chainmail Silver", "code": "72.053", "hex": "A4A7A9", "src": "owned", "was": "Iron Hands Steel", "metal": true },
+    "blackwash": { "name": "Black Wash", "code": "73.201", "hex": "14100E", "src": "need", "was": "Nuln Oil" },
+    "primer": { "name": "Grey spray primer", "code": "Any brand", "hex": "3D4B4D", "src": "need", "swap": "Any dark grey spray primer" }
+  },
+  "steps": [
+    {
+      "short": "Undercoat", "title": "Prep and undercoat", "start": 30, "end": 90,
+      "summary": "Build in sub-assemblies and prime dark grey.",
+      "general": [ { "n": "Thin coats", "t": 45, "p": "Spray in short passes from about 20 cm." } ],
+      "subs": [
+        { "title": "Prime the model", "area": "Every part", "paints": ["primer"], "t": 60, "tips": ["Two light passes beat one heavy one."] }
+      ]
+    },
+    {
+      "short": "Base and shade", "title": "Base colours and shade", "start": 90, "end": 300,
+      "summary": "Block in the coat and metal, then shade both.",
+      "subs": [
+        { "title": "Base the coat", "area": "Greatcoat", "paints": ["prussian"], "t": 100, "note": "**Prussian Blue** is bluer than the original green." },
+        { "title": "Base the metal", "area": "Rifle and helmet", "paints": ["chainmail"], "t": 200 },
+        { "title": "Shade everything", "area": "Coat and metal", "paints": ["blackwash"], "t": 250, "tips": ["Lift any pools with a dry brush."] },
+        { "title": "Apply transfers", "area": "Shoulder pads", "paints": [] }
+      ]
+    }
+  ]
+}

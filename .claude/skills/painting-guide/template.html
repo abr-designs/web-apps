@@ -1,0 +1,641 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-25 -->
+<!-- Painting guide template, extracted from the Krieg Combat Engineers guide. Frozen code: build.mjs fills the TITLE, PALETTE, STORE and GUIDE slots from a guide JSON file. -->
+<title>{{TITLE}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: stepper. Sticky left column holds the progress image and phase list; the right column shows one phase and its paint sub-steps. */
+{{PALETTE}}
+:root {
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 15px/1.6 var(--font-body); }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Logo style is copied from assets/logo/logo.css on purpose: an Artifact can't load a stylesheet file, so keep the two in step by hand. */
+.app-logo { position: fixed; right: -32px; bottom: -32px; z-index: 10; width: 154px; height: 154px; filter: drop-shadow(4px 4px 2px rgba(43, 42, 40, 0.55)); pointer-events: none; }
+@media (max-height: 500px) { .app-logo { right: -20px; bottom: -20px; width: 96px; height: 96px; } }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 140px; }
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.eyebrow { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(30px, 5vw, 44px)/1 var(--font-display); letter-spacing: 0.01em; margin: 4px 0 0; text-wrap: balance; }
+.source { font-size: 13px; color: var(--muted); }
+
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 28px; align-items: start; }
+aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 32px); overflow: auto; }
+.figure-box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.figure-box > div:first-child { width: 100%; display: flex; justify-content: center; }
+.figure-cap { font: 500 12px/1.3 var(--font-mono); color: var(--muted); text-align: center; }
+nav.steps { display: flex; flex-direction: column; gap: 2px; }
+nav.steps button { all: unset; cursor: pointer; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; color: var(--text); }
+nav.steps button:hover { background: var(--accent-soft); }
+nav.steps button:focus-visible { outline: 2px solid var(--accent); }
+nav.steps button[aria-current="true"] { background: var(--accent); color: var(--on-accent); }
+nav.steps .num { font: 600 18px/1 var(--font-display); text-align: center; }
+nav.steps .lbl { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+nav.steps .tick { font: 500 11px/1 var(--font-mono); opacity: 0.85; font-variant-numeric: tabular-nums; }
+nav.steps .sep { height: 1px; background: var(--line); margin: 6px 0; }
+
+main { min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: clamp(16px, 3vw, 28px); display: flex; flex-direction: column; gap: 24px; }
+.step-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 12px; }
+h2 { font: 700 clamp(26px, 4vw, 34px)/1.05 var(--font-display); margin: 4px 0 6px; text-wrap: balance; }
+.summary { margin: 0; max-width: 62ch; color: var(--muted); }
+.watch { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; background: var(--accent); color: var(--on-accent); padding: 8px 14px; border-radius: 6px; font: 500 14px/1.2 var(--font-body); white-space: nowrap; }
+.watch .tc { font-family: var(--font-mono); font-size: 13px; }
+h3 { font: 600 20px/1.2 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; margin: 0 0 10px; color: var(--muted); }
+
+.general { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.general li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; padding-left: 14px; border-left: 2px solid var(--line); }
+.general .tn { font-weight: 600; }
+.general p { margin: 0; max-width: 64ch; }
+.general .tc-link { grid-column: 2; grid-row: 1; }
+
+.subs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.sub { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-top: 1px solid var(--line); }
+.sub:first-child { border-top: 0; padding-top: 4px; }
+.sub-media { display: flex; flex-direction: column; gap: 6px; align-self: start; }
+.sub-fig { background: var(--bg); border: 1px dashed var(--line); border-radius: 6px; padding: 3px; cursor: pointer; display: flex; justify-content: center; }
+.sub-fig:focus { outline: none; border-style: solid; border-color: var(--accent); background: var(--accent-soft); }
+.sub-fig.has-img { border-style: solid; padding: 0; overflow: hidden; }
+.sub-fig img { width: 100%; max-height: 220px; object-fit: contain; display: block; }
+.sub-fig-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.sub-fig-actions .btn { padding: 6px 8px; font-size: 12px; }
+.sub-fig-hint { font-size: 11px; line-height: 1.3; color: var(--muted); text-align: center; }
+.sub-body { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.sub-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sub-id { font: 700 20px/1 var(--font-display); color: var(--accent); min-width: 2ch; }
+.sub-title { font: 600 18px/1.2 var(--font-body); margin: 0; flex: 1 1 auto; min-width: 0; }
+.sub-meta { font-size: 13px; color: var(--muted); }
+.sub-meta b { color: var(--text); font-weight: 500; }
+.sub-tips { margin: 0; padding-left: 18px; display: grid; gap: 4px; max-width: 66ch; }
+.sub.is-done .sub-title { color: var(--muted); }
+.sub.is-done .sub-fig { border-color: var(--accent); }
+.sub-done { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.sub-done input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* Swatch card: stands in for a photo until one is added. */
+.swatch-card { width: 100%; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px 6px; text-align: center; }
+.swatch-card .sw { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.swatch-card .sw span { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.25); }
+.swatch-card .sc-id { font: 700 22px/1 var(--font-display); color: var(--muted); }
+.swatch-card .sc-area { font-size: 11px; line-height: 1.3; color: var(--muted); }
+.swatch-card.lg { gap: 18px; }
+.swatch-card.lg .sw { gap: 14px; max-width: 520px; }
+.swatch-card.lg .sw span { width: 96px; height: 96px; }
+.swatch-card.lg .sc-id { font-size: 56px; }
+.swatch-card.lg .sc-area { font-size: 18px; max-width: 40ch; }
+
+.paints { display: flex; flex-direction: column; gap: 6px; }
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.chain .op { font: 500 12px var(--font-mono); color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.dot { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.25); }
+.metal { background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%); }
+.chip .nm { font-weight: 500; }
+.chip .cd { font: 400 12px var(--font-mono); color: var(--muted); }
+.was { font-size: 12px; color: var(--muted); }
+.badge { font: 500 10px/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.badge.need { border-color: var(--warn); color: var(--warn); }
+.tc-link { font: 500 13px var(--font-mono); text-decoration: none; white-space: nowrap; }
+.tc-link:hover { text-decoration: underline; }
+
+.note { background: var(--warn-soft); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 14px; max-width: 70ch; }
+.note b { color: var(--warn); }
+
+.photo { border: 1px dashed var(--line); border-radius: 8px; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px; text-align: center; color: var(--muted); font-size: 14px; cursor: pointer; }
+.photo:focus { outline: none; border-style: solid; border-color: var(--accent); background: var(--accent-soft); }
+.photo img { max-height: 320px; border-radius: 6px; object-fit: contain; }
+.photo-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.btn { all: unset; cursor: pointer; font: 500 13px/1 var(--font-body); padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--bg); }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible { outline: 2px solid var(--accent); }
+.stepnav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.legend { font-size: 13px; color: var(--muted); margin: 0; max-width: 70ch; }
+
+.rack-group { display: flex; flex-direction: column; gap: 4px; }
+.rack-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.rack-row:last-child { border-bottom: 0; }
+.rack-row .used { font: 400 12px var(--font-mono); color: var(--muted); text-align: right; }
+
+.aside-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.btn.pm-open, .btn.pm-next { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn.pm-open { display: block; text-align: center; padding: 11px 12px; font-size: 14px; }
+.btn.share-all { display: block; text-align: center; padding: 9px 12px; }
+.btn.share-all[hidden] { display: none; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Paint mode: full-window slideshow, one sub-step per slide. Sits under the logo (z 10), so the footer pads right to keep Next clear of it. */
+.pm { position: fixed; inset: 0; z-index: 9; background: var(--bg); display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; padding-top: env(safe-area-inset-top, 0px); }
+.pm[hidden] { display: none; }
+.pm:focus { outline: none; }
+.pm-top { display: flex; align-items: center; gap: 12px; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); background: var(--surface); }
+.pm-top .eyebrow { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-count { font: 500 13px/1 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pm-bar { height: 4px; background: var(--line); }
+.pm-bar span { display: block; height: 100%; background: var(--accent); }
+.pm-body { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); min-height: 0; }
+.pm-stage { min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; border-right: 1px solid var(--line); touch-action: pan-y; }
+.pm-stage img { max-width: 100%; max-height: 100%; min-height: 0; object-fit: contain; border-radius: 8px; }
+.pm-fallback { font-size: 13px; color: var(--muted); text-align: center; }
+.pm-info { overflow: auto; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 20px; background: var(--surface); }
+.pm-info h3 { font-size: 16px; margin: 0 0 8px; }
+.pm-head { display: flex; align-items: baseline; gap: 12px; }
+.pm-id { font: 700 34px/1 var(--font-display); color: var(--accent); }
+.pm-title { font: 700 clamp(28px, 3.4vw, 40px)/1.05 var(--font-display); margin: 0; text-wrap: balance; }
+.pm .chain { gap: 10px 12px; }
+.pm .chain .op { font-size: 14px; }
+.pm .chip .dot { width: 40px; height: 40px; }
+.pm .chip .nm { font-size: 19px; }
+.pm-where { margin: 0; font-size: 18px; font-weight: 500; }
+.pm-tips { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 16px; max-width: 60ch; }
+.pm-info details { border-top: 1px solid var(--line); padding-top: 12px; }
+.pm-info summary { cursor: pointer; font: 600 16px/1.2 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; color: var(--muted); }
+.pm-info details ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.pm-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+.pm-done { font-size: 16px; color: var(--text); }
+.pm-done input { width: 22px; height: 22px; }
+.pm-foot { display: flex; align-items: center; gap: 12px; padding: 10px 130px calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); border-top: 1px solid var(--line); background: var(--surface); }
+.pm-dots { flex: 1 1 auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pm-dot { all: unset; cursor: pointer; font: 500 13px/1 var(--font-mono); padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); }
+.pm-dot.is-done { border-color: var(--accent); color: var(--accent); }
+.pm-dot[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.pm-dot:focus-visible { outline: 2px solid var(--accent); }
+
+@media (max-width: 820px) {
+  .pm-body { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .pm-stage { height: 46vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  .pm-info { overflow: visible; }
+  .swatch-card.lg .sw span { width: 56px; height: 56px; }
+  .swatch-card.lg .sc-id { font-size: 40px; }
+}
+@media (max-width: 560px) {
+  .pm-dots { display: none; }
+  .pm-foot { justify-content: space-between; padding-right: 112px; }
+}
+
+@media (max-width: 820px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  aside { position: static; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: start; max-height: none; overflow: visible; }
+  .figure-box { padding: 6px; }
+  .figure-cap { font-size: 11px; }
+  .figure-box .swatch-card .sw span { width: 18px; height: 18px; }
+}
+@media (max-width: 560px) {
+  .sub { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
+  .swatch-card .sw span { width: 20px; height: 20px; }
+  .rack-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .rack-row .was { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: no-preference) { .panel { animation: rise 0.18s ease-out; } @keyframes rise { from { transform: translateY(4px); } to { transform: none; } } }
+</style>
+
+<img class="app-logo" src="logo/senor_claude.png" alt="">
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1 id="title"></h1>
+    </div>
+    <div class="source" id="source"></div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <div class="figure-box">
+        <div id="bigFigure"></div>
+        <div class="figure-cap" id="figCap"></div>
+      </div>
+      <div class="aside-side">
+        <button class="btn pm-open" id="pmOpen">Paint mode</button>
+        <button class="btn share-all" id="shareAll" hidden></button>
+        <nav class="steps" id="stepNav" aria-label="Phases"></nav>
+      </div>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+
+<div class="pm" id="paintMode" role="dialog" aria-modal="true" aria-label="Paint mode" tabindex="-1" hidden>
+  <div class="pm-top" id="pmTop"></div>
+  <div class="pm-bar"><span id="pmBar"></span></div>
+  <div class="pm-body">
+    <div class="pm-stage" id="pmStage"></div>
+    <div class="pm-info" id="pmInfo"></div>
+  </div>
+  <div class="pm-foot" id="pmFoot"></div>
+</div>
+
+<script>
+{{STORE}}
+</script>
+<script>
+const G = {{GUIDE}};
+const PAINTS = G.paints, STEPS = G.steps;
+const VIDEO = G.source && G.source.timecodes ? G.source.url : null;
+
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Notes allow **bold** and nothing else.
+const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+// Adds the timecode before any #fragment.
+const vurl = t => { const [base, frag] = VIDEO.split("#"); return `${base}${base.includes("?") ? "&" : "?"}t=${t}s${frag ? "#" + frag : ""}`; };
+const vlink = (t, label) => VIDEO && t != null ? `<a class="tc-link" href="${vurl(t)}" target="_blank" rel="noopener" title="Open the video at ${fmt(t)}">${label || fmt(t)}</a>` : "";
+
+const prefs = createPrefs(G.id);
+const imgs = createImageStore({ dbName: "guide-" + G.id, onChange: () => refreshImages() });
+let done = prefs.get("subs-done", {});
+const phaseDone = s => s.subs.filter(x => done[x.id]).length;
+// Render tokens: an async render keeps its result only if no newer render of the same target started meanwhile.
+const renders = {};
+const claim = id => (renders[id] = (renders[id] || 0) + 1);
+const SAVE_FAIL = "Couldn't save that image. Try a PNG, JPEG or WebP.";
+const NOT_SHARED = "Saved in this browser only: sharing failed. Use the Share button to retry.";
+const saveNote = r => r.shared || !imgs.canShare() ? "" : NOT_SHARED;
+
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+function swatchCard(keys, id, area, big) {
+  const sw = [...new Set(keys)].map(k => `<span class="${PAINTS[k].metal ? "metal" : ""}" style="background-color:#${PAINTS[k].hex}"></span>`).join("");
+  return `<div class="swatch-card${big ? " lg" : ""}" role="img" aria-label="${esc(area || "Paints")}">${id ? `<span class="sc-id">${esc(id)}</span>` : ""}${sw ? `<div class="sw">${sw}</div>` : ""}${area ? `<span class="sc-area">${esc(area)}</span>` : ""}</div>`;
+}
+
+function chip(key) {
+  const p = PAINTS[key];
+  const badge = p.src === "need" ? '<span class="badge need">Need</span>' : p.src === "owned" ? '<span class="badge">Owned</span>' : "";
+  return `<span class="chip"><span class="dot${p.metal ? " metal" : ""}" style="background-color:#${p.hex}"></span><span><span class="nm">${esc(p.name)}</span> <span class="cd">${esc(p.code)}</span> ${badge}</span></span>`;
+}
+function paintBlock(sub) {
+  if (!sub.paints.length) return "";
+  const body = sub.paints.map(chip).join('<span class="op">+</span>');
+  const was = sub.paints.map(k => PAINTS[k].was).filter(Boolean);
+  const swap = sub.paints.map(k => PAINTS[k].swap).filter(Boolean);
+  const mix = sub.mix ? '<span class="op">equal parts</span>' : "";
+  return `<div class="paints"><div class="chain">${body}${mix}</div>${was.length ? `<div class="was">Replaces ${esc(was.join(" + "))}</div>` : ""}${swap.length ? `<div class="was">Swap: ${esc(swap.join(", "))}</div>` : ""}</div>`;
+}
+
+function renderNav(current) {
+  const items = [`<button data-go="paints" aria-current="${current === "paints"}"><span class="num">·</span><span class="lbl">Paint list</span><span class="tick"></span></button><div class="sep"></div>`]
+    .concat(STEPS.map((s, i) => `<button data-go="${s.id}" aria-current="${current === s.id}"><span class="num">${i + 1}</span><span class="lbl">${esc(s.short)}</span><span class="tick">${phaseDone(s)}/${s.subs.length}</span></button>`));
+  $("#stepNav").innerHTML = items.join("");
+}
+
+function renderPaints() {
+  sideView = null;
+  $("#bigFigure").innerHTML = swatchCard(Object.keys(PAINTS), "", "");
+  $("#figCap").textContent = "Every paint in this scheme";
+  const used = {};
+  STEPS.forEach(s => s.subs.forEach(x => x.paints.forEach(k => { (used[k] = used[k] || []).push(x.id); })));
+  const groups = G.paintList.groups.map(g => {
+    const rows = Object.keys(PAINTS).filter(k => PAINTS[k].src === g.src).map(k => {
+      const p = PAINTS[k];
+      return `<div class="rack-row">${chip(k)}<span class="was">${p.was ? "Replaces " + esc(p.was) : p.swap ? "Swap: " + esc(p.swap) : esc(G.paintList.sameLabel || "As written")}</span><span class="used">${(used[k] || []).join(", ")}</span></div>`;
+    }).join("");
+    return rows ? `<section class="rack-group"><h3>${esc(g.title)}</h3><p class="legend">${esc(g.blurb)}</p>${rows}</section>` : "";
+  }).join("");
+  $("#main").innerHTML = `<div class="panel">
+    <div><div class="eyebrow">Before you start</div><h2 tabindex="-1">Paint list</h2>
+    <p class="summary">${esc(G.paintList.summary)} The codes on the right are the sub-steps that use each paint.</p></div>
+    ${groups}
+    <div class="stepnav"><span></span><button class="btn" data-go="${STEPS[0].id}">Start phase 1</button></div>
+  </div>`;
+}
+
+function renderStep(i) {
+  const s = STEPS[i];
+  const general = s.general && s.general.length ? `<section><h3>Throughout this phase</h3><ul class="general">${s.general.map(t => `<li><span class="tn">${esc(t.n)}</span>${vlink(t.t)}<p>${esc(t.p)}</p></li>`).join("")}</ul></section>` : "";
+  const subs = s.subs.map(x => `<li class="sub${done[x.id] ? " is-done" : ""}" id="sub-${x.id}">
+      <div class="sub-media"><div class="sub-fig" id="thumb-${x.id}" tabindex="0" aria-label="Image for ${x.id}. Click, then paste with Ctrl+V."></div><div class="sub-fig-actions" id="thumbAct-${x.id}"></div></div>
+      <div class="sub-body">
+        <div class="sub-top"><span class="sub-id">${x.id}</span><h4 class="sub-title">${esc(x.title)}</h4>${vlink(x.t)}</div>
+        ${paintBlock(x)}
+        <div class="sub-meta"><b>Where:</b> ${esc(x.area)}</div>
+        ${x.tips && x.tips.length ? `<ul class="sub-tips">${x.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+        ${x.note ? `<div class="note">${md(x.note)}</div>` : ""}
+        <label class="sub-done"><input type="checkbox" id="done-${x.id}" data-sub="${x.id}" ${done[x.id] ? "checked" : ""}> Done</label>
+      </div>
+    </li>`).join("");
+  const prev = i > 0 ? `<button class="btn" data-go="${STEPS[i - 1].id}">Previous: ${esc(STEPS[i - 1].short)}</button>` : `<button class="btn" data-go="paints">Paint list</button>`;
+  const next = i < STEPS.length - 1 ? `<button class="btn" data-go="${STEPS[i + 1].id}">Next: ${esc(STEPS[i + 1].short)}</button>` : "<span></span>";
+  const watch = VIDEO && s.start != null ? `<a class="watch" href="${vurl(s.start)}" target="_blank" rel="noopener">Watch <span class="tc">${fmt(s.start)}${s.end != null ? ` to ${fmt(s.end)}` : ""}</span></a>` : "";
+
+  $("#main").innerHTML = `<div class="panel">
+    <div class="step-head">
+      <div><div class="eyebrow">Phase ${i + 1} of ${STEPS.length} · ${s.subs.length} sub-steps</div><h2 tabindex="-1">${esc(s.title)}</h2><p class="summary">${esc(s.summary)}</p></div>
+      ${watch}
+    </div>
+    ${general}
+    <section><h3>Paint sub-steps</h3><ol class="subs">${subs}</ol></section>
+    <section><h3>Your progress photo</h3><div class="photo" id="photoSlot-${s.id}" tabindex="0" aria-label="Progress photo. Click, then paste with Ctrl+V."></div></section>
+    <p class="legend">To add a sub-step image, click its card and press Ctrl+V, or use Add image. The paint card shows until you add one. If you can edit this page, images are shared with everyone you give the link to.</p>
+    <div class="stepnav">${prev}${next}</div>
+  </div>`;
+
+  $("#main").querySelectorAll("[data-sub]").forEach(box => box.addEventListener("change", e => {
+    const id = e.target.dataset.sub;
+    done[id] = e.target.checked;
+    prefs.set("subs-done", done);
+    e.target.closest(".sub").classList.toggle("is-done", e.target.checked);
+    renderNav(currentView);
+  }));
+  renderStepImages(i);
+}
+
+function renderStepImages(i) {
+  const s = STEPS[i];
+  s.subs.forEach(x => renderThumb(x, () => renderSideFigure(i)));
+  renderSideFigure(i);
+  renderSlot("photoSlot-" + s.id, s.id, SLOT_TEXT);
+}
+const SLOT_TEXT = {
+  empty: "Add a photo of your model after this phase, or click here and paste one with Ctrl+V.",
+  alt: "Your model after this phase", add: "Add photo"
+};
+
+// Wires a file input and Ctrl+V paste on a box to save(file).
+function wireInput(box, inputId, save) {
+  const input = document.getElementById(inputId);
+  if (input) input.onchange = e => { const f = e.target.files && e.target.files[0]; if (f) save(f); };
+  box.onpaste = e => {
+    const item = [...(e.clipboardData ? e.clipboardData.items : [])].find(x => x.type.startsWith("image/"));
+    if (!item) return;
+    e.preventDefault();
+    save(item.getAsFile());
+  };
+}
+
+const slotUrls = {};
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+async function renderSlot(boxId, key, text, msg) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const tok = claim(boxId);
+  const blob = await imgs.get(key);
+  if (renders[boxId] !== tok || !box.isConnected) return;
+  if (slotUrls[boxId]) { URL.revokeObjectURL(slotUrls[boxId]); slotUrls[boxId] = null; }
+  const inputId = `${boxId}-in`;
+  const input = `<input type="file" accept="image/*" id="${inputId}" hidden>`;
+  const hint = msg ? `<span class="sub-fig-hint">${esc(msg)}</span>` : "";
+  if (blob) {
+    slotUrls[boxId] = URL.createObjectURL(blob);
+    if (imgs.locked(key)) { box.innerHTML = `<img src="${slotUrls[boxId]}" alt="${esc(text.alt)}">`; box.onpaste = null; return; }
+    box.innerHTML = `<img src="${slotUrls[boxId]}" alt="${esc(text.alt)}">${input}<div class="photo-actions"><label class="btn" for="${inputId}">Replace</label><button class="btn" id="${boxId}-del">Remove</button></div>${hint}`;
+    document.getElementById(`${boxId}-del`).onclick = async () => { try { await imgs.del(key); } catch {} renderSlot(boxId, key, text); };
+  } else {
+    box.innerHTML = `<span>${esc(text.empty)}</span>${input}<div class="photo-actions"><label class="btn" for="${inputId}">${esc(text.add)}</label></div>${hint}`;
+  }
+  wireInput(box, inputId, async f => {
+    let r;
+    try { r = await imgs.put(key, f); } catch { renderSlot(boxId, key, text, SAVE_FAIL); return; }
+    renderSlot(boxId, key, text, saveNote(r));
+    updateShareBtn();
+  });
+  box.onclick = e => { if (!e.target.closest("label, button")) box.focus(); };
+}
+
+// Sub-step image: the user's own image (key "sub-<id>") when there is one, otherwise the swatch card.
+const thumbUrls = {};
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+async function renderThumb(x, onChange, msg) {
+  const id = x.id, box = document.getElementById("thumb-" + id), act = document.getElementById("thumbAct-" + id);
+  if (!box) return;
+  const key = "sub-" + id, tok = claim(key);
+  const blob = await imgs.get(key);
+  if (renders[key] !== tok || !box.isConnected) return;
+  if (thumbUrls[id]) { URL.revokeObjectURL(thumbUrls[id]); thumbUrls[id] = null; }
+  const inputId = `thumbIn-${id}`;
+  const hint = msg ? `<span class="sub-fig-hint">${esc(msg)}</span>` : "";
+  if (blob) {
+    thumbUrls[id] = URL.createObjectURL(blob);
+    box.classList.add("has-img");
+    box.innerHTML = `<img src="${thumbUrls[id]}" alt="Reference for ${id}">`;
+    if (imgs.locked(key)) { act.innerHTML = ""; box.onpaste = null; return; }
+    act.innerHTML = `<input type="file" accept="image/*" id="${inputId}" hidden><label class="btn" for="${inputId}">Replace</label><button class="btn" id="thumbDel-${id}">Remove</button>${hint}`;
+    document.getElementById(`thumbDel-${id}`).onclick = async () => { try { await imgs.del(key); } catch {} renderThumb(x, onChange); onChange(); };
+  } else {
+    box.classList.remove("has-img");
+    box.innerHTML = swatchCard(x.paints, id, x.area);
+    act.innerHTML = `<input type="file" accept="image/*" id="${inputId}" hidden><label class="btn" for="${inputId}">Add image</label>${hint}`;
+  }
+  wireInput(box, inputId, async f => {
+    let r;
+    try { r = await imgs.put(key, f); } catch { renderThumb(x, onChange, SAVE_FAIL); return; }
+    renderThumb(x, onChange, saveNote(r)); onChange();
+    updateShareBtn();
+  });
+  box.onclick = () => box.focus();
+}
+
+// Sidebar shows the latest sub-step image in the phase, or the phase's paints when it has none.
+let sideUrl = null, sideView = null;
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+async function renderSideFigure(i) {
+  const s = STEPS[i];
+  const cap = `After phase ${i + 1}: ${s.short.toLowerCase()}`;
+  const swatch = () => {
+    $("#bigFigure").innerHTML = swatchCard(s.subs.flatMap(x => x.paints), "", "");
+    $("#figCap").textContent = `Paints in phase ${i + 1}`;
+  };
+  // On a new phase, show its paints straight away rather than the previous phase's image.
+  if (sideView !== s.id) { sideView = s.id; swatch(); }
+  const tok = claim("side");
+  const blobs = await Promise.all(s.subs.map(x => imgs.get("sub-" + x.id)));
+  if (renders.side !== tok || currentView !== s.id) return;
+  const last = blobs.map((b, n) => b ? n : -1).filter(n => n >= 0).pop();
+  const blob = last == null ? null : blobs[last], from = last == null ? null : s.subs[last].id;
+  if (sideUrl) { URL.revokeObjectURL(sideUrl); sideUrl = null; }
+  if (!blob) { swatch(); return; }
+  sideUrl = URL.createObjectURL(blob);
+  $("#bigFigure").innerHTML = `<img src="${sideUrl}" alt="Your image for ${from}" style="border-radius:6px;max-width:100%;max-height:320px;object-fit:contain">`;
+  $("#figCap").textContent = `${cap} (your image, ${from})`;
+}
+
+// Editor-only button that uploads images saved in this browser that aren't shared yet.
+let sharing = false;
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+async function updateShareBtn() {
+  if (sharing) return;
+  const b = $("#shareAll"), n = (await imgs.unsharedKeys()).length;
+  b.hidden = !n;
+  b.textContent = `Share ${n} photo${n === 1 ? "" : "s"} with the link`;
+}
+$("#shareAll").addEventListener("click", async () => {
+  const b = $("#shareAll");
+  sharing = true;
+  b.disabled = true;
+  const failed = await imgs.shareAll((n, total) => { b.textContent = `Sharing ${n} of ${total}…`; });
+  sharing = false;
+  b.disabled = false;
+  await updateShareBtn();
+  if (failed) { b.hidden = false; b.textContent = `${failed} couldn't be shared. Try again`; }
+});
+
+function refreshImages() {
+  const i = STEPS.findIndex(s => s.id === currentView);
+  if (i >= 0) renderStepImages(i);
+  if (!pmEl.hidden) loadStage(FLAT[pm.idx].x);
+  updateShareBtn();
+}
+
+let currentView = null;
+function go(view, push) {
+  const i = STEPS.findIndex(s => s.id === view);
+  const v = i >= 0 ? view : "paints";
+  currentView = v;
+  renderNav(v);
+  if (i >= 0) renderStep(i); else renderPaints();
+  prefs.set("view", v);
+  if (push) { try { history.replaceState(null, "", "#" + v); } catch {} }
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-go]");
+  if (!b) return;
+  const v = b.dataset.go, fromNav = !!b.closest("#stepNav");
+  go(v, true);
+  // Bring the new view's top into sight (on phones the nav sits above it), and put focus back where the rebuilt buttons are.
+  if (window.matchMedia("(max-width: 820px)").matches || $("#main").getBoundingClientRect().top < 0) $("#main").scrollIntoView({ block: "start" });
+  const target = fromNav ? $(`#stepNav [data-go="${v}"]`) : $("#main h2");
+  if (target) target.focus({ preventScroll: true });
+});
+window.addEventListener("hashchange", () => go(location.hash.slice(1), false));
+
+// Paint mode: one slide per sub-step across all phases, with the user's image enlarged (swatch card when there is none).
+const FLAT = STEPS.flatMap((s, pi) => s.subs.map(x => ({ x, pi })));
+const pm = { idx: 0, url: null, token: 0, lock: null, touchX: null };
+const pmEl = $("#paintMode");
+
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+function openPaintMode() {
+  const pi = STEPS.findIndex(s => s.id === currentView);
+  const pool = FLAT.map((f, i) => ({ f, i })).filter(o => pi < 0 || o.f.pi === pi);
+  pm.idx = (pool.find(o => !done[o.f.x.id]) || pool[0]).i;
+  pmEl.hidden = false;
+  $(".wrap").inert = true;
+  document.body.style.overflow = "hidden";
+  renderPM();
+  pmEl.focus();
+  wake(true);
+}
+
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+function closePaintMode() {
+  pmEl.hidden = true;
+  $(".wrap").inert = false;
+  document.body.style.overflow = "";
+  pm.token++;
+  if (pm.url) { URL.revokeObjectURL(pm.url); pm.url = null; }
+  wake(false);
+  go(STEPS[FLAT[pm.idx].pi].id, true);
+  $("#pmOpen").focus();
+}
+
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+function renderPM() {
+  const { x, pi } = FLAT[pm.idx];
+  const s = STEPS[pi];
+  const first = s.subs[0] === x, last = pm.idx === FLAT.length - 1;
+  $("#pmTop").innerHTML = `<span class="eyebrow">Phase ${pi + 1} of ${STEPS.length} · ${esc(s.short)}</span><span class="pm-count">${pm.idx + 1} / ${FLAT.length}</span><button class="btn" data-pm-close>Close</button>`;
+  $("#pmBar").style.width = `${(pm.idx + 1) / FLAT.length * 100}%`;
+  const general = s.general && s.general.length ? `<details${first ? " open" : ""}><summary>Phase tips</summary><ul>${s.general.map(t => `<li><b>${esc(t.n)}.</b> ${esc(t.p)}</li>`).join("")}</ul></details>` : "";
+  $("#pmInfo").innerHTML = `
+    <div class="pm-head"><span class="pm-id">${x.id}</span><h2 class="pm-title">${esc(x.title)}</h2></div>
+    <section><h3>Paints</h3>${x.paints.length ? paintBlock(x) : '<p class="pm-where">No paint in this step</p>'}</section>
+    <section><h3>Where</h3><p class="pm-where">${esc(x.area)}</p></section>
+    ${x.tips && x.tips.length ? `<section><h3>How</h3><ol class="pm-tips">${x.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ol></section>` : ""}
+    ${x.note ? `<div class="note">${md(x.note)}</div>` : ""}
+    <div class="pm-row">${vlink(x.t, x.t != null ? `Watch at ${fmt(x.t)}` : "")}<label class="sub-done pm-done"><input type="checkbox" id="pmDone" ${done[x.id] ? "checked" : ""}> Done</label></div>
+    ${general}`;
+  $("#pmInfo").scrollTop = 0;
+  const dots = s.subs.map(y => {
+    const i = FLAT.findIndex(f => f.x === y);
+    return `<button class="pm-dot${done[y.id] ? " is-done" : ""}" data-pm-jump="${i}" aria-current="${i === pm.idx}" aria-label="Sub-step ${y.id}: ${esc(y.title)}">${y.id}</button>`;
+  }).join("");
+  $("#pmFoot").innerHTML = `<button class="btn" data-pm-step="-1" ${pm.idx === 0 ? "disabled" : ""}>Previous</button><div class="pm-dots">${dots}</div><button class="btn pm-next" data-pm-step="1">${last ? "Finish" : "Next"}</button>`;
+  if (!pmEl.contains(document.activeElement)) pmEl.focus();
+  loadStage(x);
+}
+
+/** @created Claude (claude-opus-5-5) - 2026-10-25 */
+async function loadStage(x) {
+  const tok = ++pm.token;
+  const blob = await imgs.get("sub-" + x.id);
+  if (tok !== pm.token) return;
+  if (pm.url) { URL.revokeObjectURL(pm.url); pm.url = null; }
+  if (blob) {
+    pm.url = URL.createObjectURL(blob);
+    $("#pmStage").innerHTML = `<img src="${pm.url}" alt="Your image for ${x.id}">`;
+  } else {
+    $("#pmStage").innerHTML = `${swatchCard(x.paints, x.id, x.area, true)}<span class="pm-fallback">No image added for ${x.id} yet</span>`;
+  }
+}
+
+function pmStep(d) {
+  const n = pm.idx + d;
+  if (n >= FLAT.length) { closePaintMode(); return; }
+  if (n < 0) return;
+  pm.idx = n;
+  renderPM();
+}
+
+// Keep the screen awake while painting, where the browser allows it.
+async function wake(on) {
+  try {
+    if (on && navigator.wakeLock) {
+      const lock = await navigator.wakeLock.request("screen");
+      // Paint mode may have closed while the request was pending.
+      if (pmEl.hidden) await lock.release(); else pm.lock = lock;
+    } else if (!on && pm.lock) { await pm.lock.release(); pm.lock = null; }
+  } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (!pmEl.hidden && document.visibilityState === "visible") wake(true); });
+
+$("#pmOpen").addEventListener("click", openPaintMode);
+pmEl.addEventListener("click", e => {
+  if (e.target.closest("[data-pm-close]")) return closePaintMode();
+  // Buttons are rebuilt on each slide, so focus moves to the matching new button.
+  const refocus = sel => { if (pmEl.hidden) return; const el = pmEl.querySelector(sel); (el && !el.disabled ? el : pmEl).focus(); };
+  const step = e.target.closest("[data-pm-step]");
+  if (step) { const d = step.dataset.pmStep; pmStep(Number(d)); refocus(`[data-pm-step="${d}"]`); return; }
+  const jump = e.target.closest("[data-pm-jump]");
+  if (jump) { pm.idx = Number(jump.dataset.pmJump); renderPM(); refocus(`[data-pm-jump="${pm.idx}"]`); }
+});
+pmEl.addEventListener("change", e => {
+  if (e.target.id !== "pmDone") return;
+  const id = FLAT[pm.idx].x.id;
+  done[id] = e.target.checked;
+  prefs.set("subs-done", done);
+  const dot = pmEl.querySelector(`[data-pm-jump="${pm.idx}"]`);
+  if (dot) dot.classList.toggle("is-done", e.target.checked);
+  renderNav(currentView);
+});
+document.addEventListener("keydown", e => {
+  if (pmEl.hidden || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === "Escape") closePaintMode();
+  else if (e.key === "ArrowRight") { e.preventDefault(); pmStep(1); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); pmStep(-1); }
+  else if (e.key === "d" || e.key === "D") $("#pmDone").click();
+});
+$("#pmStage").addEventListener("pointerdown", e => { pm.touchX = e.pointerType === "mouse" ? null : e.clientX; });
+$("#pmStage").addEventListener("pointerup", e => {
+  if (pm.touchX === null) return;
+  const dx = e.clientX - pm.touchX;
+  pm.touchX = null;
+  if (Math.abs(dx) > 50) pmStep(dx < 0 ? 1 : -1);
+});
+
+$("#eyebrow").textContent = G.eyebrow || "";
+$("#title").textContent = G.title;
+if (G.source) $("#source").innerHTML = `Based on ${esc(G.source.credit)}, ${G.source.url ? `<a href="${esc(G.source.url)}" target="_blank" rel="noopener">${esc(G.source.title)}</a>` : esc(G.source.title)}${G.source.length ? ` (${esc(G.source.length)})` : ""}`;
+go(location.hash.slice(1) || prefs.get("view", "paints"), false);
+</script>
