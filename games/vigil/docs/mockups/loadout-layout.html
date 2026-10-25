@@ -1,0 +1,143 @@
+<!doctype html>
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-22 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigil Loadout Layouts</title>
+  <!-- Plan 0002 step 1 gate: static grayscale layouts for the pre-mission loadout overlay. -->
+  <link rel="stylesheet" href="../../../../assets/logo/logo.css">
+  <style>
+    :root {
+      --bg: #101010; --surface: #1b1b1b; --raised: #262626; --text: #e8e8e8; --muted: #8c8c8c; --accent: #d4d4d4; --line: #3a3a3a; --off: #4a4a4a;
+      --slot-1: #f2f2f2; --slot-2: #b4b4b4; --slot-3: #858585; --slot-4: #5c5c5c;
+      --strip: 34px; --cut: 10px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--text); font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+    kbd { padding: 1px 5px; border-radius: 2px; font: 11px ui-monospace, monospace; color: #555; border: 1px solid #777; }
+
+    .strip { position: fixed; top: 0; left: 0; right: 0; height: var(--strip); display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #050505; z-index: 20; font-size: 12px; }
+    .strip b { color: var(--muted); font-weight: 500; margin-right: 8px; }
+    .strip a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 3px; border: 1px solid transparent; }
+    .strip span { margin-left: auto; color: var(--muted); }
+    :root:not(:has(.layout:target)) .strip a[href="#a"], :root:has(#a:target) .strip a[href="#a"],
+    :root:has(#b:target) .strip a[href="#b"], :root:has(#c:target) .strip a[href="#c"] { color: var(--text); border-color: var(--line); }
+
+    .layout { display: none; position: fixed; inset: var(--strip) 0 0 0; overflow: hidden; }
+    .layout:target, :root:not(:has(.layout:target)) #a { display: block; }
+    .layout > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .panel { background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--line); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+    .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    .nm { color: var(--c); font-size: 15px; }
+    .cls { color: var(--muted); font-size: 11px; }
+    .num { display: grid; place-items: center; width: 18px; height: 18px; font: 700 11px ui-monospace, monospace; background: var(--c); color: #111; }
+    .item { padding: 7px 12px; border: 1px solid var(--line); background: #141414; color: var(--muted); text-align: center; }
+    .item.on { border-color: var(--accent); color: var(--text); background: var(--raised); }
+    .item.off { color: var(--off); border-style: dashed; }
+    .item small { display: block; font-size: 10px; color: var(--muted); }
+    .launch { padding: 11px 26px; background: var(--accent); color: #111; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; text-align: center; }
+    .dim { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+
+    /* ---------- A: Centre briefing card ---------- */
+    .a .card { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 32px)); padding: 20px 22px; display: grid; gap: 10px; }
+    .a h2 { margin: 0; font-size: 18px; letter-spacing: .2em; text-transform: uppercase; font-weight: 600; }
+    .a .slot { display: grid; grid-template-columns: 4px 1fr auto auto; gap: 12px; align-items: center; padding: 8px 10px 8px 0; background: #151515; border: 1px solid #2a2a2a; }
+    .a .slot::before { content: ""; align-self: stretch; background: var(--c); }
+    .a .foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+
+    /* ---------- B: Bottom squad lineup ---------- */
+    .b .lineup { position: absolute; left: 16px; right: 130px; bottom: 16px; display: grid; grid-template-columns: repeat(4, 1fr) 150px; gap: 10px; }
+    .b .soldier { display: grid; gap: 8px; padding: 12px; border-top: 4px solid var(--c); }
+    .b .soldier header { display: flex; gap: 8px; align-items: center; }
+    .b .por { height: 70px; background: linear-gradient(#2c2c2c, #1d1d1d); border: 1px solid var(--line); position: relative; }
+    .b .por::after { content: ""; position: absolute; left: 50%; top: 14px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: #6d6d6d; }
+    .b .items { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .b .go { display: grid; align-content: end; gap: 8px; }
+    .b .title { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); padding: 8px 28px; letter-spacing: .3em; text-transform: uppercase; }
+
+    /* ---------- C: Side requisition rail ---------- */
+    .c .rail { position: absolute; top: 0; right: 0; bottom: 0; width: 340px; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--surface); border-left: 1px solid var(--line); }
+    .c h2 { margin: 0 0 4px; font-size: 16px; letter-spacing: .2em; text-transform: uppercase; font-weight: 600; }
+    .c .slot { display: grid; gap: 8px; padding: 10px; border-left: 4px solid var(--c); background: #151515; }
+    .c .slot header { display: flex; align-items: baseline; gap: 8px; }
+    .c .slot header .cls { margin-left: auto; }
+    .c .seg { display: grid; grid-template-columns: 1fr 1fr; }
+    .c .seg .item + .item { border-left: 0; }
+    .c .spacer { flex: 1; }
+    .c .note { color: var(--muted); font-size: 11px; }
+    .c .launch { width: 180px; margin-bottom: 6px; }
+    .c .ring { fill: none; stroke-width: 3; }
+  </style>
+</head>
+<body>
+  <img class="app-logo" src="../../../../assets/logo/senor_claude.png" alt="">
+
+  <nav class="strip"><b>Plan 0002 layouts</b><a href="#a">A Briefing card</a><a href="#b">B Squad lineup</a><a href="#c">C Requisition rail</a><span>Grenadier holds the Rocket, so the other Rocket buttons are greyed</span></nav>
+
+  <!-- Mission map behind the overlay: 16 x 10 tiles of 50 px, squad at the bottom left. -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <pattern id="tiles" width="50" height="50" patternUnits="userSpaceOnUse"><rect width="50" height="50" fill="#1e1e1e"/><path d="M50 0H0V50" fill="none" stroke="#2b2b2b"/></pattern>
+      <g id="world">
+        <rect width="800" height="500" fill="url(#tiles)"/>
+        <rect x="350" y="100" width="50" height="200" fill="#5a5a5a" stroke="#777"/>
+        <rect x="550" y="250" width="150" height="50" fill="#4a4a4a" stroke="#666"/>
+        <rect x="255" y="255" width="40" height="40" fill="#3d3d3d" stroke="#555"/>
+        <rect x="455" y="105" width="40" height="40" fill="#3d3d3d" stroke="#555"/>
+        <circle cx="75" cy="375" r="14" fill="var(--slot-1)"/><circle cx="125" cy="375" r="14" fill="var(--slot-2)"/>
+        <circle cx="75" cy="425" r="14" fill="var(--slot-3)"/><circle cx="125" cy="425" r="14" fill="var(--slot-4)"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- ===================== A ===================== -->
+  <section class="layout a" id="a">
+    <svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><use href="#world"/></svg>
+    <div class="dim"></div>
+    <div class="panel card">
+      <div class="label">Pre-mission</div>
+      <h2>Loadout</h2>
+      <div class="slot" style="--c:var(--slot-1)"><div><span class="nm">Okafor</span> <span class="cls">Ranger</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+      <div class="slot" style="--c:var(--slot-2)"><div><span class="nm">Vasquez</span> <span class="cls">Sharpshooter</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+      <div class="slot" style="--c:var(--slot-3)"><div><span class="nm">Lindqvist</span> <span class="cls">Grenadier</span></div><div class="item">Frag Grenade</div><div class="item on">Rocket</div></div>
+      <div class="slot" style="--c:var(--slot-4)"><div><span class="nm">Mbeki</span> <span class="cls">Specialist</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+      <div class="foot"><span class="cls">1 Rocket per squad</span><div class="launch">Launch <kbd>Enter</kbd></div></div>
+    </div>
+  </section>
+
+  <!-- ===================== B ===================== -->
+  <section class="layout b" id="b">
+    <svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><use href="#world"/></svg>
+    <div class="panel title">Squad loadout</div>
+    <div class="lineup">
+      <div class="panel soldier" style="--c:var(--slot-1)"><header><span class="num">1</span><span class="nm">Okafor</span></header><div class="por"></div><div class="cls">Ranger</div><div class="items"><div class="item on">Frag</div><div class="item off">Rocket</div></div></div>
+      <div class="panel soldier" style="--c:var(--slot-2)"><header><span class="num">2</span><span class="nm">Vasquez</span></header><div class="por"></div><div class="cls">Sharpshooter</div><div class="items"><div class="item on">Frag</div><div class="item off">Rocket</div></div></div>
+      <div class="panel soldier" style="--c:var(--slot-3)"><header><span class="num">3</span><span class="nm">Lindqvist</span></header><div class="por"></div><div class="cls">Grenadier</div><div class="items"><div class="item">Frag</div><div class="item on">Rocket</div></div></div>
+      <div class="panel soldier" style="--c:var(--slot-4)"><header><span class="num">4</span><span class="nm">Mbeki</span></header><div class="por"></div><div class="cls">Specialist</div><div class="items"><div class="item on">Frag</div><div class="item off">Rocket</div></div></div>
+      <div class="go"><span class="cls">1 Rocket per squad</span><div class="launch">Launch</div><kbd style="justify-self:center">Enter</kbd></div>
+    </div>
+  </section>
+
+  <!-- ===================== C ===================== -->
+  <section class="layout c" id="c">
+    <svg viewBox="0 0 800 500" preserveAspectRatio="xMinYMid slice">
+      <use href="#world"/>
+      <circle class="ring" cx="75" cy="425" r="22" stroke="var(--slot-3)"/>
+    </svg>
+    <aside class="rail">
+      <div class="label">Pre-mission</div>
+      <h2>Requisition</h2>
+      <div class="slot" style="--c:var(--slot-1)"><header><span class="num">1</span><span class="nm">Okafor</span><span class="cls">Ranger</span></header><div class="seg"><div class="item on">Frag Grenade<small>1 charge</small></div><div class="item off">Rocket<small>taken</small></div></div></div>
+      <div class="slot" style="--c:var(--slot-2)"><header><span class="num">2</span><span class="nm">Vasquez</span><span class="cls">Sharpshooter</span></header><div class="seg"><div class="item on">Frag Grenade<small>1 charge</small></div><div class="item off">Rocket<small>taken</small></div></div></div>
+      <div class="slot" style="--c:var(--slot-3)"><header><span class="num">3</span><span class="nm">Lindqvist</span><span class="cls">Grenadier</span></header><div class="seg"><div class="item">Frag Grenade<small>1 charge</small></div><div class="item on">Rocket<small>1 charge</small></div></div></div>
+      <div class="slot" style="--c:var(--slot-4)"><header><span class="num">4</span><span class="nm">Mbeki</span><span class="cls">Specialist</span></header><div class="seg"><div class="item on">Frag Grenade<small>1 charge</small></div><div class="item off">Rocket<small>taken</small></div></div></div>
+      <div class="spacer"></div>
+      <div class="note">Hovering a row rings that soldier on the map. 1 Rocket per squad.</div>
+      <div class="launch">Launch <kbd>Enter</kbd></div>
+    </aside>
+  </section>
+</body>
+</html>

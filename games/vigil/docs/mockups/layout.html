@@ -1,0 +1,486 @@
+<!doctype html>
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-21 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigil Layouts</title>
+  <!-- Mockup reads the master logo; the game itself uses logo/ after step 3's sync. -->
+  <link rel="stylesheet" href="../../../../assets/logo/logo.css">
+  <style>
+    :root {
+      --bg: #0B1118; --surface: #121C26; --raised: #1B2834; --text: #E6EEF4; --muted: #8A9BAA; --accent: #3FD0E8;
+      --xcom: #4AA8FF; --alien: #E5484D; --move-blue: #2F8CFF; --move-yellow: #F2C94C; --danger: #FF3B3B;
+      --half: #6E9BB8; --full: #43C4F0; --crit: #FFB13B;
+      --strip: 34px;
+      --cut: 10px;
+    }
+    /* Layout B has a fixed bottom console, so the logo rests on it. */
+    :root:has(#b:target) { --logo-floor: 112px; }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--text); font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+    svg.icon { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Switcher strip (mockup chrome, not part of the game) */
+    .strip { position: fixed; top: 0; left: 0; right: 0; height: var(--strip); display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #05080c; border-bottom: 1px solid #000; z-index: 20; font-size: 12px; }
+    .strip b { color: var(--muted); font-weight: 500; margin-right: 8px; letter-spacing: .06em; }
+    .strip a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 3px; border: 1px solid transparent; }
+    .strip a:hover { color: var(--text); }
+    :root:not(:has(.layout:target)) .strip a[href="#a"],
+    :root:has(#a:target) .strip a[href="#a"],
+    :root:has(#b:target) .strip a[href="#b"],
+    :root:has(#c:target) .strip a[href="#c"] { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+
+    .layout { display: none; position: fixed; inset: var(--strip) 0 0 0; overflow: hidden; background: radial-gradient(120% 90% at 50% 40%, #13202c, var(--bg) 70%); }
+    .layout:target, :root:not(:has(.layout:target)) #a { display: block; }
+    .world { position: absolute; inset: 0; }
+    .world svg { width: 100%; height: 100%; display: block; }
+    .layout.c .world { right: 320px; }
+    .layout.b .world { bottom: 112px; }
+
+    /* Shared HUD pieces */
+    .hud { position: absolute; }
+    .panel { background: color-mix(in srgb, var(--surface) 90%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+             clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+    .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    .tag { font-size: 9px; color: var(--muted); letter-spacing: .1em; position: absolute; top: 3px; right: 6px; opacity: .7; }
+
+    /* R1 name plate */
+    .nameplate { padding: 10px 14px; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: center; }
+    .nameplate .name { font-size: 16px; color: var(--accent); letter-spacing: .03em; }
+    .nameplate .nick { color: var(--muted); font-size: 12px; }
+    .nameplate .badges { grid-row: span 2; display: flex; gap: 6px; font-size: 26px; color: var(--accent); }
+
+    /* R2 squad strip */
+    .squad { display: flex; gap: 4px; padding: 4px; }
+    .squad.col { flex-direction: column; }
+    .por { position: relative; width: 74px; height: 84px; background:
+             radial-gradient(circle at 50% 36%, #9fb3c4 0 13px, transparent 14px),
+             radial-gradient(ellipse 30px 26px at 50% 100%, #61788c 0 100%, transparent 101%),
+             linear-gradient(var(--raised), var(--surface));
+           border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+    .por.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .por .cls { position: absolute; left: 4px; bottom: 12px; font-size: 16px; color: var(--accent); }
+    .por .chev { position: absolute; right: 4px; bottom: 11px; color: var(--accent); font: 700 13px/1 ui-monospace, monospace; letter-spacing: -2px; }
+    .por .chev.one { color: var(--move-yellow); }
+    .por .hp { position: absolute; left: 3px; right: 3px; bottom: 3px; display: flex; gap: 1px; height: 5px; }
+    .por .hp i { flex: 1; background: var(--xcom); }
+    .por .hp i.x { background: color-mix(in srgb, var(--text) 12%, transparent); }
+    .squadrow { display: grid; grid-template-columns: 54px 1fr; gap: 8px; align-items: center; padding: 6px; width: 210px; }
+    .squadrow .por { width: 54px; height: 56px; }
+    .squadrow .who { font-size: 12px; }
+    .squadrow .who small { display: block; color: var(--muted); font-size: 11px; }
+    .squadrow.sel { box-shadow: inset 3px 0 0 var(--accent); }
+
+    /* R3 system buttons */
+    .sys { display: flex; gap: 8px; }
+    .sysbtn { width: 58px; height: 58px; display: grid; place-items: center; font-size: 28px; color: var(--accent); }
+    .sysbtn.small { width: 40px; height: 40px; font-size: 20px; }
+    .sysbtn.wide { width: auto; padding: 0 16px; gap: 8px; grid-auto-flow: column; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+    .sysbtn.wide svg { font-size: 20px; }
+
+    /* R4 objective */
+    .objective { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; }
+    .objective .t { font-size: 15px; letter-spacing: .03em; }
+    .objective .s { color: var(--muted); font-size: 11px; }
+    .ring { width: 44px; height: 44px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); outline-offset: 3px;
+            display: grid; place-items: center; font: 600 18px/1 ui-monospace, monospace; color: var(--text); }
+
+    /* R5 ability grid / row / list */
+    .abilities { display: grid; gap: 6px; padding: 8px; }
+    .abilities.grid2 { grid-template-columns: repeat(2, 72px); }
+    .abilities.row { grid-auto-flow: column; grid-auto-columns: 64px; padding: 0; background: none; border: 0; }
+    .ab { position: relative; width: 72px; height: 72px; display: grid; place-items: center; font-size: 34px; color: var(--text);
+          background: #0a1016; border: 1px solid color-mix(in srgb, var(--text) 14%, transparent); }
+    .row .ab { width: 64px; height: 64px; font-size: 28px; }
+    .ab.on { color: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 14px color-mix(in srgb, var(--accent) 25%, transparent); }
+    .ab.off { color: color-mix(in srgb, var(--text) 25%, transparent); background: color-mix(in srgb, var(--raised) 60%, transparent); }
+    .ab .k { position: absolute; top: 3px; left: 5px; font: 10px ui-monospace, monospace; color: var(--muted); }
+    .ab .n { position: absolute; bottom: 3px; right: 5px; font: 11px ui-monospace, monospace; color: var(--move-yellow); }
+    .ablist { display: grid; gap: 4px; }
+    .abl { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 6px 8px; background: #0a1016; border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+    .abl svg { font-size: 22px; }
+    .abl .nm { font-size: 13px; }
+    .abl .nm small { display: block; color: var(--muted); font-size: 11px; }
+    .abl kbd { font: 11px ui-monospace, monospace; color: var(--muted); border: 1px solid color-mix(in srgb, var(--text) 18%, transparent); padding: 1px 5px; border-radius: 2px; }
+    .abl.on { border-color: var(--accent); color: var(--accent); }
+    .abl.off { opacity: .4; }
+
+    /* R7 weapon and ammo */
+    .weapon { padding: 10px 12px; width: 240px; }
+    .weapon .gun { font-size: 64px; height: 44px; color: var(--muted); display: flex; align-items: center; }
+    .weapon .gun svg { width: 150px; height: 44px; stroke-width: 1.4; }
+    .ammo { display: flex; gap: 3px; margin-top: 6px; }
+    .ammo i { width: 22px; height: 9px; background: var(--accent); }
+    .ammo i.x { background: color-mix(in srgb, var(--text) 12%, transparent); }
+
+    /* R13 hit readout and breakdown */
+    .hitbox { padding: 8px 22px; text-align: center; border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+    .hitbox .p { font: 700 40px/1 ui-monospace, Consolas, monospace; color: var(--accent); }
+    .hitbox .c { font-size: 11px; color: var(--crit); letter-spacing: .1em; }
+    .breakdown { width: 250px; padding: 12px; }
+    .breakdown .head { display: flex; justify-content: space-between; align-items: end; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+    .breakdown .tgt { font-weight: 600; }
+    .breakdown .tgt small { display: block; color: var(--alien); font-weight: 400; font-size: 11px; }
+    .breakdown .pc { font: 700 30px/1 ui-monospace, monospace; color: var(--accent); text-align: right; }
+    .breakdown .pc small { display: block; font-size: 10px; color: var(--crit); font-weight: 400; margin-top: 3px; letter-spacing: .08em; }
+    .r { display: flex; justify-content: space-between; padding: 2px 0; font-size: 12px; }
+    .r span:last-child { font-family: ui-monospace, monospace; }
+    .r .up { color: var(--move-blue); } .r .dn { color: var(--danger); }
+    .r.tot { border-top: 1px solid color-mix(in srgb, var(--text) 10%, transparent); margin-top: 4px; padding-top: 5px; font-weight: 600; }
+
+    /* R14 confirm, turn banner, concealment */
+    .confirm { width: 150px; height: 64px; display: grid; grid-auto-flow: column; place-items: center; gap: 8px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--bg); background: var(--accent); border: 0; }
+    .confirm svg { font-size: 22px; stroke-width: 2.4; }
+    .banners { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .turn { padding: 6px 26px; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--xcom); }
+    .conceal { padding: 4px 12px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--xcom); background: color-mix(in srgb, var(--xcom) 12%, transparent); border: 1px solid color-mix(in srgb, var(--xcom) 45%, transparent); display: flex; gap: 6px; align-items: center; }
+    .bars { display: flex; gap: 2px; margin-top: 6px; }
+    .bars i { width: 16px; height: 6px; background: var(--xcom); }
+    .bars i.x { background: color-mix(in srgb, var(--text) 12%, transparent); }
+    .ap { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); margin-top: 6px; }
+    .ap i { width: 9px; height: 9px; transform: rotate(45deg); background: var(--accent); }
+    .ap i.x { background: none; box-shadow: inset 0 0 0 1.5px var(--muted); }
+
+    /* Layout A: Command Frame (closest to the reference) */
+    .a .nameplate { top: 12px; left: 12px; width: 236px; height: 92px; }
+    .a .squad { top: 12px; left: 256px; }
+    .a .sys { top: 12px; right: 12px; }
+    .a .objective { top: 82px; right: 12px; }
+    .a .abilities { top: 112px; left: 12px; }
+    .a .weapon { bottom: 12px; left: 12px; }
+    .a .hitbox { bottom: 14px; left: 50%; transform: translateX(-50%); }
+    .a .breakdown { top: 150px; right: 12px; }
+    .a .confirm { right: 24px; bottom: 150px; }
+    .a .banners { top: 112px; left: 50%; transform: translateX(-50%); }
+
+    /* Layout B: Bottom Console */
+    .console { position: absolute; left: 0; right: 0; bottom: 0; height: 112px; background: color-mix(in srgb, var(--surface) 96%, transparent); border-top: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+               display: grid; grid-template-columns: 340px 1fr auto; align-items: center; gap: 20px; padding: 0 16px; }
+    .unitcard { display: grid; grid-template-columns: 74px 1fr; gap: 12px; align-items: center; }
+    .unitcard .por { height: 84px; }
+    .unitcard .name { color: var(--accent); font-size: 15px; }
+    .unitcard .sub { color: var(--muted); font-size: 11px; }
+    .unitcard .ammo i { width: 14px; height: 6px; }
+    .center { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .center .hint { font-size: 11px; color: var(--muted); letter-spacing: .06em; }
+    .b .squad { top: 12px; left: 12px; }
+    .b .squad .por { width: 58px; height: 66px; }
+    .b .banners { top: 14px; left: 50%; transform: translateX(-50%); }
+    .b .objective { top: 12px; right: 64px; }
+    .b .pause { top: 12px; right: 12px; }
+    .b .breakdown { right: 12px; bottom: 250px; }
+
+    /* Layout C: Tactical Rail */
+    .rail { position: absolute; top: 0; right: 0; bottom: 0; width: 320px; background: color-mix(in srgb, var(--surface) 96%, transparent); border-left: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+            display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+    .rail .top { display: flex; justify-content: space-between; align-items: start; }
+    .rail .foot { margin-top: auto; padding-bottom: 6px; }
+    .rail .breakdown { width: auto; padding: 10px 12px; }
+    .c .squad { top: 12px; left: 12px; gap: 6px; }
+    .c .banners { top: 14px; left: calc((100% - 320px) / 2); transform: translateX(-50%); }
+    .c .objective { bottom: 14px; left: 12px; }
+  </style>
+</head>
+<body>
+  <img class="app-logo" src="../../../../assets/logo/senor_claude.png" alt="">
+
+  <!-- Shared defs live in a rendered (zero-size) SVG so patterns and symbols resolve inside hidden layouts too. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.5" height="7" fill="#FF3B3B" opacity=".42"/></pattern>
+      <radialGradient id="glow"><stop offset="0" stop-color="#3FD0E8" stop-opacity=".35"/><stop offset="1" stop-color="#3FD0E8" stop-opacity="0"/></radialGradient>
+      <path id="shield" d="M0-9 7-6.5v5C7 3 3.6 6.5 0 8-3.6 6.5-7 3-7-1.5v-5z"/>
+      <path id="shieldLow" d="M-7-1.5H7C7 3 3.6 6.5 0 8-3.6 6.5-7 3-7-1.5z"/>
+    </defs>
+    <symbol id="i-shoot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></symbol>
+    <symbol id="i-overwatch" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-hunker" viewBox="0 0 24 24"><path d="M12 3l8 3v5c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></symbol>
+    <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4"/></symbol>
+    <symbol id="i-slash" viewBox="0 0 24 24"><path d="M5 19l3-3M6 13l5 5M9 16L20 5V4h-1L8 15"/></symbol>
+    <symbol id="i-grenade" viewBox="0 0 24 24"><circle cx="11" cy="14" r="6"/><path d="M11 8V5h4M15 5l2-2"/></symbol>
+    <symbol id="i-rungun" viewBox="0 0 24 24"><path d="M4 6l6 6-6 6M12 6l6 6-6 6"/></symbol>
+    <symbol id="i-end" viewBox="0 0 24 24"><path d="M6 5l10 7-10 7zM19 5v14"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-move" viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="2"/><path d="M8 21l3-6 3 3v4M11 15l2-6 4 3h3M13 9l-4 1-2 3"/></symbol>
+    <symbol id="i-drone" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M4 6h5M15 6h5M6.5 6l4 4M17.5 6l-4 4"/></symbol>
+    <symbol id="i-rank" viewBox="0 0 24 24"><path d="M5 10l7-5 7 5M5 15l7-5 7 5M5 20l7-5 7 5"/></symbol>
+    <symbol id="i-rifle" viewBox="0 0 120 34"><path d="M2 14h10l4-4h52l4-4h22v4h20v6H98l-6 6H70l-4 10H54l3-10H30l-6 6H8l2-6H2z"/><path d="M40 20v6h8"/></symbol>
+    <symbol id="i-shotgun" viewBox="0 0 120 34"><path d="M2 15h8l6-5h44l4-3h50v6H66l-4 4H46l-6 10H28l4-10H10l-4 4H2z"/><path d="M70 13h44"/></symbol>
+  </svg>
+
+  <nav class="strip">
+    <b>VIGIL LAYOUTS</b>
+    <a href="#a">A &middot; Command Frame</a>
+    <a href="#b">B &middot; Bottom Console</a>
+    <a href="#c">C &middot; Tactical Rail</a>
+  </nav>
+
+  <!-- ===================== A: Command Frame ===================== -->
+  <section class="layout a" id="a">
+    <div class="world"></div>
+
+    <div class="hud panel nameplate"><span class="tag">R1</span>
+      <div class="badges"><svg class="icon"><use href="#i-rank"/></svg><svg class="icon"><use href="#i-slash"/></svg></div>
+      <div class="name">Sgt. R. Okafor</div>
+      <div class="nick">'Breaker' &middot; Ranger</div>
+    </div>
+
+    <div class="hud panel squad"><span class="tag">R2</span>
+      <div class="por sel"><svg class="icon cls"><use href="#i-slash"/></svg><span class="chev one">&gt;</span><div class="hp"><i></i><i></i><i></i><i></i><i class="x"></i></div></div>
+      <div class="por"><svg class="icon cls"><use href="#i-shoot"/></svg><span class="chev">&gt;&gt;</span><div class="hp"><i></i><i></i><i></i><i></i></div></div>
+      <div class="por"><svg class="icon cls"><use href="#i-grenade"/></svg><span class="chev">&gt;&gt;</span><div class="hp"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="por"><svg class="icon cls"><use href="#i-drone"/></svg><span class="chev">&gt;&gt;</span><div class="hp"><i></i><i></i><i></i><i class="x"></i></div></div>
+    </div>
+
+    <div class="hud sys">
+      <div class="panel sysbtn wide"><svg class="icon"><use href="#i-end"/></svg>End turn</div>
+      <div class="panel sysbtn"><svg class="icon"><use href="#i-pause"/></svg></div>
+    </div>
+
+    <div class="hud panel objective"><span class="tag">R4</span>
+      <div><div class="t">Sweep the area</div><div class="s">Hostiles remaining</div></div>
+      <div class="ring">7</div>
+    </div>
+
+    <div class="hud panel abilities grid2"><span class="tag">R5</span>
+      <div class="ab on"><span class="k">1</span><svg class="icon"><use href="#i-shoot"/></svg></div>
+      <div class="ab"><span class="k">2</span><svg class="icon"><use href="#i-overwatch"/></svg></div>
+      <div class="ab"><span class="k">3</span><svg class="icon"><use href="#i-slash"/></svg></div>
+      <div class="ab"><span class="k">4</span><svg class="icon"><use href="#i-hunker"/></svg></div>
+      <div class="ab"><span class="k">5</span><svg class="icon"><use href="#i-grenade"/></svg><span class="n">x1</span></div>
+      <div class="ab"><span class="k">6</span><svg class="icon"><use href="#i-reload"/></svg></div>
+      <div class="ab off"><span class="k">7</span><svg class="icon"><use href="#i-rungun"/></svg></div>
+    </div>
+
+    <div class="hud banners">
+      <div class="panel turn">XCOM turn 3</div>
+      <div class="conceal"><svg class="icon"><use href="#i-overwatch"/></svg>Squad concealed</div>
+    </div>
+
+    <div class="hud panel weapon"><span class="tag">R7</span>
+      <div class="gun"><svg class="icon"><use href="#i-shotgun"/></svg></div>
+      <div class="ammo"><i></i><i></i><i></i><i class="x"></i></div>
+    </div>
+
+    <div class="hud panel hitbox"><span class="tag">R13</span>
+      <div class="p">62%</div><div class="c">CRIT 10%</div>
+    </div>
+
+    <div class="hud panel breakdown">
+      <div class="head"><div class="tgt">ADVENT Trooper<small>4 / 4 HP &middot; half cover</small></div><div class="pc">62%<small>CRIT 10%</small></div></div>
+      <div class="r"><span>Aim</span><span>72</span></div>
+      <div class="r"><span>Range (close)</span><span class="up">+10</span></div>
+      <div class="r"><span>High ground</span><span class="up">+20</span></div>
+      <div class="r"><span>Half cover</span><span class="dn">-20</span></div>
+      <div class="r"><span>Target defense</span><span class="dn">-20</span></div>
+      <div class="r tot"><span>Hit chance</span><span>62</span></div>
+    </div>
+
+    <div class="hud panel confirm"><svg class="icon"><use href="#i-shoot"/></svg>Fire</div>
+  </section>
+
+  <!-- ===================== B: Bottom Console ===================== -->
+  <section class="layout b" id="b">
+    <div class="world"></div>
+
+    <div class="hud panel squad">
+      <div class="por sel"><svg class="icon cls"><use href="#i-slash"/></svg><span class="chev one">&gt;</span><div class="hp"><i></i><i></i><i></i><i></i><i class="x"></i></div></div>
+      <div class="por"><svg class="icon cls"><use href="#i-shoot"/></svg><span class="chev">&gt;&gt;</span><div class="hp"><i></i><i></i><i></i><i></i></div></div>
+      <div class="por"><svg class="icon cls"><use href="#i-grenade"/></svg><span class="chev">&gt;&gt;</span><div class="hp"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="por"><svg class="icon cls"><use href="#i-drone"/></svg><span class="chev">&gt;&gt;</span><div class="hp"><i></i><i></i><i></i><i class="x"></i></div></div>
+    </div>
+
+    <div class="hud banners">
+      <div class="panel turn">XCOM turn 3</div>
+      <div class="conceal"><svg class="icon"><use href="#i-overwatch"/></svg>Squad concealed</div>
+    </div>
+
+    <div class="hud panel objective">
+      <div><div class="t">Sweep the area</div><div class="s">Hostiles remaining</div></div>
+      <div class="ring">7</div>
+    </div>
+    <div class="hud panel sysbtn small pause"><svg class="icon"><use href="#i-pause"/></svg></div>
+
+    <div class="hud panel breakdown">
+      <div class="head"><div class="tgt">ADVENT Trooper<small>4 / 4 HP &middot; half cover</small></div><div class="pc">62%<small>CRIT 10%</small></div></div>
+      <div class="r"><span>Aim</span><span>72</span></div>
+      <div class="r"><span>Range (close)</span><span class="up">+10</span></div>
+      <div class="r"><span>High ground</span><span class="up">+20</span></div>
+      <div class="r"><span>Half cover</span><span class="dn">-20</span></div>
+      <div class="r"><span>Target defense</span><span class="dn">-20</span></div>
+      <div class="r tot"><span>Hit chance</span><span>62</span></div>
+    </div>
+
+    <div class="console">
+      <div class="unitcard">
+        <div class="por sel"><svg class="icon cls"><use href="#i-slash"/></svg></div>
+        <div>
+          <div class="name">Sgt. R. Okafor</div>
+          <div class="sub">'Breaker' &middot; Ranger &middot; Aim 72 &middot; Mob 6</div>
+          <div class="bars"><i></i><i></i><i></i><i></i><i class="x"></i></div>
+          <div class="ap"><i></i><i class="x"></i>&nbsp;1 action &middot; Shotgun</div>
+          <div class="ammo"><i></i><i></i><i></i><i class="x"></i></div>
+        </div>
+      </div>
+      <div class="center">
+        <div class="abilities row">
+          <div class="ab on"><span class="k">1</span><svg class="icon"><use href="#i-shoot"/></svg></div>
+          <div class="ab"><span class="k">2</span><svg class="icon"><use href="#i-overwatch"/></svg></div>
+          <div class="ab"><span class="k">3</span><svg class="icon"><use href="#i-slash"/></svg></div>
+          <div class="ab"><span class="k">4</span><svg class="icon"><use href="#i-hunker"/></svg></div>
+          <div class="ab"><span class="k">5</span><svg class="icon"><use href="#i-grenade"/></svg><span class="n">x1</span></div>
+          <div class="ab"><span class="k">6</span><svg class="icon"><use href="#i-reload"/></svg></div>
+          <div class="ab off"><span class="k">7</span><svg class="icon"><use href="#i-rungun"/></svg></div>
+        </div>
+        <div class="hint">Shoot &middot; Enter to fire &middot; Esc to cancel</div>
+      </div>
+      <div class="panel sysbtn wide"><svg class="icon"><use href="#i-end"/></svg>End turn</div>
+    </div>
+  </section>
+
+  <!-- ===================== C: Tactical Rail ===================== -->
+  <section class="layout c" id="c">
+    <div class="world"></div>
+
+    <div class="hud squad col">
+      <div class="panel squadrow sel"><div class="por"></div><div class="who">Sgt. R. Okafor<small>Ranger &middot; 1 action</small><div class="bars"><i></i><i></i><i></i><i></i><i class="x"></i></div></div></div>
+      <div class="panel squadrow"><div class="por"></div><div class="who">Cpl. A. Vasquez<small>Sharpshooter &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
+      <div class="panel squadrow"><div class="por"></div><div class="who">Sgt. E. Lindqvist<small>Grenadier &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+      <div class="panel squadrow"><div class="por"></div><div class="who">Spc. T. Mbeki<small>Specialist &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i class="x"></i></div></div></div>
+    </div>
+
+    <div class="hud banners">
+      <div class="panel turn">XCOM turn 3</div>
+      <div class="conceal"><svg class="icon"><use href="#i-overwatch"/></svg>Squad concealed</div>
+    </div>
+
+    <div class="hud panel objective">
+      <div><div class="t">Sweep the area</div><div class="s">Hostiles remaining</div></div>
+      <div class="ring">7</div>
+    </div>
+
+    <aside class="rail">
+      <div class="top">
+        <div>
+          <div class="label">Selected</div>
+          <div style="color:var(--accent);font-size:17px;margin-top:2px">Sgt. R. Okafor</div>
+          <div style="color:var(--muted);font-size:12px">'Breaker' &middot; Ranger &middot; Aim 72</div>
+          <div class="bars"><i></i><i></i><i></i><i></i><i class="x"></i></div>
+          <div class="ap"><i></i><i class="x"></i>&nbsp;1 action &middot; Shotgun 3/4</div>
+        </div>
+        <div class="panel sysbtn small"><svg class="icon"><use href="#i-pause"/></svg></div>
+      </div>
+
+      <div class="label">Abilities</div>
+      <div class="ablist">
+        <div class="abl on"><svg class="icon"><use href="#i-shoot"/></svg><div class="nm">Shoot<small>1 action &middot; ends turn</small></div><kbd>1</kbd></div>
+        <div class="abl"><svg class="icon"><use href="#i-overwatch"/></svg><div class="nm">Overwatch<small>Reaction shot at -30% aim</small></div><kbd>2</kbd></div>
+        <div class="abl"><svg class="icon"><use href="#i-slash"/></svg><div class="nm">Slash<small>Move and strike adjacent</small></div><kbd>3</kbd></div>
+        <div class="abl"><svg class="icon"><use href="#i-hunker"/></svg><div class="nm">Hunker down<small>Doubles cover defense</small></div><kbd>4</kbd></div>
+        <div class="abl"><svg class="icon"><use href="#i-grenade"/></svg><div class="nm">Frag grenade<small>1 charge &middot; destroys cover</small></div><kbd>5</kbd></div>
+        <div class="abl off"><svg class="icon"><use href="#i-rungun"/></svg><div class="nm">Run and gun<small>Cooldown 2 turns</small></div><kbd>7</kbd></div>
+      </div>
+
+      <div class="panel breakdown">
+        <div class="head"><div class="tgt">ADVENT Trooper<small>4 / 4 HP &middot; half cover</small></div><div class="pc">62%<small>CRIT 10%</small></div></div>
+        <div class="r"><span>Aim</span><span>72</span></div>
+        <div class="r"><span>Range (close)</span><span class="up">+10</span></div>
+        <div class="r"><span>High ground</span><span class="up">+20</span></div>
+        <div class="r"><span>Half cover</span><span class="dn">-20</span></div>
+        <div class="r"><span>Target defense</span><span class="dn">-20</span></div>
+        <div class="r tot"><span>Hit chance</span><span>62</span></div>
+      </div>
+
+      <div class="foot"><div class="panel sysbtn wide" style="width:160px;height:52px"><svg class="icon"><use href="#i-end"/></svg>End turn</div></div>
+    </aside>
+  </section>
+
+  <script>
+    // Static drawing of the 3D viewport placeholder: an isometric slice of the battlefield shared by all three layouts.
+    const K = 42.43, KY = 23.33, OX = 800, OY = 150;
+    const P = (gx, gy, h = 0) => [OX + (gx - gy) * K, OY + (gx + gy) * KY - h];
+    const pts = (list, h = 0) => list.map(([x, y]) => P(x, y, h).map((v) => v.toFixed(1)).join(',')).join(' ');
+    const C = { floor: '#152331', line: 'rgba(63,208,232,.07)', wallTop: '#3A4C5E', wallL: '#22303D', wallR: '#2B3B4A', crateTop: '#4B5A66', crateL: '#28343F', crateR: '#33414D',
+                platTop: '#1D2D3C', platL: '#111C26', platR: '#16232F', xcom: '#4AA8FF', alien: '#E5484D', blue: '#2F8CFF', yellow: '#F2C94C', accent: '#3FD0E8', half: '#6E9BB8', full: '#43C4F0' };
+
+    function box(i, j, h, top, l, r) {
+      return `<polygon points="${pts([[i, j + 1], [i + 1, j + 1]])} ${pts([[i + 1, j + 1], [i, j + 1]], h)}" fill="${l}"/>` +
+        `<polygon points="${pts([[i + 1, j], [i + 1, j + 1]])} ${pts([[i + 1, j + 1], [i + 1, j]], h)}" fill="${r}"/>` +
+        `<polygon points="${pts([[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], h)}" fill="${top}"/>`;
+    }
+
+    function unit(i, j, team, hp, lost, h = 0, opts = {}) {
+      const [x, y] = P(i + 0.5, j + 0.5, h);
+      const col = team === 'x' ? C.xcom : C.alien;
+      let s = '';
+      if (opts.sel) s += `<ellipse cx="${x}" cy="${y}" rx="26" ry="14" fill="url(#glow)" stroke="${C.accent}" stroke-width="2" stroke-dasharray="5 4"/>`;
+      if (opts.target) s += `<g stroke="${C.alien}" stroke-width="2.5" fill="none">` +
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy]) => `<path d="M${x + sx * 24} ${y - 22 + sy * 30 - sy * 10}v${sy * 10}M${x + sx * 24} ${y - 22 + sy * 30}h${-sx * 10}"/>`).join('') + '</g>';
+      s += `<ellipse cx="${x}" cy="${y}" rx="15" ry="8" fill="${col}" opacity=".25" stroke="${col}"/>`;
+      s += `<rect x="${x - 8}" y="${y - 36}" width="16" height="32" rx="7" fill="${col}"/><circle cx="${x}" cy="${y - 42}" r="7" fill="${col}"/>`;
+      // R8 overhead bars
+      const n = hp + lost, w = 9, g = 2, bx = x - (n * (w + g) - g) / 2, by = y - 66;
+      s += `<rect x="${bx - 3}" y="${by - 3}" width="${n * (w + g) + 4}" height="11" fill="#0B1118" opacity=".8"/>`;
+      for (let k = 0; k < n; k++) s += `<rect x="${bx + k * (w + g)}" y="${by}" width="${w}" height="5" fill="${k < hp ? col : 'rgba(230,238,244,.15)'}"/>`;
+      if (team === 'x') s += `<text x="${bx + n * (w + g) + 4}" y="${by + 6}" fill="${opts.one ? C.yellow : C.accent}" font-size="11" font-family="ui-monospace,monospace" font-weight="700">${opts.one ? '&gt;' : '&gt;&gt;'}</text>`;
+      return s;
+    }
+
+    function shieldAt(i, j, side, kind, h = 0, color) {
+      const mid = { n: [i + 0.5, j + 0.08], s: [i + 0.5, j + 0.92], w: [i + 0.08, j + 0.5], e: [i + 0.92, j + 0.5] }[side];
+      const [x, y] = P(mid[0], mid[1], h + 30);
+      const c = color || (kind === 'full' ? C.full : C.half);
+      return kind === 'full'
+        ? `<use href="#shield" x="${x}" y="${y}" fill="${c}" stroke="#0B1118" stroke-width="1"/>`
+        : `<use href="#shield" x="${x}" y="${y}" fill="none" stroke="${c}" stroke-width="1.6"/><use href="#shieldLow" x="${x}" y="${y}" fill="${c}"/>`;
+    }
+
+    function reticle(i, j) {
+      const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([x, y]) => P(x, y));
+      const ctr = P(i + 0.5, j + 0.5);
+      return `<polygon points="${c.map((p) => p.join(',')).join(' ')}" fill="rgba(63,208,232,.12)"/>` +
+        c.map(([x, y]) => { const dx = (ctr[0] - x) * 0.3, dy = (ctr[1] - y) * 0.3; return `<path d="M${x + dx} ${y + dy * 0.2}L${x} ${y}M${x + dx * 0.2} ${y + dy}L${x} ${y}" stroke="${C.accent}" stroke-width="3" fill="none" transform="translate(${dx * 0.25} ${dy * 0.25})"/>`; }).join('');
+    }
+
+    function world() {
+      let s = '<svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">';
+      s += `<polygon points="${pts([[0, 0], [16, 0], [16, 16], [0, 16]])}" fill="${C.floor}"/>`;
+      for (let k = 0; k <= 16; k++) s += `<polyline points="${pts([[k, 0], [k, 16]])}" stroke="${C.line}"/><polyline points="${pts([[0, k], [16, k]])}" stroke="${C.line}"/>`;
+      // R11 detection hatch around the alien pod
+      s += `<polygon points="${pts([[8, 0], [15, 0], [15, 7], [8, 7]])}" fill="url(#hatch)" stroke="rgba(255,59,59,.5)"/>`;
+      // R9 move range outlines: yellow dash band, then blue one-action band
+      s += `<polygon points="${pts([[0, 4], [1, 4], [1, 3], [11, 3], [11, 4], [12, 4], [12, 14], [11, 14], [11, 15], [1, 15], [1, 14], [0, 14]])}" fill="rgba(242,201,76,.05)" stroke="${C.yellow}" stroke-width="2.5"/>`;
+      s += `<polygon points="${pts([[2, 6], [3, 6], [3, 5], [9, 5], [9, 6], [10, 6], [10, 12], [9, 12], [9, 13], [3, 13], [3, 12], [2, 12]])}" fill="rgba(47,140,255,.1)" stroke="${C.blue}" stroke-width="3"/>`;
+      // Path preview and R10 destination reticle
+      s += `<polyline points="${pts([[6.5, 9.5], [7.5, 9.5], [8.5, 8.5], [8.5, 7.5]])}" fill="none" stroke="${C.accent}" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>`;
+      s += reticle(8, 7);
+
+      // Painter's order: objects sorted by depth (i + j), drawn back to front.
+      const items = [];
+      for (let i = 10; i <= 13; i++) for (let j = 1; j <= 4; j++) items.push([i + j, box(i, j, 20, C.platTop, C.platL, C.platR)]);
+      [[3, 8], [4, 8], [9, 6], [9, 7]].forEach(([i, j]) => items.push([i + j + 0.1, box(i, j, 46, C.wallTop, C.wallL, C.wallR)]));
+      [[6, 8], [7, 8], [12, 6]].forEach(([i, j]) => items.push([i + j + 0.1, box(i, j, 18, C.crateTop, C.crateL, C.crateR)]));
+      items.push([3 + 9 + 0.5, unit(3, 9, 'x', 4, 0) + shieldAt(3, 9, 'n', 'full')]);
+      items.push([4 + 9 + 0.5, unit(4, 9, 'x', 6, 0) + shieldAt(4, 9, 'n', 'full')]);
+      items.push([6 + 9 + 0.5, unit(6, 9, 'x', 4, 1, 0, { sel: true, one: true }) + shieldAt(6, 9, 'n', 'half')]);
+      items.push([5 + 11 + 0.5, unit(5, 11, 'x', 3, 1)]);
+      items.push([8 + 7 + 0.6, shieldAt(8, 7, 'e', 'full')]);
+      items.push([11 + 2 + 0.5, unit(11, 2, 'a', 4, 0, 20, { target: true }) + shieldAt(11, 2, 's', 'half', 20, '#F2C94C')]);
+      items.push([12 + 3 + 0.5, unit(12, 3, 'a', 4, 0, 20)]);
+      items.push([10 + 4 + 0.5, unit(10, 4, 'a', 6, 0, 20)]);
+      // R12 unrevealed pod marker
+      const [px, py] = P(14.5, 12.5, 40);
+      items.push([27, `<g opacity=".8"><circle cx="${px - 12}" cy="${py + 2}" r="8" fill="#5c6e7d"/><circle cx="${px + 12}" cy="${py + 2}" r="8" fill="#5c6e7d"/><circle cx="${px}" cy="${py - 4}" r="10" fill="#8A9BAA"/></g>`]);
+      items.sort((a, b) => a[0] - b[0]).forEach(([, svg]) => { s += svg; });
+      return s + '</svg>';
+    }
+
+    const svg = world();
+    document.querySelectorAll('.world').forEach((el) => { el.innerHTML = svg; });
+  </script>
+</body>
+</html>
