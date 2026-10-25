@@ -15,16 +15,18 @@ export class FeedController {
   #strip;
   #config;
   #playLog;
+  #store;
   #index = 0;
   #busy = false;
 
   /** @created Claude (claude-opus-5-5) — 2026-10-05 */
-  constructor(catalog, pool, strip, config, playLog) {
+  constructor(catalog, pool, strip, config, playLog, store) {
     this.#catalog = catalog;
     this.#pool = pool;
     this.#strip = strip;
     this.#config = config;
     this.#playLog = playLog;
+    this.#store = store;
   }
 
   /** prev stays empty at index 0. @created Claude (claude-opus-5-5) — 2026-10-05 */
@@ -87,6 +89,11 @@ export class FeedController {
     this.#updateStrip();
   }
 
+  /** The entry in the last ahead slot, for catalog.merge(). @created Claude (claude-opus-5-5) — 2026-10-07 */
+  get lastLoaded() {
+    return this.#pool.ahead.at(-1)?.entry ?? null;
+  }
+
   /**
    * Plays a game picked from History in the current slot. Only called with an entry that is in the
    * filtered list, so the index can re-anchor to it. The previous slot is left as it was.
@@ -101,25 +108,45 @@ export class FeedController {
   }
 
   /**
-   * Marks the current game broken and moves on. Returns its id for the Undo toast, or null when
-   * nothing happened. If it was the last game that fits, it stays on screen.
+   * Marks and reports the current game broken in the current orientation and moves on. Returns
+   * { id, orientation } for the Undo toast, so Undo clears the orientation the mark was made in even
+   * after a rotation, or null when nothing happened. If it was the last game that fits, it stays on screen.
    * @created Claude (claude-opus-5-5) — 2026-10-05
    */
   markCurrentBroken() {
     const entry = this.#pool.current.entry;
     if (this.#busy || !entry) return null;
-    this.#playLog.setBroken(entry.id, true);
+    const orientation = this.#catalog.orientation;
+    this.#playLog.setBroken(entry.id, orientation, true);
+    this.#store.setReported(entry.id, orientation, true);
     this.#catalog.refilter();
     this.next();
     this.refreshAhead();
-    return entry.id;
+    return { id: entry.id, orientation };
   }
 
   /** Used by Undo and History's flag toggle; a game marked here keeps playing if it is current. @created Claude (claude-opus-5-5) — 2026-10-05 */
-  setBroken(id, isBroken) {
-    this.#playLog.setBroken(id, isBroken);
+  setBroken(id, orientation, isBroken) {
+    this.#playLog.setBroken(id, orientation, isBroken);
+    this.#store.setReported(id, orientation, isBroken);
     this.#catalog.refilter();
     this.refreshAhead();
+  }
+
+  /**
+   * Likes or unlikes the current game: local mark, shown count and server row. Returns the new
+   * state, or null when no game is on screen.
+   * @created Claude (claude-opus-5-5) — 2026-10-07
+   */
+  toggleLikeCurrent() {
+    const entry = this.#pool.current.entry;
+    if (!entry) return null;
+    const isLiked = !this.#playLog.isLiked(entry.id);
+    this.#playLog.setLiked(entry.id, isLiked);
+    this.#catalog.bumpLikes(entry.id, isLiked ? 1 : -1);
+    this.#store.setLiked(entry.id, isLiked);
+    this.#updateStrip();
+    return isLiked;
   }
 
   /**
@@ -149,6 +176,11 @@ export class FeedController {
     this.#strip.nowLink.textContent = now?.title ?? "";
     this.#strip.nowLink.href = now?.pageUrl ?? "#";
     this.#strip.nowAuthor.textContent = now ? `by ${now.author} · ${SOURCE_LABEL[now.source]}` : "";
+    const isLiked = now ? this.#playLog.isLiked(now.id) : false;
+    const likes = now ? this.#catalog.stats(now.id).likes : 0;
+    this.#strip.likeButton.setAttribute("aria-pressed", String(isLiked));
+    this.#strip.likeButton.setAttribute("aria-label", `Like this game, ${likes} ${likes === 1 ? "like" : "likes"}`);
+    this.#strip.likeCount.textContent = likes > 0 ? String(likes) : "";
     this.#strip.nextTitle.textContent = next?.title ?? (this.#catalog.size === 0 ? "None fit this orientation" : "");
   }
 }
