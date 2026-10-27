@@ -1,0 +1,710 @@
+<!doctype html>
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-26 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stroke Plotter</title>
+<link rel="stylesheet" href="logo/logo.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout C: large canvas left, one right rail stacking glyphs, strokes, smoothing, text and export. Palette P1 warm paper. */
+:root {
+    --background: #FAF6F0;
+    --surface: #F0E9DE;
+    --text: #3B342C;
+    --muted: #8A7F72;
+    --guide: #E4D9C8;
+    --stroke: #D9603B;
+    --point: #4F78B0;
+    --line: #E2D8C9;
+    --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+    --font-data: "IBM Plex Mono", ui-monospace, monospace;
+    --radius: 6px;
+    color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--background); color: var(--text); font: 14px/1.45 var(--font-ui); }
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
+.stage { position: relative; background: var(--surface); border-radius: 10px; overflow: hidden; min-height: 320px; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+.stage-bar { position: absolute; left: 12px; right: 12px; top: 10px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; font-size: 12px; color: var(--muted); }
+.stage-bar b { color: var(--text); font-weight: 500; font-family: var(--font-data); }
+.drop { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(250, 246, 240, 0.85); border: 2px dashed var(--stroke); border-radius: 10px; font-size: 16px; color: var(--text); }
+.stage.dragging .drop { display: flex; }
+.rail { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; padding-right: 2px; padding-bottom: 110px; }
+.card { background: var(--surface); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.card h2 { margin: 0; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: baseline; }
+.card h2 span { text-transform: none; letter-spacing: 0; font-family: var(--font-data); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+button, .filebtn { font: 500 12px var(--font-ui); color: var(--text); background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 9px; cursor: pointer; }
+button:hover, .filebtn:hover { border-color: var(--muted); }
+button:focus-visible, .filebtn:focus-within, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--point); outline-offset: 1px; }
+button.primary { background: var(--stroke); border-color: var(--stroke); color: var(--background); }
+button.on { background: var(--text); border-color: var(--text); color: var(--background); }
+.filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.fontname { font-family: var(--font-data); font-size: 12px; overflow-wrap: anywhere; }
+.glyphs { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; }
+.glyphs button { padding: 4px 0; font: 400 13px var(--font-data); position: relative; }
+.glyphs button.done::after { content: ""; position: absolute; right: 3px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--stroke); }
+.glyphs button.sel { background: var(--stroke); border-color: var(--stroke); color: var(--background); }
+.glyphs button.sel.done::after { background: var(--background); }
+.strokes { display: flex; flex-direction: column; gap: 3px; }
+.stroke-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: var(--radius); cursor: pointer; font-size: 12px; border: 1px solid transparent; }
+.stroke-item.active { background: var(--background); border-color: var(--line); }
+.stroke-item .sw { width: 14px; height: 3px; border-radius: 2px; background: var(--stroke); opacity: 0.45; }
+.stroke-item.active .sw { opacity: 1; }
+.stroke-item .meta { color: var(--muted); font-family: var(--font-data); font-size: 11px; margin-left: auto; }
+.stroke-item button { padding: 0 6px; font-size: 12px; line-height: 18px; }
+.empty { color: var(--muted); font-size: 12px; }
+label.slider { display: grid; grid-template-columns: 74px 1fr 40px; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+label.slider output { font-family: var(--font-data); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+input[type=range] { accent-color: var(--stroke); width: 100%; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+input[type=text] { font: 13px var(--font-data); color: var(--text); background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; width: 100%; }
+textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--font-data); color: var(--text); background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; }
+.preview { background: var(--background); border-radius: var(--radius); min-height: 60px; padding: 6px; overflow-x: auto; }
+.preview svg { display: block; max-width: 100%; height: auto; }
+.warn { font-size: 11px; color: var(--stroke); }
+.keys { font-size: 11px; color: var(--muted); line-height: 1.7; }
+.keys kbd { font: 500 10px var(--font-data); background: var(--background); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--text); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--background); padding: 6px 12px; border-radius: var(--radius); font-size: 12px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+@media (max-width: 760px) {
+    .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .stage { height: 62vh; }
+    .rail { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<img class="app-logo" src="logo/senor_claude.png" alt="">
+<div class="app">
+    <div class="stage" id="stage">
+        <canvas id="cv"></canvas>
+        <div class="stage-bar"><span>Glyph <b id="glyphLabel">a</b></span><span id="zoomLabel">100%</span></div>
+        <div class="drop">Drop a .otf, .ttf or .woff font</div>
+    </div>
+    <aside class="rail">
+        <section class="card">
+            <h2>Font</h2>
+            <div class="fontname" id="fontName">Georgia (example)</div>
+            <div class="row">
+                <label class="filebtn">Load font<input type="file" id="fontFile" accept=".otf,.ttf,.woff,.woff2"></label>
+                <span class="empty">or drop it on the canvas</span>
+            </div>
+        </section>
+        <section class="card">
+            <h2>Glyphs <span id="doneCount">0 done</span></h2>
+            <div class="glyphs" id="glyphs"></div>
+        </section>
+        <section class="card">
+            <h2>Strokes <span id="strokeCount"></span></h2>
+            <div class="strokes" id="strokes"></div>
+            <div class="row">
+                <button class="primary" id="newStroke" title="N">New stroke</button>
+                <button id="closeLoop" title="C">Closed loop</button>
+                <button id="reverse">Reverse</button>
+            </div>
+            <div class="row">
+                <button id="autoTrace" title="Seed strokes from an automatic centerline">Auto trace</button>
+                <button id="clearGlyph">Clear glyph</button>
+            </div>
+            <label class="slider">Smoothing<input type="range" id="smooth" min="0" max="1" step="0.05" value="0.5"><output id="smoothOut">0.50</output></label>
+        </section>
+        <section class="card">
+            <h2>Write text</h2>
+            <textarea id="text" rows="2" spellcheck="false">abc</textarea>
+            <label class="slider">Em size<input type="range" id="emMM" min="5" max="100" step="1" value="25"><output id="emOut">25 mm</output></label>
+            <label class="slider">Pen width<input type="range" id="penMM" min="0.1" max="2" step="0.1" value="0.4"><output id="penOut">0.4 mm</output></label>
+            <div class="preview" id="preview"></div>
+            <div class="warn" id="missing"></div>
+            <div class="row">
+                <button class="primary" id="exportText">Export text SVG</button>
+                <button id="exportGlyph">Export glyph SVG</button>
+            </div>
+        </section>
+        <section class="card">
+            <h2>Single-line font</h2>
+            <label class="field">Font name<input type="text" id="exportName" spellcheck="false"></label>
+            <div class="row">
+                <button class="primary" id="exportFont">Export font (.otf)</button>
+            </div>
+            <div class="empty">Install it in Windows, restart Design Space, pick it under System fonts and set the layer to Pen.</div>
+        </section>
+        <section class="card">
+            <h2>Project</h2>
+            <div class="row">
+                <button id="saveJson">Save project</button>
+                <label class="filebtn">Open project<input type="file" id="loadJson" accept=".json"></label>
+            </div>
+            <div class="keys">
+                <kbd>Click</kbd> add point &nbsp; <kbd>Drag</kbd> move point<br>
+                <kbd>Shift</kbd>+click delete point &nbsp; <kbd>Alt</kbd>+click sharp corner<br>
+                <kbd>Ctrl</kbd>+click insert on curve<br>
+                <kbd>N</kbd> new stroke &nbsp; <kbd>C</kbd> closed loop &nbsp; <kbd>Del</kbd> last point<br>
+                <kbd>Ctrl Z</kbd> undo &nbsp; <kbd>[</kbd> <kbd>]</kbd> prev / next glyph<br>
+                <kbd>Wheel</kbd> zoom &nbsp; <kbd>Space</kbd>+drag or middle drag pan &nbsp; <kbd>0</kbd> reset view
+            </div>
+        </section>
+    </aside>
+</div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<script>
+const GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:;!?\'"-()&@#/';
+const HIT_PX = 9;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = { guide: css('--guide'), stroke: css('--stroke'), point: css('--point'), text: css('--text'), muted: css('--muted'), line: css('--line'), bg: css('--background') };
+
+// Project state. Points are [x, y, corner] in em units, origin at the glyph's pen position on the baseline, y down.
+const S = { family: 'Georgia', fontLabel: 'Georgia (example)', glyph: 'a', glyphs: {}, active: 0, smooth: 0.5, emMM: 25, penMM: 0.4, text: 'abc', exportName: '' };
+const view = { s: 1, tx: 0, ty: 0 };
+let undoStack = [];
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const measureCtx = document.createElement('canvas').getContext('2d');
+
+const strokes = () => (S.glyphs[S.glyph] ||= []);
+const activeStroke = () => strokes()[S.active];
+const hasStrokes = ch => (S.glyphs[ch] || []).some(s => s.pts.length > 1);
+const advance = ch => { measureCtx.font = `100px "${S.family}"`; return measureCtx.measureText(ch === ' ' ? ' ' : ch).width / 100; };
+
+function pushUndo() {
+    undoStack.push(JSON.stringify({ g: S.glyph, st: strokes(), a: S.active }));
+    if (undoStack.length > 200) undoStack.shift();
+}
+function undo() {
+    const snap = undoStack.pop();
+    if (!snap) return;
+    const u = JSON.parse(snap);
+    S.glyph = u.g; S.glyphs[u.g] = u.st; S.active = u.a;
+    changed(true);
+}
+
+// Bezier segments for one stroke: Catmull-Rom tangents scaled by smoothing, zero tangent at corner points.
+function segments(st) {
+    const p = st.pts, n = p.length;
+    if (n < 2) return [];
+    const k = S.smooth / 3;
+    const at = i => st.closed ? p[(i % n + n) % n] : p[Math.max(0, Math.min(n - 1, i))];
+    const tan = i => {
+        if (at(i)[2]) return [0, 0];
+        const a = at(i - 1), b = at(i + 1);
+        return [(b[0] - a[0]) * k, (b[1] - a[1]) * k];
+    };
+    const out = [], m = st.closed && n > 2 ? n : n - 1;
+    for (let i = 0; i < m; i++) {
+        const a = at(i), b = at(i + 1), ta = tan(i), tb = tan(i + 1);
+        out.push([a, [a[0] + ta[0], a[1] + ta[1]], [b[0] - tb[0], b[1] - tb[1]], b]);
+    }
+    return out;
+}
+function strokeD(st, scale, ox, oy) {
+    const sg = segments(st);
+    if (!sg.length) return '';
+    const f = v => +v.toFixed(3);
+    const X = q => f(ox + q[0] * scale), Y = q => f(oy + q[1] * scale);
+    let d = `M${X(sg[0][0])} ${Y(sg[0][0])}`;
+    for (const [, c1, c2, b] of sg) d += ` C${X(c1)} ${Y(c1)} ${X(c2)} ${Y(c2)} ${X(b)} ${Y(b)}`;
+    return st.closed && st.pts.length > 2 ? d + ' Z' : d;
+}
+
+// ---------- canvas ----------
+const toScreen = q => [view.tx + q[0] * view.s, view.ty + q[1] * view.s];
+const toEm = (x, y) => [(x - view.tx) / view.s, (y - view.ty) / view.s];
+let dpr = 1, CW = 0, CH = 0;
+
+function resize() {
+    const r = cv.getBoundingClientRect();
+    dpr = window.devicePixelRatio || 1;
+    CW = r.width; CH = r.height;
+    cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr);
+    draw();
+}
+// Fits the glyph's ink box (plus its advance width) to about 70% of the canvas.
+let fitScale = 1;
+function resetView() {
+    measureCtx.font = `100px "${S.family}"`;
+    const m = measureCtx.measureText(S.glyph);
+    const left = Math.min(0, -m.actualBoundingBoxLeft / 100), right = Math.max(advance(S.glyph), m.actualBoundingBoxRight / 100);
+    const top = -Math.max(0.1, m.actualBoundingBoxAscent / 100), bottom = Math.max(0, m.actualBoundingBoxDescent / 100);
+    view.s = fitScale = Math.min(CH * 0.7 / (bottom - top), CW * 0.7 / Math.max(0.1, right - left));
+    view.tx = CW / 2 - (left + right) / 2 * view.s;
+    view.ty = CH / 2 - (top + bottom) / 2 * view.s;
+    draw();
+}
+
+function draw() {
+    if (!CW) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, CW, CH);
+    const adv = advance(S.glyph);
+
+    // Baseline and advance-width guides.
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(view.ty) + 0.5); ctx.lineTo(CW, Math.round(view.ty) + 0.5);
+    for (const x of [view.tx, view.tx + adv * view.s]) { ctx.moveTo(Math.round(x) + 0.5, 0); ctx.lineTo(Math.round(x) + 0.5, CH); }
+    ctx.stroke(); ctx.setLineDash([]);
+
+    ctx.fillStyle = C.guide;
+    ctx.font = `${view.s}px "${S.family}"`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(S.glyph, view.tx, view.ty);
+
+    const penPx = Math.max(1.5, S.penMM / S.emMM * view.s);
+    strokes().forEach((st, si) => {
+        const isActive = si === S.active;
+        ctx.globalAlpha = isActive ? 1 : 0.45;
+        ctx.strokeStyle = C.stroke; ctx.lineWidth = penPx; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        const sg = segments(st);
+        if (sg.length) {
+            ctx.beginPath();
+            const p0 = toScreen(sg[0][0]); ctx.moveTo(p0[0], p0[1]);
+            for (const [, c1, c2, b] of sg) { const a = toScreen(c1), c = toScreen(c2), e = toScreen(b); ctx.bezierCurveTo(a[0], a[1], c[0], c[1], e[0], e[1]); }
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        st.pts.forEach((q, i) => {
+            const [x, y] = toScreen(q);
+            ctx.fillStyle = isActive ? C.point : C.muted;
+            ctx.beginPath();
+            if (q[2]) ctx.rect(x - 4, y - 4, 8, 8); else ctx.arc(x, y, isActive ? 4.5 : 3, 0, Math.PI * 2);
+            ctx.fill();
+            if (i === 0 && isActive) { ctx.strokeStyle = C.point; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke(); }
+            if (isActive) {
+                ctx.fillStyle = C.text; ctx.font = '500 10px "IBM Plex Mono", monospace';
+                ctx.fillText(String(i + 1), x + 7, y - 7);
+            }
+        });
+    });
+    $('zoomLabel').textContent = Math.round(view.s / fitScale * 100) + '%';
+}
+
+function hitPoint(x, y) {
+    let best = null, bd = HIT_PX;
+    strokes().forEach((st, si) => st.pts.forEach((q, pi) => {
+        const [sx, sy] = toScreen(q), d = Math.hypot(sx - x, sy - y);
+        if (d < bd || (d === bd && si === S.active)) { bd = d; best = { si, pi }; }
+    }));
+    return best;
+}
+// Nearest spot on the active stroke's curve, for Ctrl+click insertion.
+function hitCurve(x, y) {
+    const st = activeStroke();
+    if (!st) return null;
+    let best = null, bd = HIT_PX * 1.5;
+    segments(st).forEach((sg, i) => {
+        for (let t = 0; t <= 1; t += 0.02) {
+            const u = 1 - t, q = [0, 1].map(k => u * u * u * sg[0][k] + 3 * u * u * t * sg[1][k] + 3 * u * t * t * sg[2][k] + t * t * t * sg[3][k]);
+            const [sx, sy] = toScreen(q), d = Math.hypot(sx - x, sy - y);
+            if (d < bd) { bd = d; best = { index: i + 1, q }; }
+        }
+    });
+    return best;
+}
+
+let drag = null, spaceDown = false;
+cv.addEventListener('pointerdown', e => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    cv.setPointerCapture(e.pointerId);
+    if (e.button === 1 || (e.button === 0 && spaceDown)) { drag = { pan: true, x, y }; e.preventDefault(); return; }
+    if (e.button !== 0) return;
+    const hit = hitPoint(x, y);
+    if (hit) {
+        pushUndo();
+        S.active = hit.si;
+        const st = strokes()[hit.si];
+        if (e.shiftKey) {
+            st.pts.splice(hit.pi, 1);
+            if (!st.pts.length) { strokes().splice(hit.si, 1); S.active = Math.max(0, strokes().length - 1); }
+            changed(); return;
+        }
+        if (e.altKey) { st.pts[hit.pi][2] = st.pts[hit.pi][2] ? 0 : 1; changed(); return; }
+        drag = { si: hit.si, pi: hit.pi };
+        changed(false);
+        return;
+    }
+    pushUndo();
+    if (e.ctrlKey || e.metaKey) {
+        const c = hitCurve(x, y);
+        if (c) { activeStroke().pts.splice(c.index, 0, [c.q[0], c.q[1], 0]); drag = { si: S.active, pi: c.index }; changed(); return; }
+    }
+    if (!activeStroke()) { strokes().push({ pts: [], closed: false }); S.active = strokes().length - 1; }
+    const q = toEm(x, y);
+    activeStroke().pts.push([q[0], q[1], 0]);
+    drag = { si: S.active, pi: activeStroke().pts.length - 1 };
+    changed();
+});
+cv.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    if (drag.pan) { view.tx += x - drag.x; view.ty += y - drag.y; drag.x = x; drag.y = y; draw(); return; }
+    const q = toEm(x, y), p = strokes()[drag.si].pts[drag.pi];
+    p[0] = q[0]; p[1] = q[1];
+    draw();
+});
+cv.addEventListener('pointerup', () => { if (drag && !drag.pan) changed(); drag = null; });
+cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const f = Math.exp(-e.deltaY * 0.0015);
+    view.tx = x - (x - view.tx) * f; view.ty = y - (y - view.ty) * f; view.s *= f;
+    draw();
+}, { passive: false });
+cv.addEventListener('auxclick', e => e.preventDefault());
+
+document.addEventListener('keydown', e => {
+    if (e.target.matches('textarea, input')) return;
+    if (e.code === 'Space') { spaceDown = true; cv.style.cursor = 'grab'; e.preventDefault(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    if (k === 'n' || k === 'N' || k === 'Enter') { newStroke(); e.preventDefault(); }
+    else if (k === 'c' || k === 'C') toggleClosed();
+    else if (k === 'Delete' || k === 'Backspace') {
+        const st = activeStroke();
+        if (st && st.pts.length) { pushUndo(); st.pts.pop(); if (!st.pts.length) { strokes().splice(S.active, 1); S.active = Math.max(0, strokes().length - 1); } changed(); }
+        e.preventDefault();
+    }
+    else if (k === '[' || k === ']') { const i = GLYPHS.indexOf(S.glyph); selectGlyph(GLYPHS[(i + (k === ']' ? 1 : -1) + GLYPHS.length) % GLYPHS.length]); }
+    else if (k === '0') resetView();
+});
+document.addEventListener('keyup', e => { if (e.code === 'Space') { spaceDown = false; cv.style.cursor = 'crosshair'; } });
+
+function newStroke() {
+    const st = activeStroke();
+    if (st && !st.pts.length) return;
+    pushUndo();
+    strokes().push({ pts: [], closed: false });
+    S.active = strokes().length - 1;
+    changed();
+}
+function toggleClosed() {
+    const st = activeStroke();
+    if (!st) return;
+    pushUndo(); st.closed = !st.closed; changed();
+}
+
+// ---------- auto trace: rasterize glyph, Zhang-Suen thin, trace skeleton, prune spurs, simplify ----------
+function autoTrace(ch) {
+    const P = 360, pad = 12;
+    const c = document.createElement('canvas'), g = c.getContext('2d', { willReadFrequently: true });
+    g.font = `${P}px "${S.family}"`;
+    const m = g.measureText(ch);
+    const W = Math.ceil(m.actualBoundingBoxLeft + m.actualBoundingBoxRight) + pad * 2;
+    const H = Math.ceil(m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) + pad * 2;
+    if (W <= pad * 2 || H <= pad * 2) return [];
+    c.width = W; c.height = H;
+    const ox = pad + m.actualBoundingBoxLeft, oy = pad + m.actualBoundingBoxAscent;
+    g.font = `${P}px "${S.family}"`; g.fillStyle = '#000'; g.textBaseline = 'alphabetic';
+    g.fillText(ch, ox, oy);
+    const data = g.getImageData(0, 0, W, H).data;
+    const sk = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) sk[i] = data[i * 4 + 3] > 127 ? 1 : 0;
+    const ink = sk.reduce((s, v) => s + v, 0);
+
+    const px = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : sk[y * W + x];
+    const ring = i => { const x = i % W, y = (i / W) | 0; return [px(x, y - 1), px(x + 1, y - 1), px(x + 1, y), px(x + 1, y + 1), px(x, y + 1), px(x - 1, y + 1), px(x - 1, y), px(x - 1, y - 1)]; };
+    const crossing = i => { const n = ring(i); let A = 0; for (let k = 0; k < 8; k++) if (!n[k] && n[(k + 1) % 8]) A++; return A; };
+    for (let changedAny = true; changedAny;) {
+        changedAny = false;
+        for (let pass = 0; pass < 2; pass++) {
+            const del = [];
+            for (let i = 0; i < W * H; i++) {
+                if (!sk[i]) continue;
+                const n = ring(i), B = n.reduce((s, v) => s + v, 0);
+                if (B < 2 || B > 6 || crossing(i) !== 1) continue;
+                if (pass === 0 ? (n[0] * n[2] * n[4] || n[2] * n[4] * n[6]) : (n[0] * n[2] * n[6] || n[0] * n[4] * n[6])) continue;
+                del.push(i);
+            }
+            for (const i of del) sk[i] = 0;
+            if (del.length) changedAny = true;
+        }
+    }
+    const skCount = sk.reduce((s, v) => s + v, 0);
+    const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    const nbrs = i => { const x = i % W, y = (i / W) | 0, o = []; for (const [dx, dy] of N8) if (px(x + dx, y + dy)) o.push((y + dy) * W + x + dx); return o; };
+    const isNode = i => crossing(i) !== 2;
+    const trace = () => {
+        const seen = new Uint8Array(W * H), lines = [];
+        const walk = (start, first) => {
+            const line = [start];
+            let prev = start, cur = first;
+            for (;;) {
+                line.push(cur);
+                if (isNode(cur)) break;
+                seen[cur] = 1;
+                const nb = nbrs(cur).filter(q => q !== prev && !seen[q] && !line.includes(q));
+                const closes = line.length > 3 && prev !== start && nbrs(cur).includes(start);
+                const node = nb.find(isNode);
+                if (node !== undefined) { prev = cur; cur = node; continue; }
+                if (!nb.length) { if (closes) line.push(start); break; }
+                const x = cur % W, y = (cur / W) | 0, dist = q => Math.abs(q % W - x) + Math.abs(((q / W) | 0) - y);
+                nb.sort((p, q) => dist(p) - dist(q));
+                prev = cur; cur = nb[0];
+            }
+            return line;
+        };
+        for (let i = 0; i < W * H; i++) if (sk[i] && isNode(i)) for (const q of nbrs(i)) if (!seen[q] && !isNode(q)) lines.push(walk(i, q));
+        for (let i = 0; i < W * H; i++) if (sk[i] && !seen[i] && !isNode(i)) { seen[i] = 1; const nb = nbrs(i); if (nb.length) lines.push(walk(i, nb[0])); }
+        return lines;
+    };
+    const spurMax = ink / Math.max(1, skCount) * 1.2;
+    for (let it = 0; it < 4; it++) {
+        let removed = false;
+        for (const line of trace()) {
+            const a = line[0], b = line[line.length - 1], ca = crossing(a), cb = crossing(b);
+            if (((ca <= 1 && cb >= 3) || (cb <= 1 && ca >= 3)) && line.length < spurMax) {
+                const keep = ca >= 3 ? a : b;
+                for (const q of line) if (q !== keep) sk[q] = 0;
+                removed = true;
+            }
+        }
+        if (!removed) break;
+    }
+    const rdp = (pts, eps) => {
+        if (pts.length < 3) return pts;
+        const [sx, sy] = pts[0], [ex, ey] = pts[pts.length - 1];
+        if (Math.hypot(ex - sx, ey - sy) < 2) {
+            let far = 1, fd = 0;
+            for (let i = 1; i < pts.length - 1; i++) { const d = Math.hypot(pts[i][0] - sx, pts[i][1] - sy); if (d > fd) { fd = d; far = i; } }
+            return rdp(pts.slice(0, far + 1), eps).slice(0, -1).concat(rdp(pts.slice(far), eps));
+        }
+        const len = Math.hypot(ex - sx, ey - sy);
+        let md = 0, idx = 0;
+        for (let i = 1; i < pts.length - 1; i++) { const d = Math.abs((ex - sx) * (sy - pts[i][1]) - (sx - pts[i][0]) * (ey - sy)) / len; if (d > md) { md = d; idx = i; } }
+        if (md <= eps) return [pts[0], pts[pts.length - 1]];
+        return rdp(pts.slice(0, idx + 1), eps).slice(0, -1).concat(rdp(pts.slice(idx), eps));
+    };
+    return trace().filter(l => l.length > 3).map(l => {
+        let pts = rdp(l.map(i => [i % W + 0.5, ((i / W) | 0) + 0.5]), P * 0.008);
+        const closed = pts.length > 3 && Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]) < 2;
+        if (closed) pts = pts.slice(0, -1);
+        return { closed, pts: pts.map(([x, y]) => [(x - ox) / P, (y - oy) / P, 0]) };
+    });
+}
+
+// ---------- rail UI ----------
+function renderGlyphs() {
+    const box = $('glyphs');
+    if (!box.children.length) {
+        for (const ch of GLYPHS) {
+            const b = document.createElement('button');
+            b.textContent = ch; b.dataset.ch = ch; b.title = `Glyph ${ch}`;
+            b.onclick = () => selectGlyph(ch);
+            box.appendChild(b);
+        }
+    }
+    let done = 0;
+    for (const b of box.children) {
+        const d = hasStrokes(b.dataset.ch);
+        done += d;
+        b.classList.toggle('done', d);
+        b.classList.toggle('sel', b.dataset.ch === S.glyph);
+    }
+    $('doneCount').textContent = `${done} of ${GLYPHS.length} done`;
+}
+function renderStrokes() {
+    const list = $('strokes'), st = strokes();
+    list.innerHTML = '';
+    if (!st.length) list.innerHTML = '<div class="empty">Click on the canvas to place the first point of a stroke.</div>';
+    st.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'stroke-item' + (i === S.active ? ' active' : '');
+        row.innerHTML = `<span class="sw"></span><span>Stroke ${i + 1}</span><span class="meta">${s.pts.length} pt${s.closed ? ' · loop' : ''}</span>`;
+        const del = document.createElement('button');
+        del.textContent = '×'; del.title = `Delete stroke ${i + 1}`;
+        del.onclick = ev => { ev.stopPropagation(); pushUndo(); st.splice(i, 1); S.active = Math.max(0, Math.min(S.active, st.length - 1)); changed(); };
+        row.appendChild(del);
+        row.onclick = () => { S.active = i; changed(false); };
+        list.appendChild(row);
+    });
+    $('strokeCount').textContent = st.length ? `${st.length}` : '';
+    $('closeLoop').classList.toggle('on', !!(activeStroke() && activeStroke().closed));
+    $('glyphLabel').textContent = S.glyph;
+}
+
+// Lays out the text with the font's advance widths and returns SVG markup in millimetres.
+function textSVG(forPreview) {
+    const lines = S.text.split('\n'), em = S.emMM, lh = em * 1.25, missing = new Set();
+    let paths = [], maxW = 0;
+    lines.forEach((line, li) => {
+        let x = 0;
+        const baseline = em * 0.9 + li * lh;
+        for (const ch of line) {
+            if (ch !== ' ') {
+                if (!hasStrokes(ch)) missing.add(ch);
+                for (const st of S.glyphs[ch] || []) { const d = strokeD(st, em, x, baseline); if (d) paths.push(d); }
+            }
+            x += advance(ch) * em;
+        }
+        maxW = Math.max(maxW, x);
+    });
+    const w = Math.max(1, maxW + em * 0.1), h = em * 0.1 + lines.length * lh;
+    const pathTags = paths.map(d => `<path d="${d}"/>`).join('\n');
+    const color = forPreview ? C.stroke : '#000000';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${h.toFixed(2)}mm" viewBox="${(-em * 0.05).toFixed(2)} 0 ${w.toFixed(2)} ${h.toFixed(2)}">\n<g fill="none" stroke="${color}" stroke-width="${S.penMM}" stroke-linecap="round" stroke-linejoin="round">\n${pathTags}\n</g>\n</svg>`;
+    return { svg, missing: [...missing] };
+}
+function glyphSVG() {
+    const em = S.emMM, adv = advance(S.glyph) * em;
+    const pathTags = strokes().map(st => strokeD(st, em, em * 0.1, em * 0.9)).filter(Boolean).map(d => `<path d="${d}"/>`).join('\n');
+    const w = adv + em * 0.2, h = em * 1.2;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${h.toFixed(2)}mm" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}">\n<g fill="none" stroke="#000000" stroke-width="${S.penMM}" stroke-linecap="round" stroke-linejoin="round">\n${pathTags}\n</g>\n</svg>`;
+}
+// Builds an installable single-line font. Each stroke becomes a zero-area contour that runs along the curve and back,
+// because font outlines must be closed; a plotter in Pen mode traces it as one line drawn twice.
+function defaultExportName() {
+    return S.fontLabel.replace(/\.[^.]+$/, '').replace(/\s*\(example\)$/, '').replace(/[-_ ]?Regular$/i, '') + ' Single Line';
+}
+function buildFont() {
+    const U = 1000, P = q => [Math.round(q[0] * U), Math.round(-q[1] * U)];
+    measureCtx.font = `100px "${S.family}"`;
+    const m = measureCtx.measureText('Hg');
+    const ascender = Math.round((m.fontBoundingBoxAscent || 80) / 100 * U), descender = -Math.round((m.fontBoundingBoxDescent || 20) / 100 * U);
+    const glyphs = [
+        new opentype.Glyph({ name: '.notdef', unicode: 0, advanceWidth: Math.round(U / 2), path: new opentype.Path() }),
+        new opentype.Glyph({ name: 'space', unicode: 32, advanceWidth: Math.round(advance(' ') * U), path: new opentype.Path() })];
+    const missing = [];
+    for (const ch of GLYPHS) {
+        if (!hasStrokes(ch)) { missing.push(ch); continue; }
+        const path = new opentype.Path();
+        for (const st of S.glyphs[ch]) {
+            const sg = segments(st);
+            if (!sg.length) continue;
+            path.moveTo(...P(sg[0][0]));
+            for (const [, c1, c2, b] of sg) path.curveTo(...P(c1), ...P(c2), ...P(b));
+            for (let i = sg.length - 1; i >= 0; i--) { const [a, c1, c2] = sg[i]; path.curveTo(...P(c2), ...P(c1), ...P(a)); }
+            path.close();
+        }
+        const code = ch.codePointAt(0);
+        glyphs.push(new opentype.Glyph({ name: /[A-Za-z]/.test(ch) ? ch : 'uni' + code.toString(16).toUpperCase().padStart(4, '0'), unicode: code, advanceWidth: Math.round(advance(ch) * U), path }));
+    }
+    const name = ($('exportName').value.trim() || defaultExportName()).replace(/[^\w ]+/g, '').trim();
+    const font = new opentype.Font({ familyName: name, styleName: 'Regular', unitsPerEm: U, ascender, descender, glyphs });
+    return { font, name, count: glyphs.length - 2, missing };
+}
+
+function renderPreview() {
+    const { svg, missing } = textSVG(true);
+    $('preview').innerHTML = svg;
+    $('missing').textContent = missing.length ? `No strokes yet for: ${missing.join(' ')}` : '';
+}
+
+function download(name, text, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast(`Saved ${name}`);
+}
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800); }
+
+const storeKey = () => 'stroke-plotter:' + S.fontLabel;
+let saveTimer;
+function persist() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { try { localStorage.setItem(storeKey(), JSON.stringify({ glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text, exportName: S.exportName })); } catch (e) { } }, 300);
+}
+function restore() {
+    try { const raw = localStorage.getItem(storeKey()); if (raw) { Object.assign(S, JSON.parse(raw)); return true; } } catch (e) { }
+    return false;
+}
+function syncInputs() {
+    $('smooth').value = S.smooth; $('smoothOut').textContent = (+S.smooth).toFixed(2);
+    $('emMM').value = S.emMM; $('emOut').textContent = `${S.emMM} mm`;
+    $('penMM').value = S.penMM; $('penOut').textContent = `${(+S.penMM).toFixed(1)} mm`;
+    $('text').value = S.text;
+    $('fontName').textContent = S.fontLabel;
+    $('exportName').value = S.exportName || defaultExportName();
+}
+
+function changed(save = true) {
+    renderGlyphs(); renderStrokes(); renderPreview(); draw();
+    if (save) persist();
+}
+function selectGlyph(ch) {
+    S.glyph = ch; S.active = Math.max(0, strokes().length - 1);
+    renderGlyphs(); renderStrokes(); resetView();
+}
+
+async function loadFont(file) {
+    try {
+        const family = 'UserFont' + Date.now();
+        const face = new FontFace(family, await file.arrayBuffer());
+        await face.load();
+        document.fonts.add(face);
+        persist();
+        S.family = family; S.fontLabel = file.name; S.glyphs = {}; S.active = 0; S.exportName = ''; undoStack = [];
+        restore();
+        syncInputs();
+        changed(false); resetView();
+        toast(`Loaded ${file.name}`);
+    } catch (err) {
+        toast(`Couldn't read ${file.name}. Use an .otf, .ttf or .woff file.`);
+    }
+}
+$('fontFile').onchange = e => { if (e.target.files[0]) loadFont(e.target.files[0]); e.target.value = ''; };
+const stage = $('stage');
+stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('dragging'); });
+stage.addEventListener('dragleave', () => stage.classList.remove('dragging'));
+stage.addEventListener('drop', e => {
+    e.preventDefault(); stage.classList.remove('dragging');
+    const f = e.dataTransfer.files[0];
+    if (f) f.name.toLowerCase().endsWith('.json') ? loadProject(f) : loadFont(f);
+});
+
+$('newStroke').onclick = newStroke;
+$('closeLoop').onclick = toggleClosed;
+$('reverse').onclick = () => { const st = activeStroke(); if (st) { pushUndo(); st.pts.reverse(); changed(); } };
+$('autoTrace').onclick = () => {
+    pushUndo();
+    S.glyphs[S.glyph] = autoTrace(S.glyph); S.active = 0;
+    changed();
+    toast(`Auto trace made ${strokes().length} stroke${strokes().length === 1 ? '' : 's'}`);
+};
+$('clearGlyph').onclick = () => { if (!strokes().length) return; pushUndo(); S.glyphs[S.glyph] = []; S.active = 0; changed(); toast('Cleared. Ctrl+Z restores it.'); };
+$('smooth').oninput = e => { S.smooth = +e.target.value; $('smoothOut').textContent = S.smooth.toFixed(2); changed(); };
+$('emMM').oninput = e => { S.emMM = +e.target.value; $('emOut').textContent = `${S.emMM} mm`; changed(); };
+$('penMM').oninput = e => { S.penMM = +e.target.value; $('penOut').textContent = `${S.penMM.toFixed(1)} mm`; changed(); };
+$('text').oninput = e => { S.text = e.target.value; renderPreview(); persist(); };
+$('exportText').onclick = () => download('text.svg', textSVG(false).svg, 'image/svg+xml');
+$('exportGlyph').onclick = () => download(`glyph_${S.glyph.charCodeAt(0).toString(16)}.svg`, glyphSVG(), 'image/svg+xml');
+$('exportName').oninput = e => { S.exportName = e.target.value; persist(); };
+$('exportFont').onclick = () => {
+    if (!window.opentype) { toast("Font export needs the opentype.js library. Check your connection and reload."); return; }
+    const { font, name, count, missing } = buildFont();
+    if (!count) { toast('Draw strokes for at least one glyph first.'); return; }
+    download(`${name.replace(/ +/g, '')}.otf`, font.toArrayBuffer(), 'font/otf');
+    if (missing.length) toast(`Saved ${count} glyphs. ${missing.length} have no strokes yet and are left out.`);
+};
+$('saveJson').onclick = () => download(`${S.fontLabel.replace(/\.[^.]+$/, '')}-strokes.json`, JSON.stringify({ font: S.fontLabel, glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text, exportName: S.exportName }, null, 1), 'application/json');
+async function loadProject(file) {
+    try {
+        const p = JSON.parse(await file.text());
+        if (!p.glyphs) throw new Error('no glyphs');
+        S.glyphs = p.glyphs; S.smooth = p.smooth ?? S.smooth; S.emMM = p.emMM ?? S.emMM; S.penMM = p.penMM ?? S.penMM; S.text = p.text ?? S.text; S.exportName = p.exportName ?? S.exportName; S.active = 0; undoStack = [];
+        syncInputs(); changed(); resetView();
+        toast(p.font && p.font !== S.fontLabel ? `Opened project made with ${p.font}. Load that font to match the guides.` : 'Project opened');
+    } catch (err) { toast(`Couldn't open ${file.name}. Pick a project .json saved from this page.`); }
+}
+$('loadJson').onchange = e => { if (e.target.files[0]) loadProject(e.target.files[0]); e.target.value = ''; };
+
+new ResizeObserver(() => { const first = !CW; resize(); if (first) resetView(); }).observe(cv);
+if (!restore()) {
+    // Example state: auto-traced strokes for a few glyphs in Georgia until a font is loaded.
+    for (const ch of 'abc') S.glyphs[ch] = autoTrace(ch);
+}
+syncInputs();
+changed(false);
+</script>
+</body>
+</html>
