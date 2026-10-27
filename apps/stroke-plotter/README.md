@@ -22,6 +22,7 @@ npx serve .
 3. Click points along a stroke in the order the pen should travel. Press **N** wherever the pen lifts to start the next stroke. Use **Closed loop** for strokes that end where they began, such as `o`.
 4. Optionally press **Auto trace** first to seed the glyph with machine-made strokes, then fix them.
 5. Type text under **Write text**, set **Em size** (the font's em square in millimetres) and **Pen width**, then **Export text SVG**. In Design Space, upload the SVG and set the layer operation to Pen.
+6. Or click **Export font (.otf)** under **Single-line font** to get a font you can type with. Install it in Windows (right-click the file, Install), restart Design Space, pick it under System fonts, and set the text layer's operation to Pen.
 
 ### Controls
 
@@ -84,8 +85,16 @@ Both exports write SVG with `width` and `height` in `mm` and a viewBox in millim
 
 Pen width only affects the preview and the SVG stroke. The plotter draws with whichever pen is loaded.
 
+### Single-line font export
+
+Font formats store only closed outlines, and Design Space's Writing style is limited to Cricut's own hosted fonts. **Export font (.otf)** works around both: each stroke becomes a zero-area contour that runs along the smoothed curve and then back over the same curve to its start. A plotter in Pen mode traces the outline, which is the stroke drawn twice, so lines come out slightly darker than a single pass. Because the contours enclose no area, the letters can look faint or empty on the Design Space canvas while still drawing correctly.
+
+Font construction uses [opentype.js](https://github.com/opentypejs/opentype.js) 1.3.4, loaded from jsDelivr, so this button needs a network connection on first load. The font uses 1000 units per em, with ascender and descender taken from the loaded font's `fontBoundingBox*` metrics. Every glyph keeps the source font's advance width, and a space glyph is always included. Glyphs with no strokes are left out, and a message says how many. Letters keep their own glyph names; every other character is named `uniXXXX`.
+
+The family name defaults to the loaded font's file name with any `Regular` suffix removed, plus `Single Line` (for example `Alex2024 Single Line`), so it installs next to the original without replacing it. The style is always `Regular`. Windows and Design Space cache fonts by name, so before installing an updated export, uninstall the old one and restart Design Space, or give the new export a different name.
+
 ### Storage
 
-The project autosaves to `localStorage` under `stroke-plotter:<font file name>`, 300 ms after the last change, so each font keeps its own strokes. The saved fields are `glyphs` (a map from character to `{ pts, closed }` strokes), `smooth`, `emMM`, `penMM` and `text`. The font file itself is not stored, so load it again after a reload.
+The project autosaves to `localStorage` under `stroke-plotter:<font file name>`, 300 ms after the last change, so each font keeps its own strokes. The saved fields are `glyphs` (a map from character to `{ pts, closed }` strokes), `smooth`, `emMM`, `penMM`, `text` and `exportName` (the font name typed under Single-line font, empty for the default). The font file itself is not stored, so load it again after a reload.
 
 **Save project** downloads the same data as JSON with a `font` field added. **Open project** (or dropping a `.json` on the canvas) loads it. If the file was saved with a different font, a message says to load that font so the guides line up.

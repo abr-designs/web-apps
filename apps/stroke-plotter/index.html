@@ -63,6 +63,8 @@ button.on { background: var(--text); border-color: var(--text); color: var(--bac
 label.slider { display: grid; grid-template-columns: 74px 1fr 40px; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 label.slider output { font-family: var(--font-data); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
 input[type=range] { accent-color: var(--stroke); width: 100%; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+input[type=text] { font: 13px var(--font-data); color: var(--text); background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; width: 100%; }
 textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--font-data); color: var(--text); background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; }
 .preview { background: var(--background); border-radius: var(--radius); min-height: 60px; padding: 6px; overflow-x: auto; }
 .preview svg { display: block; max-width: 100%; height: auto; }
@@ -127,6 +129,14 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
             </div>
         </section>
         <section class="card">
+            <h2>Single-line font</h2>
+            <label class="field">Font name<input type="text" id="exportName" spellcheck="false"></label>
+            <div class="row">
+                <button class="primary" id="exportFont">Export font (.otf)</button>
+            </div>
+            <div class="empty">Install it in Windows, restart Design Space, pick it under System fonts and set the layer to Pen.</div>
+        </section>
+        <section class="card">
             <h2>Project</h2>
             <div class="row">
                 <button id="saveJson">Save project</button>
@@ -144,6 +154,7 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
     </aside>
 </div>
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
 <script>
 const GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:;!?\'"-()&@#/';
 const HIT_PX = 9;
@@ -151,7 +162,7 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 const C = { guide: css('--guide'), stroke: css('--stroke'), point: css('--point'), text: css('--text'), muted: css('--muted'), line: css('--line'), bg: css('--background') };
 
 // Project state. Points are [x, y, corner] in em units, origin at the glyph's pen position on the baseline, y down.
-const S = { family: 'Georgia', fontLabel: 'Georgia (example)', glyph: 'a', glyphs: {}, active: 0, smooth: 0.5, emMM: 25, penMM: 0.4, text: 'abc' };
+const S = { family: 'Georgia', fontLabel: 'Georgia (example)', glyph: 'a', glyphs: {}, active: 0, smooth: 0.5, emMM: 25, penMM: 0.4, text: 'abc', exportName: '' };
 const view = { s: 1, tx: 0, ty: 0 };
 let undoStack = [];
 const $ = id => document.getElementById(id);
@@ -547,6 +558,39 @@ function glyphSVG() {
     const w = adv + em * 0.2, h = em * 1.2;
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${h.toFixed(2)}mm" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}">\n<g fill="none" stroke="#000000" stroke-width="${S.penMM}" stroke-linecap="round" stroke-linejoin="round">\n${pathTags}\n</g>\n</svg>`;
 }
+// Builds an installable single-line font. Each stroke becomes a zero-area contour that runs along the curve and back,
+// because font outlines must be closed; a plotter in Pen mode traces it as one line drawn twice.
+function defaultExportName() {
+    return S.fontLabel.replace(/\.[^.]+$/, '').replace(/\s*\(example\)$/, '').replace(/[-_ ]?Regular$/i, '') + ' Single Line';
+}
+function buildFont() {
+    const U = 1000, P = q => [Math.round(q[0] * U), Math.round(-q[1] * U)];
+    measureCtx.font = `100px "${S.family}"`;
+    const m = measureCtx.measureText('Hg');
+    const ascender = Math.round((m.fontBoundingBoxAscent || 80) / 100 * U), descender = -Math.round((m.fontBoundingBoxDescent || 20) / 100 * U);
+    const glyphs = [
+        new opentype.Glyph({ name: '.notdef', unicode: 0, advanceWidth: Math.round(U / 2), path: new opentype.Path() }),
+        new opentype.Glyph({ name: 'space', unicode: 32, advanceWidth: Math.round(advance(' ') * U), path: new opentype.Path() })];
+    const missing = [];
+    for (const ch of GLYPHS) {
+        if (!hasStrokes(ch)) { missing.push(ch); continue; }
+        const path = new opentype.Path();
+        for (const st of S.glyphs[ch]) {
+            const sg = segments(st);
+            if (!sg.length) continue;
+            path.moveTo(...P(sg[0][0]));
+            for (const [, c1, c2, b] of sg) path.curveTo(...P(c1), ...P(c2), ...P(b));
+            for (let i = sg.length - 1; i >= 0; i--) { const [a, c1, c2] = sg[i]; path.curveTo(...P(c2), ...P(c1), ...P(a)); }
+            path.close();
+        }
+        const code = ch.codePointAt(0);
+        glyphs.push(new opentype.Glyph({ name: /[A-Za-z]/.test(ch) ? ch : 'uni' + code.toString(16).toUpperCase().padStart(4, '0'), unicode: code, advanceWidth: Math.round(advance(ch) * U), path }));
+    }
+    const name = ($('exportName').value.trim() || defaultExportName()).replace(/[^\w ]+/g, '').trim();
+    const font = new opentype.Font({ familyName: name, styleName: 'Regular', unitsPerEm: U, ascender, descender, glyphs });
+    return { font, name, count: glyphs.length - 2, missing };
+}
+
 function renderPreview() {
     const { svg, missing } = textSVG(true);
     $('preview').innerHTML = svg;
@@ -568,7 +612,7 @@ const storeKey = () => 'stroke-plotter:' + S.fontLabel;
 let saveTimer;
 function persist() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { try { localStorage.setItem(storeKey(), JSON.stringify({ glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text })); } catch (e) { } }, 300);
+    saveTimer = setTimeout(() => { try { localStorage.setItem(storeKey(), JSON.stringify({ glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text, exportName: S.exportName })); } catch (e) { } }, 300);
 }
 function restore() {
     try { const raw = localStorage.getItem(storeKey()); if (raw) { Object.assign(S, JSON.parse(raw)); return true; } } catch (e) { }
@@ -580,6 +624,7 @@ function syncInputs() {
     $('penMM').value = S.penMM; $('penOut').textContent = `${(+S.penMM).toFixed(1)} mm`;
     $('text').value = S.text;
     $('fontName').textContent = S.fontLabel;
+    $('exportName').value = S.exportName || defaultExportName();
 }
 
 function changed(save = true) {
@@ -598,7 +643,7 @@ async function loadFont(file) {
         await face.load();
         document.fonts.add(face);
         persist();
-        S.family = family; S.fontLabel = file.name; S.glyphs = {}; S.active = 0; undoStack = [];
+        S.family = family; S.fontLabel = file.name; S.glyphs = {}; S.active = 0; S.exportName = ''; undoStack = [];
         restore();
         syncInputs();
         changed(false); resetView();
@@ -633,12 +678,20 @@ $('penMM').oninput = e => { S.penMM = +e.target.value; $('penOut').textContent =
 $('text').oninput = e => { S.text = e.target.value; renderPreview(); persist(); };
 $('exportText').onclick = () => download('text.svg', textSVG(false).svg, 'image/svg+xml');
 $('exportGlyph').onclick = () => download(`glyph_${S.glyph.charCodeAt(0).toString(16)}.svg`, glyphSVG(), 'image/svg+xml');
-$('saveJson').onclick = () => download(`${S.fontLabel.replace(/\.[^.]+$/, '')}-strokes.json`, JSON.stringify({ font: S.fontLabel, glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text }, null, 1), 'application/json');
+$('exportName').oninput = e => { S.exportName = e.target.value; persist(); };
+$('exportFont').onclick = () => {
+    if (!window.opentype) { toast("Font export needs the opentype.js library. Check your connection and reload."); return; }
+    const { font, name, count, missing } = buildFont();
+    if (!count) { toast('Draw strokes for at least one glyph first.'); return; }
+    download(`${name.replace(/ +/g, '')}.otf`, font.toArrayBuffer(), 'font/otf');
+    if (missing.length) toast(`Saved ${count} glyphs. ${missing.length} have no strokes yet and are left out.`);
+};
+$('saveJson').onclick = () => download(`${S.fontLabel.replace(/\.[^.]+$/, '')}-strokes.json`, JSON.stringify({ font: S.fontLabel, glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text, exportName: S.exportName }, null, 1), 'application/json');
 async function loadProject(file) {
     try {
         const p = JSON.parse(await file.text());
         if (!p.glyphs) throw new Error('no glyphs');
-        S.glyphs = p.glyphs; S.smooth = p.smooth ?? S.smooth; S.emMM = p.emMM ?? S.emMM; S.penMM = p.penMM ?? S.penMM; S.text = p.text ?? S.text; S.active = 0; undoStack = [];
+        S.glyphs = p.glyphs; S.smooth = p.smooth ?? S.smooth; S.emMM = p.emMM ?? S.emMM; S.penMM = p.penMM ?? S.penMM; S.text = p.text ?? S.text; S.exportName = p.exportName ?? S.exportName; S.active = 0; undoStack = [];
         syncInputs(); changed(); resetView();
         toast(p.font && p.font !== S.fontLabel ? `Opened project made with ${p.font}. Load that font to match the guides.` : 'Project opened');
     } catch (err) { toast(`Couldn't open ${file.name}. Pick a project .json saved from this page.`); }
