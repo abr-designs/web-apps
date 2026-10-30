@@ -14,9 +14,10 @@ export const money = (v) => `$${v.toFixed(2)}`;
 
 /**
  * Draws the pattern. cellPx is the bead width; aspect is bead height over width.
+ * rowOffset shifts the row numbers when drawing one band of a larger pattern.
  * Returns the drawn size in CSS pixels.
  */
-export function renderPattern(canvas, pattern, { cellPx, aspect, letters, numbers, legend, scale = 1 }) {
+export function renderPattern(canvas, pattern, { cellPx, aspect, letters, numbers, legend, scale = 1, rowOffset = 0 }) {
   const { columns, rows, cells } = pattern;
   const cw = cellPx, ch = cellPx * aspect;
   const left = numbers ? Math.max(28, cw * 1.4) : 0;
@@ -56,7 +57,7 @@ export function renderPattern(canvas, pattern, { cellPx, aspect, letters, number
     ctx.fillStyle = '#6F6A78';
     ctx.font = `${Math.round(Math.max(9, Math.min(12, cw * 0.45)))}px ${FONT}`;
     ctx.textAlign = 'right';
-    for (let row = 0; row < rows; row++) ctx.fillText(String(row + 1), left - 6, top + (row + 0.5) * ch);
+    for (let row = 0; row < rows; row++) ctx.fillText(String(rowOffset + row + 1), left - 6, top + (row + 0.5) * ch);
     ctx.textAlign = 'center';
     for (let col = 0; col < columns; col++) {
       if (cw >= 14 || (col + 1) % 5 === 0 || col === 0) ctx.fillText(String(col + 1), left + (col + 0.5) * cw, top / 2);
@@ -88,6 +89,25 @@ const MAX_CANVAS_PIXELS = 16e6;
 export function exportCellPx(columns, rows, aspect) {
   const fit = Math.sqrt(MAX_CANVAS_PIXELS / (columns * (rows + 0.5) * aspect)) * 0.9;
   return Math.max(8, Math.min(24, Math.floor(fit)));
+}
+
+// Printable height over width of a page, below Letter (1.33) and A4 (1.47) to leave room for margins and the heading.
+const PAGE_RATIO = 1.25;
+
+/**
+ * Splits the pattern into bands of whole rows that each fill a page at full paper width.
+ * Returns the bead width to draw at and [startRow, endRow) pairs.
+ */
+export function printBands(columns, rows, aspect) {
+  const cellPx = exportCellPx(columns, Math.ceil((columns * PAGE_RATIO) / aspect), aspect);
+  const ch = cellPx * aspect;
+  const left = Math.max(28, cellPx * 1.4);
+  const top = Math.max(18, cellPx * 0.9);
+  const width = Math.ceil(left + columns * cellPx + 8);
+  const perPage = Math.max(1, Math.floor((PAGE_RATIO * width - top - 8) / ch - 0.5));
+  const bands = [];
+  for (let start = 0; start < rows; start += perPage) bands.push([start, Math.min(rows, start + perPage)]);
+  return { cellPx, bands };
 }
 
 /** Renders the full-size PNG with letters, numbers, and legend, and downloads it. onError gets a message on failure. */
@@ -135,20 +155,27 @@ export function rowLine({ row, direction, counts }) {
   return `Row ${row} (${direction}): ${counts.map((c) => `${c.letter} ${c.count}`).join(', ')}`;
 }
 
-/** Fills the print section: diagram, legend, colour note, then per-row quantities. Resolves once the diagram has decoded. */
+/** Fills the print section: diagram split into full-width page bands, legend, colour note, then per-row quantities. Resolves once every band has decoded. */
 export function fillPrintPage(section, pattern, aspect) {
-  const canvas = document.createElement('canvas');
-  const cellPx = exportCellPx(pattern.columns, pattern.rows, aspect);
-  renderPattern(canvas, pattern, { cellPx, aspect, letters: true, numbers: true, legend: false });
+  const { columns, cells } = pattern;
+  const { cellPx, bands } = printBands(columns, pattern.rows, aspect);
+  const images = bands.map(([start, end]) => {
+    const canvas = document.createElement('canvas');
+    const band = { ...pattern, rows: end - start, cells: cells.subarray(start * columns, end * columns) };
+    renderPattern(canvas, band, { cellPx, aspect, letters: true, numbers: true, legend: false, rowOffset: start });
+    return `<img class="print-band" src="${canvas.toDataURL('image/png')}" alt="Lettered bead pattern, rows ${start + 1} to ${end}">`;
+  });
   section.innerHTML = `
-    <h2>Miyuki Delica 11/0 peyote pattern, ${pattern.columns} × ${pattern.rows}</h2>
-    <img src="${canvas.toDataURL('image/png')}" alt="Lettered bead pattern">
-    ${legendTable(pattern)}
-    <p>${COLOR_NOTE}</p>
+    <h2>Miyuki Delica 11/0 peyote pattern, ${columns} × ${pattern.rows}</h2>
+    ${images.join('')}
+    <div class="print-legend">
+      ${legendTable(pattern)}
+      <p>${COLOR_NOTE}</p>
+    </div>
     <div class="print-rows">
       <h2>Beads per row</h2>
       ${pattern.rowCounts.map((r) => `<p>${rowLine(r)}</p>`).join('')}
     </div>`;
   // print() snapshots the page synchronously, so an undecoded data URL prints blank.
-  return section.querySelector('img').decode();
+  return Promise.all([...section.querySelectorAll('img')].map((img) => img.decode()));
 }

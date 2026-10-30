@@ -197,7 +197,8 @@ input:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px 
   body > *:not(.print-page) { display: none !important; }
   .print-page { display: block; color: #000000; font-size: 11px; }
   .print-page h2 { font-size: 14px; margin: 0 0 6px; }
-  .print-page img { max-width: 100%; max-height: 92vh; display: block; margin: 0 auto 8px; }
+  .print-page .print-band { width: 100%; height: auto; display: block; break-after: page; break-inside: avoid; }
+  .print-page .print-legend { break-inside: avoid; }
   .print-page .legend-table { font-size: 10px; }
   .print-page .print-rows { break-before: page; columns: 2; column-gap: 24px; }
   .print-page .print-rows p { margin: 0 0 2px; break-inside: avoid; font-variant-numeric: tabular-nums; }
