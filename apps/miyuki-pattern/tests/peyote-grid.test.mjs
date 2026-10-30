@@ -48,3 +48,8 @@ test('junk counts clamp', () => {
   assert.deepEqual(clampCounts({ columns: NaN, rows: 'x' }), { columns: 36, rows: 94 });
   assert.deepEqual(countsFromSize(0.01, 500, PX, PY), { columns: 2, rows: 400 });
 });
+
+test('blank counts keep the current value', () => {
+  assert.deepEqual(clampCounts({ columns: '', rows: ' ' }, { columns: 40, rows: 80 }), { columns: 40, rows: 80 });
+  assert.deepEqual(clampCounts({ columns: '', rows: 50 }), { columns: 36, rows: 50 });
+});

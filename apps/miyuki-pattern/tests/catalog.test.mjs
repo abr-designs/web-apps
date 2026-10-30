@@ -36,3 +36,8 @@ test('filterAvailable', () => {
   assert.equal(buyable.length, catalog.filter((c) => !c.discontinued).length);
   assert.deepEqual(filterAvailable(catalog, new Set(['DB-651'])).map((c) => c.code), ['DB-651']);
 });
+
+test('stale ticked codes fall back to colours in production', () => {
+  const buyable = catalog.filter((c) => !c.discontinued).length;
+  assert.equal(filterAvailable(catalog, new Set(['DB-999999'])).length, buyable);
+});

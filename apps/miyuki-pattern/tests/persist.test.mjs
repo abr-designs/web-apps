@@ -41,3 +41,8 @@ test('invalid JSON loads as null', () => {
   assert.equal(loadState(s), null);
   assert.equal(loadState(fakeStorage()), null);
 });
+
+test('blocked storage does not throw', () => {
+  assert.deepEqual(saveState(null, state), { photoSaved: false });
+  assert.equal(loadState(null), null);
+});

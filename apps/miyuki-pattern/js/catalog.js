@@ -33,9 +33,10 @@ export function withLab(colors) {
   return colors.map((c) => ({ ...c, lab: hexToLab(c.hex) }));
 }
 
-/** Ticked colours, or every colour still in production when none are ticked. */
+/** Ticked colours, or every colour still in production when none are ticked or none of the ticked codes exist. */
 export function filterAvailable(catalog, codes) {
-  return codes.size ? catalog.filter((c) => codes.has(c.code)) : catalog.filter((c) => !c.discontinued);
+  const ticked = codes.size ? catalog.filter((c) => codes.has(c.code)) : [];
+  return ticked.length ? ticked : catalog.filter((c) => !c.discontinued);
 }
 
 /** Fetches data/delica.json and returns the catalog with Lab values. */

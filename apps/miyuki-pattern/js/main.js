@@ -15,7 +15,16 @@ import { saveState, loadState } from './persist.js';
 const $ = (id) => document.getElementById(id);
 const DEBOUNCE_MS = 150;
 
-const saved = loadState(localStorage);
+/** localStorage, or null when the browser blocks it. */
+function storage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+const saved = loadState(storage());
 const state = {
   settings: {
     widthCm: DEFAULTS.widthCm,
@@ -77,7 +86,7 @@ function syncInputs() {
 
 /** Applies new counts, keeps cm in step, and reshapes the crop frame. */
 function setCounts(columns, rows) {
-  Object.assign(s, clampCounts({ columns, rows }));
+  Object.assign(s, clampCounts({ columns, rows }, { columns: s.columns, rows: s.rows }));
   const size = sizeFromCounts(s.columns, s.rows, s.pitchX, s.pitchY);
   s.widthCm = size.widthCm;
   s.heightCm = size.heightCm;
@@ -146,7 +155,7 @@ function renderLegend() {
 let photoUrl = state.photo;
 /** Saves the project; the photo is dropped when it does not fit. */
 function save() {
-  const { photoSaved } = saveState(localStorage, {
+  const { photoSaved } = saveState(storage(), {
     settings: s,
     transform: stage.getTransform(),
     available: [...state.available],
@@ -219,7 +228,7 @@ $('upload-input').addEventListener('change', async (e) => {
 });
 $('export-png').addEventListener('click', () => {
   if (!pattern) { notice('Upload a photo first.'); return; }
-  downloadPng(pattern, aspect());
+  downloadPng(pattern, aspect(), notice);
 });
 $('print-btn').addEventListener('click', () => {
   if (!pattern) { notice('Upload a photo first.'); return; }

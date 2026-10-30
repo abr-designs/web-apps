@@ -82,11 +82,21 @@ export function renderPattern(canvas, pattern, { cellPx, aspect, letters, number
   return { width, height };
 }
 
-/** Renders the full-size PNG with letters, numbers, and legend, and downloads it. */
-export function downloadPng(pattern, aspect) {
+const MAX_CANVAS_PIXELS = 16e6;
+
+/** Bead width for exports: 24 px, smaller for big grids so the canvas stays under the iOS area limit. */
+export function exportCellPx(columns, rows, aspect) {
+  const fit = Math.sqrt(MAX_CANVAS_PIXELS / (columns * (rows + 0.5) * aspect)) * 0.9;
+  return Math.max(8, Math.min(24, Math.floor(fit)));
+}
+
+/** Renders the full-size PNG with letters, numbers, and legend, and downloads it. onError gets a message on failure. */
+export function downloadPng(pattern, aspect, onError) {
   const canvas = document.createElement('canvas');
-  renderPattern(canvas, pattern, { cellPx: 24, aspect, letters: true, numbers: true, legend: true });
+  const cellPx = exportCellPx(pattern.columns, pattern.rows, aspect);
+  renderPattern(canvas, pattern, { cellPx, aspect, letters: true, numbers: true, legend: true });
   canvas.toBlob((blob) => {
+    if (!blob) { onError('This pattern is too large to export on this device. Try fewer rows or columns.'); return; }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `miyuki-pattern-${pattern.columns}x${pattern.rows}.png`;
@@ -125,7 +135,8 @@ export function rowLine({ row, direction, counts }) {
 /** Fills the print section: diagram, legend, colour note, then per-row quantities. */
 export function fillPrintPage(section, pattern, aspect) {
   const canvas = document.createElement('canvas');
-  renderPattern(canvas, pattern, { cellPx: 24, aspect, letters: true, numbers: true, legend: false });
+  const cellPx = exportCellPx(pattern.columns, pattern.rows, aspect);
+  renderPattern(canvas, pattern, { cellPx, aspect, letters: true, numbers: true, legend: false });
   section.innerHTML = `
     <h2>Miyuki Delica 11/0 peyote pattern, ${pattern.columns} × ${pattern.rows}</h2>
     <img src="${canvas.toDataURL('image/png')}" alt="Lettered bead pattern">

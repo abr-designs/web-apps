@@ -113,6 +113,9 @@ export function createStage(canvas, { onChange }) {
     const k = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
     work.width = Math.max(1, Math.round(img.naturalWidth * k));
     work.height = Math.max(1, Math.round(img.naturalHeight * k));
+    // Transparent areas read as black in ImageData; flatten onto white like the area outside the photo.
+    workCtx.fillStyle = '#FFFFFF';
+    workCtx.fillRect(0, 0, work.width, work.height);
     workCtx.drawImage(img, 0, 0, work.width, work.height);
     pixels = workCtx.getImageData(0, 0, work.width, work.height).data;
   }

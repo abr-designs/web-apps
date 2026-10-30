@@ -13,17 +13,17 @@ export const DEFAULTS = Object.freeze({
 
 const LIMITS = { columns: [2, 200], rows: [2, 400] };
 
-/** Clamps a count to its range, falling back to the default when not a finite number. */
-function clampOne(value, key) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return DEFAULTS[key];
+/** Clamps a count to its range, using the fallback when the value is blank or not a number. */
+function clampOne(value, key, fallback) {
+  const n = String(value).trim() === '' ? NaN : Number(value);
+  if (!Number.isFinite(n)) return fallback[key];
   const [min, max] = LIMITS[key];
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
 /** Returns integer column and row counts inside the supported range. */
-export function clampCounts({ columns, rows }) {
-  return { columns: clampOne(columns, 'columns'), rows: clampOne(rows, 'rows') };
+export function clampCounts({ columns, rows }, fallback = DEFAULTS) {
+  return { columns: clampOne(columns, 'columns', fallback), rows: clampOne(rows, 'rows', fallback) };
 }
 
 /** Converts a piece size in cm to bead counts using the bead pitch in mm. */
