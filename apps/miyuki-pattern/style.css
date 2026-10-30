@@ -98,6 +98,7 @@ h2 { font-size: var(--fs-h2); font-weight: 500; margin: 0; }
 }
 .canvas-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .canvas-wrap-pattern { display: flex; align-items: center; justify-content: center; }
+.drop-over .canvas-wrap:not(.canvas-wrap-pattern) { outline: 2px dashed var(--accent); outline-offset: -2px; }
 #stage-canvas { cursor: grab; }
 #stage-canvas.dragging { cursor: grabbing; }
 

@@ -78,7 +78,7 @@ export function createStage(canvas, { onChange }) {
       ctx.fillStyle = '#6F6A78';
       ctx.font = '14px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Upload a photo to start', cssW / 2, cssH / 2);
+      ctx.fillText('Upload, drop, or paste a photo to start', cssW / 2, cssH / 2);
     }
 
     const { w: bw, h: bh } = frameSize(grid.columns, grid.rows);

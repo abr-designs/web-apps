@@ -242,9 +242,8 @@ $('legend').addEventListener('click', (e) => {
 });
 
 /* Upload and outputs */
-$('upload-input').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  e.target.value = '';
+/** Loads a photo from the file picker, a drop, or a paste. */
+async function loadPhoto(file) {
   $('upload-error').textContent = '';
   try {
     await stage.loadFile(file);
@@ -254,6 +253,35 @@ $('upload-input').addEventListener('change', async (e) => {
   } catch (err) {
     $('upload-error').textContent = err.message;
   }
+}
+$('upload-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  loadPhoto(file);
+});
+
+const hasFiles = (e) => e.dataTransfer?.types.includes('Files');
+document.addEventListener('dragover', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  document.body.classList.add('drop-over');
+});
+document.addEventListener('dragleave', (e) => {
+  if (!e.relatedTarget) document.body.classList.remove('drop-over');
+});
+document.addEventListener('drop', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  document.body.classList.remove('drop-over');
+  loadPhoto(e.dataTransfer.files[0]);
+});
+document.addEventListener('paste', (e) => {
+  // Leave pastes into text fields, such as the colour picker's code list, alone.
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
+  if (!file) return;
+  e.preventDefault();
+  loadPhoto(file);
 });
 $('export-png').addEventListener('click', () => {
   if (!pattern) { notice('Upload a photo first.'); return; }
