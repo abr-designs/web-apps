@@ -97,6 +97,7 @@ h2 { font-size: var(--fs-h2); font-weight: 500; margin: 0; }
   overflow: hidden;
 }
 .canvas-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.canvas-wrap-pattern { display: flex; align-items: center; justify-content: center; }
 #stage-canvas { cursor: grab; }
 #stage-canvas.dragging { cursor: grabbing; }
 
