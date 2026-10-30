@@ -105,8 +105,9 @@ export function downloadPng(pattern, aspect, onError) {
   }, 'image/png');
 }
 
-/** Legend table markup shared by the screen and the print page. */
-export function legendTable(pattern) {
+/** Legend table markup shared by the screen and the print page; removable adds a remove button per colour. */
+export function legendTable(pattern, { removable = false } = {}) {
+  const canRemove = removable && pattern.legend.length > 1;
   const rows = pattern.legend.map((e) => `
     <tr>
       <td>${e.letter}</td>
@@ -116,14 +117,16 @@ export function legendTable(pattern) {
       <td class="num">${e.count}</td>
       <td class="num">${e.grams.toFixed(1)}</td>
       <td class="num">${e.packs}</td>
-      <td class="num">${money(e.cost)}</td>
+      <td class="num">${money(e.cost)}</td>${canRemove ? `
+      <td><button type="button" class="btn btn-small" data-remove="${e.code}" aria-label="Remove ${e.code}" title="Remove; beads move to the next closest colour">×</button></td>` : ''}
     </tr>`).join('');
   const t = pattern.totals;
+  const extra = canRemove ? '<th></th>' : '';
   return `
     <table class="legend-table">
-      <thead><tr><th>Letter</th><th></th><th>Code</th><th>Name</th><th class="num">Beads</th><th class="num">Grams</th><th class="num">Packs</th><th class="num">Cost</th></tr></thead>
+      <thead><tr><th>Letter</th><th></th><th>Code</th><th>Name</th><th class="num">Beads</th><th class="num">Grams</th><th class="num">Packs</th><th class="num">Cost</th>${extra}</tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td colspan="4">Total</td><td class="num">${t.count}</td><td class="num">${t.grams.toFixed(1)}</td><td class="num">${t.packs}</td><td class="num">${money(t.cost)}</td></tr></tfoot>
+      <tfoot><tr><td colspan="4">Total</td><td class="num">${t.count}</td><td class="num">${t.grams.toFixed(1)}</td><td class="num">${t.packs}</td><td class="num">${money(t.cost)}</td>${canRemove ? '<td></td>' : ''}</tr></tfoot>
     </table>`;
 }
 
@@ -132,7 +135,7 @@ export function rowLine({ row, direction, counts }) {
   return `Row ${row} (${direction}): ${counts.map((c) => `${c.letter} ${c.count}`).join(', ')}`;
 }
 
-/** Fills the print section: diagram, legend, colour note, then per-row quantities. */
+/** Fills the print section: diagram, legend, colour note, then per-row quantities. Resolves once the diagram has decoded. */
 export function fillPrintPage(section, pattern, aspect) {
   const canvas = document.createElement('canvas');
   const cellPx = exportCellPx(pattern.columns, pattern.rows, aspect);
@@ -146,4 +149,6 @@ export function fillPrintPage(section, pattern, aspect) {
       <h2>Beads per row</h2>
       ${pattern.rowCounts.map((r) => `<p>${rowLine(r)}</p>`).join('')}
     </div>`;
+  // print() snapshots the page synchronously, so an undecoded data URL prints blank.
+  return section.querySelector('img').decode();
 }

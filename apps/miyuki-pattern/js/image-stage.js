@@ -5,7 +5,7 @@
 // offsetX/offsetY move the photo centre from the frame centre, scale multiplies the cover fit.
 
 import { frameSize, footprint } from './peyote-grid.js';
-import { rgbToLab } from './color.js';
+import { rgbToLab, dominantRgb } from './color.js';
 
 const MAX_SIDE = 1600;
 const PADDING = 16;
@@ -183,30 +183,36 @@ export function createStage(canvas, { onChange }) {
       t.offsetY += (dy * frameRatio()) / h;
       changed();
     },
-    /** Lab colour per bead: the mean of up to 8 x 8 photo samples under the bead footprint. */
-    sampleCells(cells, detail) {
+    /**
+     * Lab colour per bead from up to 8 x 8 photo samples under the bead footprint.
+     * mode 'average' blends them, 'majority' takes the most common colour, 'nearest' reads only the centre pixel.
+     */
+    sampleCells(cells, detail, mode = 'average') {
       if (!pixels) return null;
       const { w: bw, h: bh } = frameSize(grid.columns, grid.rows);
       const ratio = frameRatio();
       const W = work.width, H = work.height;
+      // Off-photo samples read as white, like the area around the photo.
+      const pixel = (px, py) => {
+        if (px < 0 || py < 0 || px >= W || py >= H) return [255, 255, 255];
+        const o = (py * W + px) * 4;
+        return [pixels[o], pixels[o + 1], pixels[o + 2]];
+      };
       return cells.map((cell) => {
         const fp = footprint(cell, detail);
         const [x0, y0] = toPhoto(fp.x / bw - 0.5, (fp.y / bh - 0.5) * ratio);
         const [x1, y1] = toPhoto((fp.x + fp.w) / bw - 0.5, ((fp.y + fp.h) / bh - 0.5) * ratio);
+        if (mode === 'nearest') return rgbToLab(pixel(Math.floor((x0 + x1) / 2), Math.floor((y0 + y1) / 2)));
         const nx = Math.max(1, Math.min(8, Math.ceil(x1 - x0)));
         const ny = Math.max(1, Math.min(8, Math.ceil(y1 - y0)));
-        let r = 0, g = 0, b = 0;
+        const samples = [];
         for (let j = 0; j < ny; j++) {
           const py = Math.floor(y0 + ((j + 0.5) * (y1 - y0)) / ny);
-          for (let i = 0; i < nx; i++) {
-            const px = Math.floor(x0 + ((i + 0.5) * (x1 - x0)) / nx);
-            if (px < 0 || py < 0 || px >= W || py >= H) { r += 255; g += 255; b += 255; continue; }
-            const o = (py * W + px) * 4;
-            r += pixels[o]; g += pixels[o + 1]; b += pixels[o + 2];
-          }
+          for (let i = 0; i < nx; i++) samples.push(pixel(Math.floor(x0 + ((i + 0.5) * (x1 - x0)) / nx), py));
         }
-        const n = nx * ny;
-        return rgbToLab([r / n, g / n, b / n]);
+        if (mode === 'majority') return rgbToLab(dominantRgb(samples));
+        const sum = samples.reduce((s, p) => [s[0] + p[0], s[1] + p[1], s[2] + p[2]], [0, 0, 0]);
+        return rgbToLab(sum.map((v) => v / samples.length));
       });
     },
     /** The working photo as a JPEG data URL (longest side 1600 px). */

@@ -2,7 +2,7 @@
 // Date: 2026-10-30
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hexToRgb, rgbToLab, hexToLab, deltaE2000, textColorFor } from '../js/color.js';
+import { hexToRgb, rgbToLab, hexToLab, deltaE2000, textColorFor, dominantRgb } from '../js/color.js';
 
 const near = (a, b, eps) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 
@@ -28,4 +28,11 @@ test('CIEDE2000 matches Sharma, Wu, Dalal test pairs', () => {
 test('text colour by lightness', () => {
   assert.equal(textColorFor([90, 0, 0]), '#000000');
   assert.equal(textColorFor([20, 0, 0]), '#FFFFFF');
+});
+
+test('dominantRgb picks the majority side of an edge', () => {
+  const samples = [...Array(5).fill([200, 30, 30]), [205, 28, 31], ...Array(3).fill([20, 20, 200])];
+  const [r, g, b] = dominantRgb(samples);
+  near(r, (200 * 5 + 205) / 6, 1e-9); near(g, (30 * 5 + 28) / 6, 1e-9); near(b, (30 * 5 + 31) / 6, 1e-9);
+  assert.deepEqual(dominantRgb([[10, 20, 30]]), [10, 20, 30]);
 });

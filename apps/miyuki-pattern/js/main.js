@@ -5,7 +5,7 @@
 import {
   DEFAULTS, clampCounts, countsFromSize, sizeFromCounts, parityOf, applyParity, beadCells,
 } from './peyote-grid.js';
-import { matchPalette } from './quantize.js';
+import { matchPalette, dropColors } from './quantize.js';
 import { buildPattern } from './pattern.js';
 import { loadCatalog, filterAvailable, openPicker } from './catalog.js';
 import { createStage } from './image-stage.js';
@@ -14,6 +14,7 @@ import { saveState, loadState } from './persist.js';
 
 const $ = (id) => document.getElementById(id);
 const DEBOUNCE_MS = 150;
+const SAMPLING_MODES = ['average', 'majority', 'nearest'];
 
 /** localStorage, or null when the browser blocks it. */
 function storage() {
@@ -34,15 +35,18 @@ const state = {
     pitchX: DEFAULTS.pitchXmm,
     pitchY: DEFAULTS.pitchYmm,
     detail: 50,
+    sampling: 'average',
     maxColors: 12,
     pack: { beads: 1000, grams: 5, price: 10 },
     ...saved?.settings,
   },
   transform: saved?.transform ?? { offsetX: 0, offsetY: 0, scale: 1 },
   available: new Set(saved?.available ?? []),
+  removed: new Set(saved?.removed ?? []),
   photo: saved?.photo ?? null,
 };
 const s = state.settings;
+if (!SAMPLING_MODES.includes(s.sampling)) s.sampling = 'average';
 
 let catalog = null;
 let pattern = null;
@@ -72,7 +76,9 @@ function syncInputs() {
   $('parity-even').setAttribute('aria-pressed', String(parity === 'even'));
   $('parity-odd').setAttribute('aria-pressed', String(parity === 'odd'));
   $('size-readout').textContent = `Beaded size about ${round1(s.widthCm)} × ${round1(s.heightCm)} cm, ${s.columns * s.rows} beads`;
+  for (const mode of SAMPLING_MODES) $(`sample-${mode}`).setAttribute('aria-pressed', String(s.sampling === mode));
   $('detail').value = s.detail;
+  $('detail').disabled = s.sampling === 'nearest';
   $('zoom').value = stage.getTransform().scale;
   $('max-colors').value = s.maxColors;
   $('max-colors-out').textContent = s.maxColors;
@@ -107,10 +113,11 @@ function update() {
   $('zoom').value = stage.getTransform().scale;
   if (!catalog) return;
   const cells = beadCells(s.columns, s.rows);
-  const labs = stage.sampleCells(cells, s.detail);
+  const labs = stage.sampleCells(cells, s.detail, s.sampling);
   if (labs) {
     const palette = filterAvailable(catalog, state.available);
-    const { colors, assignments } = matchPalette(labs, s.maxColors, palette);
+    const matched = matchPalette(labs, s.maxColors, palette);
+    const { colors, assignments } = dropColors(labs, matched.colors, matched.assignments, state.removed);
     pattern = buildPattern({ columns: s.columns, rows: s.rows, assignments, colors, pack: s.pack });
     $('pattern-status').textContent = `${pattern.legend.length} colours`;
   } else {
@@ -145,10 +152,18 @@ function renderPreview() {
   canvas.style.height = `${height}px`;
 }
 
+/** Removed colours as restore buttons, or nothing when none are removed. */
+function removedList() {
+  if (!state.removed.size) return '';
+  const names = new Map((catalog ?? []).map((c) => [c.code, c.name]));
+  const chips = [...state.removed].map((code) => `<button type="button" class="btn btn-small" data-restore="${code}" title="Restore ${code}">${code} ${names.get(code) ?? ''} ↺</button>`).join('');
+  return `<div class="removed-row"><span class="muted">Removed</span>${chips}<button type="button" class="btn btn-small" data-restore-all>Restore all</button></div>`;
+}
+
 /** Legend table under the panes. */
 function renderLegend() {
   $('legend').innerHTML = pattern
-    ? `<div class="legend-scroll">${legendTable(pattern)}</div><p class="muted">${COLOR_NOTE}</p>`
+    ? `<div class="legend-scroll">${legendTable(pattern, { removable: true })}</div>${removedList()}<p class="muted">${COLOR_NOTE}</p>`
     : '<p class="muted">Upload a photo to see the colours, bead counts, and cost.</p>';
 }
 
@@ -159,6 +174,7 @@ function save() {
     settings: s,
     transform: stage.getTransform(),
     available: [...state.available],
+    removed: [...state.removed],
     photo: photoUrl,
   });
   if (!photoSaved && photoUrl) notice('Your photo is too large to save in this browser. Settings are saved; upload the photo again after a reload.');
@@ -183,6 +199,9 @@ $('pitch-x').addEventListener('change', () => { s.pitchX = numberFrom($('pitch-x
 $('pitch-y').addEventListener('change', () => { s.pitchY = numberFrom($('pitch-y'), s.pitchY); setCounts(s.columns, s.rows); });
 
 /* Image controls */
+for (const mode of SAMPLING_MODES) {
+  $(`sample-${mode}`).addEventListener('click', () => { s.sampling = mode; syncInputs(); schedule(); });
+}
 $('detail').addEventListener('input', () => { s.detail = Number($('detail').value); schedule(); });
 $('zoom').addEventListener('input', () => stage.setTransform({ scale: Number($('zoom').value) }));
 $('fit-btn').addEventListener('click', () => stage.fit());
@@ -212,6 +231,16 @@ $('available-btn').addEventListener('click', () => {
   });
 });
 
+$('legend').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.remove) state.removed.add(btn.dataset.remove);
+  else if (btn.dataset.restore) state.removed.delete(btn.dataset.restore);
+  else if ('restoreAll' in btn.dataset) state.removed.clear();
+  else return;
+  update();
+});
+
 /* Upload and outputs */
 $('upload-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -230,9 +259,14 @@ $('export-png').addEventListener('click', () => {
   if (!pattern) { notice('Upload a photo first.'); return; }
   downloadPng(pattern, aspect(), notice);
 });
-$('print-btn').addEventListener('click', () => {
+$('print-btn').addEventListener('click', async () => {
   if (!pattern) { notice('Upload a photo first.'); return; }
-  fillPrintPage($('print-page'), pattern, aspect());
+  try {
+    await fillPrintPage($('print-page'), pattern, aspect());
+  } catch {
+    notice('This pattern is too large to print on this device. Try fewer rows or columns.');
+    return;
+  }
   window.print();
 });
 

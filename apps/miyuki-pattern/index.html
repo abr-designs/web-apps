@@ -66,6 +66,11 @@
 
     <fieldset class="group">
       <legend>Image</legend>
+      <div class="segmented" role="group" aria-label="Sampling">
+        <button id="sample-average" type="button" aria-pressed="true" title="Blends the photo under each bead">Average</button>
+        <button id="sample-majority" type="button" aria-pressed="false" title="Most common colour under each bead, for crisp edges">Majority</button>
+        <button id="sample-nearest" type="button" aria-pressed="false" title="Centre pixel of each bead only">Nearest</button>
+      </div>
       <label>Detail
         <span class="range-row"><span class="muted">Soft</span><input id="detail" type="range" min="0" max="100" step="1" value="50"><span class="muted">Sharp</span></span>
       </label>

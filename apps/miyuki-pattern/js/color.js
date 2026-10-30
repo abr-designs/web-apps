@@ -95,3 +95,22 @@ export function deltaE2000([L1, a1, b1], [L2, a2, b2]) {
 export function textColorFor([L]) {
   return L > 55 ? '#000000' : '#FFFFFF';
 }
+
+const BIN_SHIFT = 5;
+
+/**
+ * Most common colour among RGB samples, so a bead on an edge takes one side instead of a blend.
+ * Samples are binned at 32 levels per channel (photo noise rarely repeats exact values); returns the mean of the fullest bin.
+ */
+export function dominantRgb(samples) {
+  const bins = new Map();
+  let best = null;
+  for (const s of samples) {
+    const key = ((s[0] >> BIN_SHIFT) << 6) | ((s[1] >> BIN_SHIFT) << 3) | (s[2] >> BIN_SHIFT);
+    let bin = bins.get(key);
+    if (!bin) { bin = [0, 0, 0, 0]; bins.set(key, bin); }
+    bin[0] += s[0]; bin[1] += s[1]; bin[2] += s[2]; bin[3]++;
+    if (!best || bin[3] > best[3]) best = bin;
+  }
+  return [best[0] / best[3], best[1] / best[3], best[2] / best[3]];
+}

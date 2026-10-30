@@ -2,7 +2,7 @@
 // Date: 2026-10-30
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { kmeans, matchPalette } from '../js/quantize.js';
+import { kmeans, matchPalette, dropColors } from '../js/quantize.js';
 import { hexToLab } from '../js/color.js';
 
 /** Small seeded PRNG so test inputs are stable. */
@@ -60,4 +60,20 @@ test('one available colour fills the whole pattern', () => {
   const { colors, assignments } = matchPalette(labs, 8, palette);
   assert.equal(colors.length, 1);
   assert.ok([...assignments].every((a) => a === 0));
+});
+
+test('dropColors moves removed beads to the closest remaining colour', () => {
+  const colors = [entry('DB-1', '#FF0000'), entry('DB-2', '#CC0000'), entry('DB-3', '#0000FF')];
+  const labs = [hexToLab('#FF0000'), hexToLab('#D00000'), hexToLab('#0000FF'), hexToLab('#C80000')];
+  const r = dropColors(labs, colors, Int32Array.from([0, 1, 2, 1]), new Set(['DB-2']));
+  assert.deepEqual(r.colors.map((c) => c.code), ['DB-1', 'DB-3']);
+  assert.deepEqual([...r.assignments], [0, 0, 1, 0]);
+});
+
+test('dropColors ignores unknown codes and never removes every colour', () => {
+  const colors = [entry('DB-1', '#FF0000')];
+  const assignments = Int32Array.from([0, 0]);
+  const labs = [hexToLab('#FF0000'), hexToLab('#FF0000')];
+  assert.equal(dropColors(labs, colors, assignments, new Set(['DB-9'])).colors, colors);
+  assert.equal(dropColors(labs, colors, assignments, new Set(['DB-1'])).colors, colors);
 });

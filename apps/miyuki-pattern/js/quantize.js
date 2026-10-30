@@ -105,3 +105,31 @@ export function matchPalette(labs, k, palette, seed = 1) {
   for (let i = 0; i < labs.length; i++) out[i] = centroidToColor[assignments[i]];
   return { colors, assignments: out };
 }
+
+/**
+ * Drops colours whose code is in removed; their beads move to the closest remaining colour by CIEDE2000 to the bead's own sample.
+ * Leaves the pattern unchanged when that would remove every colour.
+ */
+export function dropColors(labs, colors, assignments, removed) {
+  const keep = [];
+  const remap = new Int32Array(colors.length).fill(-1);
+  colors.forEach((c, i) => {
+    if (removed.has(c.code)) return;
+    remap[i] = keep.length;
+    keep.push(c);
+  });
+  if (keep.length === colors.length || keep.length === 0) return { colors, assignments };
+  const out = new Int32Array(assignments.length);
+  for (let i = 0; i < assignments.length; i++) {
+    let next = remap[assignments[i]];
+    if (next < 0) {
+      let bestD = Infinity;
+      keep.forEach((c, k) => {
+        const d = deltaE2000(labs[i], c.lab);
+        if (d < bestD) { bestD = d; next = k; }
+      });
+    }
+    out[i] = next;
+  }
+  return { colors: keep, assignments: out };
+}
