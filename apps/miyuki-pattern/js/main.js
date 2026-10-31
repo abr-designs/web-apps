@@ -37,7 +37,7 @@ const defaultSettings = () => ({
   detail: 50,
   sampling: 'average',
   maxColors: 12,
-  pack: { beads: 1000, grams: 5, price: 10 },
+  pack: { beads: 1000, grams: 5 },
   adjust: { ...NO_ADJUST },
 });
 
@@ -109,7 +109,6 @@ function syncInputs() {
   $('pitch-y').value = Math.round(s.pitchY * 1000) / 1000;
   $('pack-beads').value = s.pack.beads;
   $('pack-grams').value = s.pack.grams;
-  $('pack-price').value = s.pack.price;
   $('available-btn').textContent = state.available.size ? `${state.available.size} colours available` : 'All colours';
 }
 
@@ -254,9 +253,9 @@ $('max-colors').addEventListener('input', () => {
   $('max-colors-out').textContent = s.maxColors;
   schedule();
 });
-for (const [id, key] of [['pack-beads', 'beads'], ['pack-grams', 'grams'], ['pack-price', 'price']]) {
+for (const [id, key] of [['pack-beads', 'beads'], ['pack-grams', 'grams']]) {
   $(id).addEventListener('change', () => {
-    s.pack[key] = key === 'price' ? Math.max(0, parseFloat($(id).value) || 0) : numberFrom($(id), s.pack[key]);
+    s.pack[key] = numberFrom($(id), s.pack[key]);
     schedule();
   });
 }

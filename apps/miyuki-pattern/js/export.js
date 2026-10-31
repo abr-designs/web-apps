@@ -144,7 +144,7 @@ export function legendTable(pattern, { removable = false } = {}) {
   const extra = canRemove ? '<th></th>' : '';
   return `
     <table class="legend-table">
-      <thead><tr><th>Letter</th><th></th><th>Code</th><th>Name</th><th class="num">Beads</th><th class="num">Grams</th><th class="num">Packs</th><th class="num">Cost</th>${extra}</tr></thead>
+      <thead><tr><th>Letter</th><th></th><th>Code</th><th>Name</th><th class="num">Beads</th><th class="num">Grams</th><th class="num">Packs</th><th class="num">Cost (CAD)</th>${extra}</tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td colspan="4">Total</td><td class="num">${t.count}</td><td class="num">${t.grams.toFixed(1)}</td><td class="num">${t.packs}</td><td class="num">${money(t.cost)}</td>${canRemove ? '<td></td>' : ''}</tr></tfoot>
     </table>`;

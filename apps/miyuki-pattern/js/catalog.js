@@ -28,9 +28,31 @@ export function parseCodes(text, catalog) {
   return { codes, unknown };
 }
 
-/** Adds a Lab value to every catalog colour. */
+/**
+ * CAD price per 5 g pack by finish, first match wins. Researched 2026-10-31 from That Bead Lady, Beadazzle and Beadfx.
+ * Each pattern is matched against the colour name with hyphens read as spaces.
+ */
+export const PRICE_TIERS = [
+  { tier: 'Gold plated', price: 25, pattern: /\bgold plated\b/i },
+  { tier: 'Plated', price: 12.5, pattern: /\bplated\b/i },
+  { tier: 'Duracoat galvanized', price: 7, pattern: /\bduracoat\b.*\bgalvanized\b/i },
+  { tier: 'Galvanized', price: 6.75, pattern: /\bgalvanized\b/i },
+  { tier: 'Metallic', price: 6, pattern: /\bmetallic\b/i },
+  { tier: 'Silk or glazed', price: 5.5, pattern: /\b(silk|glazed)\b/i },
+  { tier: 'Duracoat', price: 4.75, pattern: /\bduracoat\b/i },
+  { tier: 'Lined, luster or AB', price: 4, pattern: /\b(lined|luster|ab|ceylon)\b/i },
+  { tier: 'Basic', price: 3.5, pattern: /./ },
+];
+
+/** CAD price of one 5 g pack of the colour with this name. */
+export function packPrice(name) {
+  const text = String(name).replace(/-/g, ' ');
+  return PRICE_TIERS.find((t) => t.pattern.test(text)).price;
+}
+
+/** Adds a Lab value and a pack price to every catalog colour. */
 export function withLab(colors) {
-  return colors.map((c) => ({ ...c, lab: hexToLab(c.hex) }));
+  return colors.map((c) => ({ ...c, lab: hexToLab(c.hex), price: packPrice(c.name) }));
 }
 
 /** Ticked colours, or every colour still in production when none are ticked or none of the ticked codes exist. */

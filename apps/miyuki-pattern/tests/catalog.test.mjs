@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalizeCode, parseCodes, withLab, filterAvailable } from '../js/catalog.js';
+import { normalizeCode, parseCodes, withLab, filterAvailable, packPrice } from '../js/catalog.js';
 
 const data = JSON.parse(readFileSync(new URL('../data/delica.json', import.meta.url), 'utf8'));
 const catalog = withLab(data.colors);
@@ -40,4 +40,18 @@ test('filterAvailable', () => {
 test('stale ticked codes fall back to colours in production', () => {
   const buyable = catalog.filter((c) => !c.discontinued).length;
   assert.equal(filterAvailable(catalog, new Set(['DB-999999'])).length, buyable);
+});
+
+test('packPrice picks the first matching finish tier', () => {
+  assert.equal(packPrice('Gold Plated Gold'), 25);
+  assert.equal(packPrice('Matte Palladium Plated Silver'), 12.5);
+  assert.equal(packPrice('Duracoat Galvanized Gold'), 7);
+  assert.equal(packPrice('Galvanized Silver'), 6.75);
+  assert.equal(packPrice('Metallic Gray'), 6);
+  assert.equal(packPrice('Opaque Duracoat Dyed Red'), 4.75);
+  assert.equal(packPrice('Silver-Lined Transparent Blue'), 4);
+  assert.equal(packPrice('Transparent Crystal AB'), 4);
+  assert.equal(packPrice('Opaque Black'), 3.5);
+  assert.equal(packPrice('Alabaster White'), 3.5);
+  assert.ok(catalog.every((c) => c.price >= 3.5 && c.price <= 25));
 });

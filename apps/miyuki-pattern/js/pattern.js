@@ -21,13 +21,13 @@ export function buildPattern({ columns, rows, assignments, colors, pack }) {
   const legend = order.map((colorIndex, legendIndex) => {
     const count = counts[colorIndex];
     const packs = Math.ceil(count / pack.beads);
-    const { code, name, hex, lab } = colors[colorIndex];
+    const { code, name, hex, lab, price } = colors[colorIndex];
     return {
       letter: letterFor(legendIndex),
       code, name, hex, lab, count,
       grams: round((count / pack.beads) * pack.grams, 1),
       packs,
-      cost: round(packs * pack.price, 2),
+      cost: round(packs * price, 2),
     };
   });
 

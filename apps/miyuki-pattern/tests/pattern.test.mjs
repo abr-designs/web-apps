@@ -4,10 +4,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { letterFor, buildPattern } from '../js/pattern.js';
 
-const PACK = { beads: 1000, grams: 5, price: 10 };
+const PACK = { beads: 1000, grams: 5 };
 const colors = [
-  { code: 'DB-10', name: 'Black', hex: '#000000', lab: [0, 0, 0] },
-  { code: 'DB-651', name: 'Blue', hex: '#2F4A8A', lab: [32, 10, -38] },
+  { code: 'DB-10', name: 'Black', hex: '#000000', lab: [0, 0, 0], price: 10 },
+  { code: 'DB-651', name: 'Blue', hex: '#2F4A8A', lab: [32, 10, -38], price: 4 },
 ];
 
 test('letters', () => {
