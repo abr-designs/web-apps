@@ -8,13 +8,14 @@ import {
 import { matchPalette, dropColors } from './quantize.js';
 import { buildPattern } from './pattern.js';
 import { loadCatalog, filterAvailable, openPicker } from './catalog.js';
-import { createStage } from './image-stage.js';
+import { createStage, NO_ADJUST, ADJUST_SUPPORTED } from './image-stage.js';
 import { renderPattern, downloadPng, fillPrintPage, legendTable, COLOR_NOTE } from './export.js';
 import { saveState, loadState } from './persist.js';
 
 const $ = (id) => document.getElementById(id);
 const DEBOUNCE_MS = 150;
 const SAMPLING_MODES = ['average', 'majority', 'nearest'];
+const ADJUST_KEYS = Object.keys(NO_ADJUST);
 
 /** localStorage, or null when the browser blocks it. */
 function storage() {
@@ -25,21 +26,33 @@ function storage() {
   }
 }
 
+/** Settings for a fresh project. */
+const defaultSettings = () => ({
+  widthCm: DEFAULTS.widthCm,
+  heightCm: DEFAULTS.heightCm,
+  columns: DEFAULTS.columns,
+  rows: DEFAULTS.rows,
+  pitchX: DEFAULTS.pitchXmm,
+  pitchY: DEFAULTS.pitchYmm,
+  detail: 50,
+  sampling: 'average',
+  maxColors: 12,
+  pack: { beads: 1000, grams: 5, price: 10 },
+  adjust: { ...NO_ADJUST },
+});
+
+/** Saved adjustments clamped to their sliders, with anything invalid set back to neutral. */
+function cleanAdjust(adjust) {
+  return Object.fromEntries(ADJUST_KEYS.map((key) => {
+    const v = adjust?.[key];
+    const { min, max } = $(key);
+    return [key, Number.isFinite(v) ? Math.min(Number(max), Math.max(Number(min), v)) : NO_ADJUST[key]];
+  }));
+}
+
 const saved = loadState(storage());
 const state = {
-  settings: {
-    widthCm: DEFAULTS.widthCm,
-    heightCm: DEFAULTS.heightCm,
-    columns: DEFAULTS.columns,
-    rows: DEFAULTS.rows,
-    pitchX: DEFAULTS.pitchXmm,
-    pitchY: DEFAULTS.pitchYmm,
-    detail: 50,
-    sampling: 'average',
-    maxColors: 12,
-    pack: { beads: 1000, grams: 5, price: 10 },
-    ...saved?.settings,
-  },
+  settings: { ...defaultSettings(), ...saved?.settings },
   transform: saved?.transform ?? { offsetX: 0, offsetY: 0, scale: 1 },
   available: new Set(saved?.available ?? []),
   removed: new Set(saved?.removed ?? []),
@@ -47,6 +60,7 @@ const state = {
 };
 const s = state.settings;
 if (!SAMPLING_MODES.includes(s.sampling)) s.sampling = 'average';
+s.adjust = cleanAdjust(s.adjust);
 
 let catalog = null;
 let pattern = null;
@@ -66,6 +80,11 @@ function notice(text) {
   $('notice').hidden = !text;
 }
 
+/** Writes one adjustment's value next to its slider. */
+function showAdjust(key) {
+  $(`${key}-out`).textContent = `${s.adjust[key]}${key === 'hue' ? '°' : '%'}`;
+}
+
 /** Copies settings into every control. */
 function syncInputs() {
   $('width-cm').value = round1(s.widthCm);
@@ -80,6 +99,10 @@ function syncInputs() {
   $('detail').value = s.detail;
   $('detail').disabled = s.sampling === 'nearest';
   $('zoom').value = stage.getTransform().scale;
+  for (const key of ADJUST_KEYS) {
+    $(key).value = s.adjust[key];
+    showAdjust(key);
+  }
   $('max-colors').value = s.maxColors;
   $('max-colors-out').textContent = s.maxColors;
   $('pitch-x').value = Math.round(s.pitchX * 1000) / 1000;
@@ -209,6 +232,21 @@ $('nudge-left').addEventListener('click', () => stage.nudge(-1, 0));
 $('nudge-right').addEventListener('click', () => stage.nudge(1, 0));
 $('nudge-up').addEventListener('click', () => stage.nudge(0, -1));
 $('nudge-down').addEventListener('click', () => stage.nudge(0, 1));
+for (const key of ADJUST_KEYS) {
+  $(key).addEventListener('input', () => {
+    s.adjust[key] = Number($(key).value);
+    showAdjust(key);
+    stage.setAdjust(s.adjust);
+    schedule();
+  });
+}
+$('adjust-reset').addEventListener('click', () => {
+  s.adjust = { ...NO_ADJUST };
+  syncInputs();
+  stage.setAdjust(s.adjust);
+  schedule();
+});
+$('adjust-panel').hidden = !ADJUST_SUPPORTED;
 
 /* Colour and cost controls */
 $('max-colors').addEventListener('input', () => {
@@ -283,6 +321,18 @@ document.addEventListener('paste', (e) => {
   e.preventDefault();
   loadPhoto(file);
 });
+$('clear-btn').addEventListener('click', () => {
+  if (!window.confirm('Remove the photo and reset all settings?')) return;
+  Object.assign(s, defaultSettings());
+  state.removed.clear();
+  photoUrl = null;
+  $('upload-error').textContent = '';
+  notice(null);
+  stage.setAdjust(s.adjust);
+  stage.setFrame(s.columns, s.rows, s.pitchX, s.pitchY);
+  stage.clear();
+  syncInputs();
+});
 $('export-png').addEventListener('click', () => {
   if (!pattern) { notice('Upload a photo first.'); return; }
   downloadPng(pattern, aspect(), notice);
@@ -303,6 +353,7 @@ new ResizeObserver(() => renderPreview()).observe($('pattern-canvas').parentElem
 /** Restores the saved photo and loads the catalog. */
 async function init() {
   stage.setFrame(s.columns, s.rows, s.pitchX, s.pitchY);
+  stage.setAdjust(s.adjust);
   syncInputs();
   renderLegend();
   if (state.photo) {

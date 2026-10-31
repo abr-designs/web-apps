@@ -21,6 +21,7 @@
       </label>
       <button id="export-png" class="btn" type="button">Export PNG</button>
       <button id="print-btn" class="btn" type="button">Print</button>
+      <button id="clear-btn" class="btn" type="button">Clear</button>
     </div>
   </header>
   <p id="upload-error" class="error" role="alert"></p>
@@ -84,6 +85,22 @@
         <button id="nudge-down" class="btn btn-small" type="button" aria-label="Move down">↓</button>
         <button id="nudge-right" class="btn btn-small" type="button" aria-label="Move right">→</button>
       </div>
+      <details id="adjust-panel" class="advanced">
+        <summary>Advanced</summary>
+        <label>Hue <output id="hue-out">0°</output>
+          <input id="hue" type="range" min="-180" max="180" step="1" value="0">
+        </label>
+        <label>Saturation <output id="saturation-out">100%</output>
+          <input id="saturation" type="range" min="0" max="200" step="1" value="100">
+        </label>
+        <label>Brightness <output id="brightness-out">100%</output>
+          <input id="brightness" type="range" min="0" max="200" step="1" value="100">
+        </label>
+        <label>Contrast <output id="contrast-out">100%</output>
+          <input id="contrast" type="range" min="0" max="200" step="1" value="100">
+        </label>
+        <button id="adjust-reset" class="btn btn-small adjust-reset" type="button">Reset</button>
+      </details>
     </fieldset>
 
     <fieldset class="group">

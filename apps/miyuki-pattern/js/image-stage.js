@@ -11,6 +11,12 @@ const MAX_SIDE = 1600;
 const PADDING = 16;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 8;
+export const NO_ADJUST = { hue: 0, saturation: 100, brightness: 100, contrast: 100 };
+/** True when canvas filters work; Safari before 18 lacks them. */
+export const ADJUST_SUPPORTED = 'filter' in CanvasRenderingContext2D.prototype;
+
+/** Canvas filter string for hue (degrees) and saturation, brightness, contrast (percent). */
+const filterOf = (a) => `hue-rotate(${a.hue}deg) saturate(${a.saturation}%) brightness(${a.brightness}%) contrast(${a.contrast}%)`;
 
 /** Decodes a file or URL into an image element, rejecting anything that is not an image. */
 function decode(src) {
@@ -25,6 +31,11 @@ function decode(src) {
 /** Creates the stage on a canvas; onChange fires after the photo or transform changes. */
 export function createStage(canvas, { onChange }) {
   const ctx = canvas.getContext('2d');
+  // source holds the photo as loaded; work holds it with the colour adjustments applied.
+  const source = document.createElement('canvas');
+  const sourceCtx = source.getContext('2d');
+  let adjust = { ...NO_ADJUST };
+  let adjustFrame = 0;
   const work = document.createElement('canvas');
   const workCtx = work.getContext('2d', { willReadFrequently: true });
   let pixels = null;
@@ -108,16 +119,26 @@ export function createStage(canvas, { onChange }) {
 
   const changed = () => { draw(); onChange(); };
 
+  /** Redraws the working photo from the source with the current adjustments. */
+  function applyAdjust() {
+    work.width = source.width;
+    work.height = source.height;
+    workCtx.filter = filterOf(adjust);
+    workCtx.drawImage(source, 0, 0);
+    workCtx.filter = 'none';
+    pixels = workCtx.getImageData(0, 0, work.width, work.height).data;
+  }
+
   async function useImage(src) {
     const img = await decode(src);
     const k = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-    work.width = Math.max(1, Math.round(img.naturalWidth * k));
-    work.height = Math.max(1, Math.round(img.naturalHeight * k));
+    source.width = Math.max(1, Math.round(img.naturalWidth * k));
+    source.height = Math.max(1, Math.round(img.naturalHeight * k));
     // Transparent areas read as black in ImageData; flatten onto white like the area outside the photo.
-    workCtx.fillStyle = '#FFFFFF';
-    workCtx.fillRect(0, 0, work.width, work.height);
-    workCtx.drawImage(img, 0, 0, work.width, work.height);
-    pixels = workCtx.getImageData(0, 0, work.width, work.height).data;
+    sourceCtx.fillStyle = '#FFFFFF';
+    sourceCtx.fillRect(0, 0, source.width, source.height);
+    sourceCtx.drawImage(img, 0, 0, source.width, source.height);
+    applyAdjust();
   }
 
   let drag = null;
@@ -164,6 +185,24 @@ export function createStage(canvas, { onChange }) {
     setFrame(columns, rows, pitchX, pitchY) {
       grid = { columns, rows, pitchX, pitchY };
       draw();
+    },
+    /** Sets hue, saturation, brightness, and contrast; see NO_ADJUST for the neutral values. */
+    setAdjust(next) {
+      adjust = { ...adjust, ...next };
+      // Refilter at most once per frame while a slider drags.
+      if (!pixels || adjustFrame) return;
+      adjustFrame = requestAnimationFrame(() => {
+        adjustFrame = 0;
+        if (!pixels) return;
+        applyAdjust();
+        changed();
+      });
+    },
+    /** Removes the photo and resets the transform. */
+    clear() {
+      pixels = null;
+      t = { offsetX: 0, offsetY: 0, scale: 1 };
+      changed();
     },
     getTransform: () => ({ ...t }),
     setTransform(next) {
@@ -215,7 +254,7 @@ export function createStage(canvas, { onChange }) {
         return rgbToLab(sum.map((v) => v / samples.length));
       });
     },
-    /** The working photo as a JPEG data URL (longest side 1600 px). */
-    exportPhoto: () => (pixels ? work.toDataURL('image/jpeg', 0.85) : null),
+    /** The unadjusted photo as a JPEG data URL (longest side 1600 px). */
+    exportPhoto: () => (pixels ? source.toDataURL('image/jpeg', 0.85) : null),
   };
 }
