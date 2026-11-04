@@ -1,0 +1,139 @@
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-30 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Miyuki Pattern</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="logo/logo.css">
+</head>
+<body>
+  <img class="app-logo" src="logo/senor_claude.png" alt="">
+
+  <header class="topbar">
+    <h1>Miyuki pattern</h1>
+    <div class="topbar-actions">
+      <label class="btn btn-primary">
+        Upload photo
+        <input id="upload-input" type="file" accept="image/*" hidden>
+      </label>
+      <button id="export-png" class="btn" type="button">Export PNG</button>
+      <button id="print-btn" class="btn" type="button">Print</button>
+      <button id="clear-btn" class="btn" type="button">Clear</button>
+    </div>
+  </header>
+  <p id="upload-error" class="error" role="alert"></p>
+
+  <main class="workspace">
+    <section class="pane">
+      <div class="pane-head">
+        <h2>Photo</h2>
+        <button id="fit-btn" class="btn btn-small" type="button">Fit</button>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="stage-canvas" aria-label="Photo with crop frame. Drag to move, scroll to zoom. Drop or paste an image to load it."></canvas>
+      </div>
+    </section>
+    <section class="pane">
+      <div class="pane-head">
+        <h2>Bead pattern</h2>
+        <span id="pattern-status" class="muted"></span>
+      </div>
+      <div class="canvas-wrap canvas-wrap-pattern">
+        <canvas id="pattern-canvas" aria-label="Bead pattern preview"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <section class="settings" aria-label="Settings">
+    <fieldset class="group">
+      <legend>Size</legend>
+      <div class="field-row">
+        <label>Width (cm)<input id="width-cm" type="number" min="0.5" step="0.1" value="5"></label>
+        <label>Height (cm)<input id="height-cm" type="number" min="0.5" step="0.1" value="16.5"></label>
+      </div>
+      <div class="field-row">
+        <label>Columns<input id="columns" type="number" min="2" max="200" step="1" value="36"></label>
+        <label>Rows<input id="rows" type="number" min="2" max="400" step="1" value="94"></label>
+      </div>
+      <div class="segmented" role="group" aria-label="Peyote count">
+        <button id="parity-even" type="button" aria-pressed="true">Even count</button>
+        <button id="parity-odd" type="button" aria-pressed="false">Odd count</button>
+      </div>
+      <p id="size-readout" class="muted"></p>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Image</legend>
+      <div class="segmented" role="group" aria-label="Sampling">
+        <button id="sample-average" type="button" aria-pressed="true" title="Blends the photo under each bead">Average</button>
+        <button id="sample-majority" type="button" aria-pressed="false" title="Most common colour under each bead, for crisp edges">Majority</button>
+        <button id="sample-nearest" type="button" aria-pressed="false" title="Centre pixel of each bead only">Nearest</button>
+      </div>
+      <label>Detail
+        <span class="range-row"><span class="muted">Soft</span><input id="detail" type="range" min="0" max="100" step="1" value="50"><span class="muted">Sharp</span></span>
+      </label>
+      <label>Zoom
+        <input id="zoom" type="range" min="0.1" max="8" step="0.01" value="1">
+      </label>
+      <div class="nudge" role="group" aria-label="Move photo by one bead">
+        <span class="muted">Offset</span>
+        <button id="nudge-left" class="btn btn-small" type="button" aria-label="Move left">←</button>
+        <button id="nudge-up" class="btn btn-small" type="button" aria-label="Move up">↑</button>
+        <button id="nudge-down" class="btn btn-small" type="button" aria-label="Move down">↓</button>
+        <button id="nudge-right" class="btn btn-small" type="button" aria-label="Move right">→</button>
+      </div>
+      <details id="adjust-panel" class="advanced">
+        <summary>Advanced</summary>
+        <label>Hue <output id="hue-out">0°</output>
+          <input id="hue" type="range" min="-180" max="180" step="1" value="0">
+        </label>
+        <label>Saturation <output id="saturation-out">100%</output>
+          <input id="saturation" type="range" min="0" max="200" step="1" value="100">
+        </label>
+        <label>Brightness <output id="brightness-out">100%</output>
+          <input id="brightness" type="range" min="0" max="200" step="1" value="100">
+        </label>
+        <label>Contrast <output id="contrast-out">100%</output>
+          <input id="contrast" type="range" min="0" max="200" step="1" value="100">
+        </label>
+        <button id="adjust-reset" class="btn btn-small adjust-reset" type="button">Reset</button>
+      </details>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>Colours</legend>
+      <label>Max colours <output id="max-colors-out">12</output>
+        <input id="max-colors" type="range" min="2" max="26" step="1" value="12">
+      </label>
+      <button id="available-btn" class="btn" type="button">All colours</button>
+      <details class="advanced">
+        <summary>Advanced</summary>
+        <div class="field-row">
+          <label>Column pitch (mm)<input id="pitch-x" type="number" min="0.5" step="0.001" value="1.389"></label>
+          <label>Row pitch (mm)<input id="pitch-y" type="number" min="0.5" step="0.001" value="1.755"></label>
+        </div>
+        <div class="field-row">
+          <label>Beads per pack<input id="pack-beads" type="number" min="1" step="1" value="1000"></label>
+          <label>Grams per pack<input id="pack-grams" type="number" min="0.1" step="0.1" value="5"></label>
+        </div>
+      </details>
+    </fieldset>
+  </section>
+
+  <p id="notice" class="notice" role="status" hidden></p>
+
+  <section class="legend-wrap" aria-label="Colour legend">
+    <h2>Colours and cost</h2>
+    <div id="legend"></div>
+  </section>
+
+  <dialog id="picker-dialog"></dialog>
+
+  <section id="print-page" class="print-page" aria-hidden="true"></section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
