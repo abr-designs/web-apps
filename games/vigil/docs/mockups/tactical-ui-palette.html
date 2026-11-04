@@ -1,0 +1,253 @@
+<!doctype html>
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-22 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigil Tactical UI Palettes</title>
+  <!-- Plan 0003 step 1 gate: palettes for the slot colours and hit badge on the chosen Layout B Compact pill. -->
+  <link rel="stylesheet" href="../../../../assets/logo/logo.css">
+  <style>
+    :root {
+      --bg: #0B1118; --surface: #121C26; --raised: #1B2834; --text: #E6EEF4; --muted: #8A9BAA; --accent: #3FD0E8; --line: #24384a; --alien: #E5484D;
+      --strip: 34px; --rail: 320px; --cut: 10px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--text); font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+    kbd { padding: 1px 5px; border-radius: 2px; font: 11px ui-monospace, monospace; color: var(--muted); border: 1px solid var(--line); }
+
+    /* Switcher strip (mockup chrome) */
+    .strip { position: fixed; top: 0; left: 0; right: 0; height: var(--strip); display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #050505; z-index: 20; font-size: 12px; }
+    .strip b { color: var(--muted); font-weight: 500; margin-right: 8px; }
+    .strip a { color: var(--muted); text-decoration: none; padding: 4px 10px; border-radius: 3px; border: 1px solid transparent; }
+    .strip span { margin-left: auto; color: var(--muted); }
+    :root:not(:has(.layout:target)) .strip a[href="#p1"], :root:has(#p1:target) .strip a[href="#p1"], :root:has(#p2:target) .strip a[href="#p2"], :root:has(#p3:target) .strip a[href="#p3"] { color: var(--text); border-color: var(--line); }
+
+    .layout { display: none; position: fixed; inset: var(--strip) 0 0 0; overflow: hidden; }
+    .layout:target, :root:not(:has(.layout:target)) #p1 { display: block; }
+    .viewport { position: absolute; inset: 0 var(--rail) 0 0; overflow: hidden; }
+    .viewport > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .panel { background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+    .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+
+    /* Shared rail */
+    .rail { position: absolute; top: 0; right: 0; bottom: 0; width: var(--rail); display: flex; flex-direction: column; gap: 12px; padding: 14px; background: var(--surface); border-left: 1px solid var(--line); }
+    .sub { font-size: 12px; color: var(--muted); }
+    .bars { display: flex; gap: 2px; margin-top: 6px; }
+    .bars i { width: 16px; height: 6px; background: var(--accent); }
+    .bars i.x { background: #333; }
+    .abl { display: grid; grid-template-columns: 1fr auto; padding: 7px 8px; background: #141414; border: 1px solid #2a2a2a; }
+    .abl.on { border-color: var(--accent); }
+    .abl small { display: block; color: var(--muted); font-size: 11px; }
+
+    /* Shared squad column */
+    .squad { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .row { position: relative; display: grid; grid-template-columns: 46px 1fr; gap: 8px; align-items: center; width: 206px; padding: 6px; }
+    .por { position: relative; width: 46px; height: 48px; background: linear-gradient(#2c2c2c, #1d1d1d); border: 1px solid var(--line); }
+    .por::after { content: ""; position: absolute; left: 15px; top: 9px; width: 16px; height: 16px; border-radius: 50%; background: #6d6d6d; }
+    .who { font-size: 12px; }
+    .who small { display: block; color: var(--muted); font-size: 11px; }
+    .who .bars i { width: 11px; height: 5px; }
+
+    .objective { position: absolute; left: 12px; bottom: 14px; padding: 8px 14px; }
+    .turn { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 6px 24px; letter-spacing: .3em; text-transform: uppercase; }
+
+    /* Overhead bars over units, placed per layout */
+    .ubar { position: absolute; display: flex; gap: 2px; padding: 2px 3px; background: rgba(0,0,0,.6); transform: translate(-50%, 0); }
+    .ubar i { width: 9px; height: 5px; background: var(--accent); }
+
+    /* ---------- A: Docked strip ---------- */
+    .a .row::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
+    .a .row.sel { outline: 1px solid var(--accent); outline-offset: -1px; }
+    .a .confirm { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; width: 420px; padding: 8px 8px 8px 16px; }
+    .a .confirm .what { font-size: 15px; letter-spacing: .12em; text-transform: uppercase; }
+    .a .confirm .what small { display: block; font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--muted); }
+    .a .confirm .pc { font: 700 22px/1 ui-monospace, monospace; }
+    .a .confirm .go { padding: 10px 18px; background: var(--accent); color: #111; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+    .a .badge { position: absolute; transform: translate(-50%, -100%); padding: 2px 8px; font: 700 14px/1.2 ui-monospace, monospace; background: var(--accent); color: #111; }
+    .a .rename input { width: 100%; padding: 2px 0; font: 17px system-ui; color: var(--text); background: none; border: 0; border-bottom: 2px solid var(--accent); outline: 0; }
+
+    /* ---------- B: Compact pill ---------- */
+    .b .row .por { border-top: 5px solid var(--c); }
+    .b .row .num { position: absolute; left: 9px; bottom: 9px; width: 16px; height: 16px; display: grid; place-items: center; font: 700 10px ui-monospace, monospace; background: var(--c); color: #111; }
+    .b .row .who b { color: var(--c); font-weight: 500; }
+    .b .row.sel { box-shadow: inset 0 0 0 1px var(--c); }
+    .b .confirm { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; }
+    .b .confirm .go { padding: 9px 22px; border-radius: 999px; background: var(--accent); color: #111; font-weight: 600; }
+    .b .confirm .hint { color: var(--muted); font-size: 11px; }
+    .b .reticle { position: absolute; width: 64px; height: 64px; transform: translate(-50%, -50%); border: 2px solid var(--accent); border-radius: 50%; }
+    .b .reticle b { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); font: 700 13px ui-monospace, monospace; padding: 1px 6px; background: #000; border: 1px solid var(--accent); }
+    .b .rename { display: flex; gap: 6px; align-items: center; }
+    .b .rename input { flex: 1; padding: 5px 8px; font: 15px system-ui; color: var(--text); background: #111; border: 1px solid var(--accent); outline: 0; }
+    .b .rename .ok { padding: 4px 8px; border: 1px solid var(--line); }
+
+    /* ---------- C: Split action bar ---------- */
+    .c .row { grid-template-columns: 6px 46px 1fr; }
+    .c .row .band { align-self: stretch; background: var(--c); }
+    .c .row.sel { background: var(--raised); }
+    .c .confirm { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: flex; align-items: stretch; border: 1px solid var(--line); border-bottom: 0; background: var(--surface); }
+    .c .confirm > div { padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+    .c .confirm .ctx { color: var(--muted); border-right: 1px solid var(--line); font-size: 12px; }
+    .c .confirm .go { font-size: 15px; letter-spacing: .1em; text-transform: uppercase; background: var(--raised); }
+    .c .confirm .go b { font: 700 18px ui-monospace, monospace; }
+    .c .badge { position: absolute; transform: translate(14px, -50%); display: flex; align-items: center; gap: 4px; font: 700 26px/1 ui-monospace, monospace; text-shadow: 0 1px 3px #000; }
+    .c .badge small { font-size: 11px; color: var(--muted); }
+    .c .badge::before { content: ""; width: 0; height: 0; border: 7px solid transparent; border-right-color: var(--accent); margin-left: -14px; }
+    .c .rename input { width: 100%; padding: 3px 6px; font: 17px system-ui; color: var(--text); background: #0c0c0c; border: 1px dashed var(--accent); outline: 0; }
+    .c .rename .count { text-align: right; font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .sws { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .sw { display: flex; gap: 8px; align-items: center; font-size: 11px; }
+    .sw i { width: 26px; height: 26px; flex: none; border: 1px solid var(--line); }
+    .sw small { display: block; font: 10px ui-monospace, monospace; color: var(--muted); }
+    .rail { overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <img class="app-logo" src="../../../../assets/logo/senor_claude.png" alt="">
+
+  <nav class="strip"><b>Plan 0003 palettes (Layout B)</b><a href="#p1">1 Signal Four</a><a href="#p2">2 Field Muted</a><a href="#p3">3 High Contrast</a><span>Slot colours tint the ring, path, squad band and name; the badge is the hit chance</span></nav>
+
+  <!-- Shared world: 16 x 10 tiles of 50 px. Wall column x 7, z 2..5. Fog dims x 12..15 and x 8..11 on z 0..1. -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <pattern id="tiles" width="50" height="50" patternUnits="userSpaceOnUse"><rect width="50" height="50" fill="#13202c"/><path d="M50 0H0V50" fill="none" stroke="#1c2d3b"/></pattern>
+      <g id="world">
+        <rect width="800" height="500" fill="url(#tiles)"/>
+        <rect x="350" y="100" width="50" height="200" fill="#2f4558" stroke="#4d6b82"/>
+        <rect x="255" y="255" width="40" height="40" fill="#23384a" stroke="#3d5a70"/>
+        <rect x="455" y="105" width="40" height="40" fill="#23384a" stroke="#3d5a70"/>
+        <g fill="#000" opacity=".55"><rect x="600" y="0" width="200" height="500"/><rect x="400" y="0" width="200" height="100"/></g>
+        <circle cx="525" cy="175" r="15" fill="#E5484D" stroke="#000" stroke-width="2"/>
+        <circle cx="75" cy="325" r="14" fill="var(--slot-4)"/><circle cx="125" cy="425" r="14" fill="var(--slot-2)"/><circle cx="225" cy="425" r="14" fill="var(--slot-3)"/>
+        <circle cx="175" cy="325" r="14" fill="var(--slot-1)"/>
+      </g>
+    </defs>
+  </svg>
+
+  <section class="layout b" id="p1" style="--slot-1:#3FD0E8;--slot-2:#B78CFF;--slot-3:#7EE081;--slot-4:#FF9F5A;--badge-ring:#3FD0E8;--badge-bg:#0B1118;--badge-text:#E6EEF4">
+    <div class="viewport">
+      <svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+        <use href="#world"/>
+        <circle cx="175" cy="325" r="22" fill="none" stroke="var(--slot-1)" stroke-width="5" opacity=".9"/>
+        <circle cx="175" cy="325" r="28" fill="none" stroke="var(--slot-1)" stroke-width="1" opacity=".5"/>
+        <path d="M195 325H425V285" fill="none" stroke="var(--slot-1)" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M415 290l10-14 10 14z" fill="var(--slot-1)"/>
+        <circle cx="425" cy="275" r="9" fill="var(--slot-1)"/>
+        <g fill="var(--alien)"><rect x="503" y="146" width="44" height="9" fill="#000" opacity=".6"/><rect x="506" y="148" width="8" height="5"/><rect x="516" y="148" width="8" height="5"/><rect x="526" y="148" width="8" height="5"/><rect x="536" y="148" width="8" height="5"/></g>
+        <circle cx="525" cy="175" r="30" fill="none" stroke="var(--badge-ring)" stroke-width="2"/>
+        <path d="M525 141v10M525 199v10M491 175h10M549 175h10" stroke="var(--badge-ring)" stroke-width="2"/>
+        <rect x="501" y="207" width="48" height="20" fill="var(--badge-bg)" stroke="var(--badge-ring)"/><text x="525" y="222" fill="var(--badge-text)" font-size="14" font-weight="700" font-family="ui-monospace,monospace" text-anchor="middle">72%</text>
+      </svg>
+      <div class="panel turn">XCOM turn 3</div>
+      <div class="squad">
+        <div class="panel row sel" style="--c:var(--slot-1)"><div class="por"><span class="num">1</span></div><div class="who"><b>Okafor</b><small>Ranger &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-2)"><div class="por"><span class="num">2</span></div><div class="who"><b>Vasquez</b><small>Sharpshooter &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-3)"><div class="por"><span class="num">3</span></div><div class="who"><b>Lindqvist</b><small>Grenadier &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-4)"><div class="por"><span class="num">4</span></div><div class="who"><b>Mbeki</b><small>Specialist &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i class="x"></i></div></div></div>
+      </div>
+      <div class="confirm"><span class="hint"><kbd>Tab</kbd> next target</span><div class="go">Shoot 72%</div><span class="hint"><kbd>Enter</kbd> or <kbd>1</kbd></span></div>
+      <div class="panel objective">Sweep the area &middot; 5 hostiles</div>
+    </div>
+    <aside class="rail">
+      <div class="label">Selected</div>
+      <div class="rename"><input value="Okafor" maxlength="16"><span class="ok">&#10003;</span></div>
+      <div class="sub">Ranger &middot; Aim 65 &middot; Shotgun 4/4</div>
+      <div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="label">Abilities</div>
+      <div class="abl on"><div>Shoot<small>1 action &middot; ends turn</small></div><kbd>1</kbd></div>
+      <div class="abl"><div>Overwatch<small>1 action &middot; ends turn</small></div><kbd>2</kbd></div>
+      <div class="abl"><div>Frag grenade<small>1 charge</small></div><kbd>3</kbd></div>
+      <div class="label">Palette: Signal Four</div>
+      <div class="sub">Saturated, one hue per quarter of the wheel; cyan slot 1 matches the accent.</div>
+      <div class="sws"><div class="sw"><i style="background:#3FD0E8"></i><span>Slot 1<small>#3FD0E8</small></span></div><div class="sw"><i style="background:#B78CFF"></i><span>Slot 2<small>#B78CFF</small></span></div><div class="sw"><i style="background:#7EE081"></i><span>Slot 3<small>#7EE081</small></span></div><div class="sw"><i style="background:#FF9F5A"></i><span>Slot 4<small>#FF9F5A</small></span></div><div class="sw"><i style="background:#3FD0E8"></i><span>Badge ring<small>#3FD0E8</small></span></div><div class="sw"><i style="background:#0B1118"></i><span>Badge fill<small>#0B1118</small></span></div><div class="sw"><i style="background:#E6EEF4"></i><span>Badge text<small>#E6EEF4</small></span></div></div>
+      <div class="label">Base (Command Cyan, unchanged)</div>
+      <div class="sws"><div class="sw"><i style="background:#0B1118"></i><span>Background<small>#0B1118</small></span></div><div class="sw"><i style="background:#121C26"></i><span>Surface<small>#121C26</small></span></div><div class="sw"><i style="background:#E6EEF4"></i><span>Text<small>#E6EEF4</small></span></div><div class="sw"><i style="background:#8A9BAA"></i><span>Muted<small>#8A9BAA</small></span></div><div class="sw"><i style="background:#3FD0E8"></i><span>Accent<small>#3FD0E8</small></span></div><div class="sw"><i style="background:#E5484D"></i><span>Alien<small>#E5484D</small></span></div></div>
+    </aside>
+  </section>
+
+  <section class="layout b" id="p2" style="--slot-1:#8FB8DE;--slot-2:#C9A0DC;--slot-3:#9CCB9A;--slot-4:#E0B27A;--badge-ring:#E6EEF4;--badge-bg:#E6EEF4;--badge-text:#0B1118">
+    <div class="viewport">
+      <svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+        <use href="#world"/>
+        <circle cx="175" cy="325" r="22" fill="none" stroke="var(--slot-1)" stroke-width="5" opacity=".9"/>
+        <circle cx="175" cy="325" r="28" fill="none" stroke="var(--slot-1)" stroke-width="1" opacity=".5"/>
+        <path d="M195 325H425V285" fill="none" stroke="var(--slot-1)" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M415 290l10-14 10 14z" fill="var(--slot-1)"/>
+        <circle cx="425" cy="275" r="9" fill="var(--slot-1)"/>
+        <g fill="var(--alien)"><rect x="503" y="146" width="44" height="9" fill="#000" opacity=".6"/><rect x="506" y="148" width="8" height="5"/><rect x="516" y="148" width="8" height="5"/><rect x="526" y="148" width="8" height="5"/><rect x="536" y="148" width="8" height="5"/></g>
+        <circle cx="525" cy="175" r="30" fill="none" stroke="var(--badge-ring)" stroke-width="2"/>
+        <path d="M525 141v10M525 199v10M491 175h10M549 175h10" stroke="var(--badge-ring)" stroke-width="2"/>
+        <rect x="501" y="207" width="48" height="20" fill="var(--badge-bg)" stroke="var(--badge-ring)"/><text x="525" y="222" fill="var(--badge-text)" font-size="14" font-weight="700" font-family="ui-monospace,monospace" text-anchor="middle">72%</text>
+      </svg>
+      <div class="panel turn">XCOM turn 3</div>
+      <div class="squad">
+        <div class="panel row sel" style="--c:var(--slot-1)"><div class="por"><span class="num">1</span></div><div class="who"><b>Okafor</b><small>Ranger &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-2)"><div class="por"><span class="num">2</span></div><div class="who"><b>Vasquez</b><small>Sharpshooter &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-3)"><div class="por"><span class="num">3</span></div><div class="who"><b>Lindqvist</b><small>Grenadier &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-4)"><div class="por"><span class="num">4</span></div><div class="who"><b>Mbeki</b><small>Specialist &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i class="x"></i></div></div></div>
+      </div>
+      <div class="confirm"><span class="hint"><kbd>Tab</kbd> next target</span><div class="go">Shoot 72%</div><span class="hint"><kbd>Enter</kbd> or <kbd>1</kbd></span></div>
+      <div class="panel objective">Sweep the area &middot; 5 hostiles</div>
+    </div>
+    <aside class="rail">
+      <div class="label">Selected</div>
+      <div class="rename"><input value="Okafor" maxlength="16"><span class="ok">&#10003;</span></div>
+      <div class="sub">Ranger &middot; Aim 65 &middot; Shotgun 4/4</div>
+      <div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="label">Abilities</div>
+      <div class="abl on"><div>Shoot<small>1 action &middot; ends turn</small></div><kbd>1</kbd></div>
+      <div class="abl"><div>Overwatch<small>1 action &middot; ends turn</small></div><kbd>2</kbd></div>
+      <div class="abl"><div>Frag grenade<small>1 charge</small></div><kbd>3</kbd></div>
+      <div class="label">Palette: Field Muted</div>
+      <div class="sub">Softer pastels that sit back from the red aliens and blue move tiles; inverted white badge.</div>
+      <div class="sws"><div class="sw"><i style="background:#8FB8DE"></i><span>Slot 1<small>#8FB8DE</small></span></div><div class="sw"><i style="background:#C9A0DC"></i><span>Slot 2<small>#C9A0DC</small></span></div><div class="sw"><i style="background:#9CCB9A"></i><span>Slot 3<small>#9CCB9A</small></span></div><div class="sw"><i style="background:#E0B27A"></i><span>Slot 4<small>#E0B27A</small></span></div><div class="sw"><i style="background:#E6EEF4"></i><span>Badge ring<small>#E6EEF4</small></span></div><div class="sw"><i style="background:#E6EEF4"></i><span>Badge fill<small>#E6EEF4</small></span></div><div class="sw"><i style="background:#0B1118"></i><span>Badge text<small>#0B1118</small></span></div></div>
+      <div class="label">Base (Command Cyan, unchanged)</div>
+      <div class="sws"><div class="sw"><i style="background:#0B1118"></i><span>Background<small>#0B1118</small></span></div><div class="sw"><i style="background:#121C26"></i><span>Surface<small>#121C26</small></span></div><div class="sw"><i style="background:#E6EEF4"></i><span>Text<small>#E6EEF4</small></span></div><div class="sw"><i style="background:#8A9BAA"></i><span>Muted<small>#8A9BAA</small></span></div><div class="sw"><i style="background:#3FD0E8"></i><span>Accent<small>#3FD0E8</small></span></div><div class="sw"><i style="background:#E5484D"></i><span>Alien<small>#E5484D</small></span></div></div>
+    </aside>
+  </section>
+
+  <section class="layout b" id="p3" style="--slot-1:#00E5FF;--slot-2:#FF4FD8;--slot-3:#B6FF3B;--slot-4:#FFD23F;--badge-ring:#FFD23F;--badge-bg:#FFD23F;--badge-text:#0B1118">
+    <div class="viewport">
+      <svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+        <use href="#world"/>
+        <circle cx="175" cy="325" r="22" fill="none" stroke="var(--slot-1)" stroke-width="5" opacity=".9"/>
+        <circle cx="175" cy="325" r="28" fill="none" stroke="var(--slot-1)" stroke-width="1" opacity=".5"/>
+        <path d="M195 325H425V285" fill="none" stroke="var(--slot-1)" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M415 290l10-14 10 14z" fill="var(--slot-1)"/>
+        <circle cx="425" cy="275" r="9" fill="var(--slot-1)"/>
+        <g fill="var(--alien)"><rect x="503" y="146" width="44" height="9" fill="#000" opacity=".6"/><rect x="506" y="148" width="8" height="5"/><rect x="516" y="148" width="8" height="5"/><rect x="526" y="148" width="8" height="5"/><rect x="536" y="148" width="8" height="5"/></g>
+        <circle cx="525" cy="175" r="30" fill="none" stroke="var(--badge-ring)" stroke-width="2"/>
+        <path d="M525 141v10M525 199v10M491 175h10M549 175h10" stroke="var(--badge-ring)" stroke-width="2"/>
+        <rect x="501" y="207" width="48" height="20" fill="var(--badge-bg)" stroke="var(--badge-ring)"/><text x="525" y="222" fill="var(--badge-text)" font-size="14" font-weight="700" font-family="ui-monospace,monospace" text-anchor="middle">72%</text>
+      </svg>
+      <div class="panel turn">XCOM turn 3</div>
+      <div class="squad">
+        <div class="panel row sel" style="--c:var(--slot-1)"><div class="por"><span class="num">1</span></div><div class="who"><b>Okafor</b><small>Ranger &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-2)"><div class="por"><span class="num">2</span></div><div class="who"><b>Vasquez</b><small>Sharpshooter &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-3)"><div class="por"><span class="num">3</span></div><div class="who"><b>Lindqvist</b><small>Grenadier &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="panel row" style="--c:var(--slot-4)"><div class="por"><span class="num">4</span></div><div class="who"><b>Mbeki</b><small>Specialist &middot; 2 actions</small><div class="bars"><i></i><i></i><i></i><i class="x"></i></div></div></div>
+      </div>
+      <div class="confirm"><span class="hint"><kbd>Tab</kbd> next target</span><div class="go">Shoot 72%</div><span class="hint"><kbd>Enter</kbd> or <kbd>1</kbd></span></div>
+      <div class="panel objective">Sweep the area &middot; 5 hostiles</div>
+    </div>
+    <aside class="rail">
+      <div class="label">Selected</div>
+      <div class="rename"><input value="Okafor" maxlength="16"><span class="ok">&#10003;</span></div>
+      <div class="sub">Ranger &middot; Aim 65 &middot; Shotgun 4/4</div>
+      <div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="label">Abilities</div>
+      <div class="abl on"><div>Shoot<small>1 action &middot; ends turn</small></div><kbd>1</kbd></div>
+      <div class="abl"><div>Overwatch<small>1 action &middot; ends turn</small></div><kbd>2</kbd></div>
+      <div class="abl"><div>Frag grenade<small>1 charge</small></div><kbd>3</kbd></div>
+      <div class="label">Palette: High Contrast</div>
+      <div class="sub">Neon slots that read at a glance on dark ground; amber badge stands apart from every slot.</div>
+      <div class="sws"><div class="sw"><i style="background:#00E5FF"></i><span>Slot 1<small>#00E5FF</small></span></div><div class="sw"><i style="background:#FF4FD8"></i><span>Slot 2<small>#FF4FD8</small></span></div><div class="sw"><i style="background:#B6FF3B"></i><span>Slot 3<small>#B6FF3B</small></span></div><div class="sw"><i style="background:#FFD23F"></i><span>Slot 4<small>#FFD23F</small></span></div><div class="sw"><i style="background:#FFD23F"></i><span>Badge ring<small>#FFD23F</small></span></div><div class="sw"><i style="background:#FFD23F"></i><span>Badge fill<small>#FFD23F</small></span></div><div class="sw"><i style="background:#0B1118"></i><span>Badge text<small>#0B1118</small></span></div></div>
+      <div class="label">Base (Command Cyan, unchanged)</div>
+      <div class="sws"><div class="sw"><i style="background:#0B1118"></i><span>Background<small>#0B1118</small></span></div><div class="sw"><i style="background:#121C26"></i><span>Surface<small>#121C26</small></span></div><div class="sw"><i style="background:#E6EEF4"></i><span>Text<small>#E6EEF4</small></span></div><div class="sw"><i style="background:#8A9BAA"></i><span>Muted<small>#8A9BAA</small></span></div><div class="sw"><i style="background:#3FD0E8"></i><span>Accent<small>#3FD0E8</small></span></div><div class="sw"><i style="background:#E5484D"></i><span>Alien<small>#E5484D</small></span></div></div>
+    </aside>
+  </section>
+
+</body>
+</html>

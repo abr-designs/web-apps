@@ -1,0 +1,120 @@
+<!doctype html>
+<!-- Created by Claude (claude-opus-5-5) -->
+<!-- Date: 2026-10-22 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigil Loadout Palettes</title>
+  <!-- Plan 0002 step 1 gate: three palettes on Layout A Briefing card. Slot colours are the plan 0003 Field Muted set. -->
+  <link rel="stylesheet" href="../../../../assets/logo/logo.css">
+  <style>
+    :root { --slot-1: #8FB8DE; --slot-2: #C9A0DC; --slot-3: #9CCB9A; --slot-4: #E0B27A; --cut: 10px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px 16px 140px; background: #070B10; color: #E6EEF4; font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    h1 { margin: 0 0 14px; font-size: 14px; font-weight: 500; color: #8A9BAA; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+    .opt { padding: 14px; border: 1px solid #1f2a35; background: var(--bg); display: grid; gap: 12px; align-content: start; }
+    .opt h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+    .opt p { margin: 0; color: var(--muted); font-size: 12px; }
+    .sw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .sw div { font-size: 10px; color: var(--muted); }
+    .sw i { display: block; height: 30px; margin-bottom: 3px; border: 1px solid rgba(255,255,255,.12); }
+    .sw b { display: block; color: var(--text); font: 600 10px ui-monospace, monospace; }
+
+    .stage { position: relative; padding: 22px 14px; background: repeating-linear-gradient(0deg, transparent 0 39px, rgba(255,255,255,.04) 39px 40px), repeating-linear-gradient(90deg, transparent 0 39px, rgba(255,255,255,.04) 39px 40px), var(--bg); }
+    .stage::before { content: ""; position: absolute; inset: 0; background: var(--scrim); }
+    .card { position: relative; display: grid; gap: 8px; padding: 16px 16px; background: var(--surface); border: 1px solid var(--line); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+    .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    .card h3 { margin: 0; font-size: 17px; letter-spacing: .2em; text-transform: uppercase; font-weight: 600; color: var(--title); }
+    .slot { display: grid; grid-template-columns: 4px 1fr auto auto; gap: 8px; align-items: center; padding: 6px 8px 6px 0; background: var(--row); border: 1px solid var(--line); }
+    .slot::before { content: ""; align-self: stretch; background: var(--c); }
+    .nm { color: var(--c); font-size: 14px; }
+    .cls { color: var(--muted); font-size: 11px; }
+    .item { padding: 5px 9px; font-size: 12px; border: 1px solid var(--line); background: var(--row); color: var(--muted); }
+    .item.on { border-color: var(--pick); color: var(--text); background: var(--pick-bg); }
+    .item.off { color: var(--off); border-style: dashed; }
+    .foot { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+    .launch { padding: 9px 20px; background: var(--go); color: var(--go-text); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+    kbd { padding: 0 4px; margin-left: 6px; border: 1px solid currentColor; border-radius: 2px; font: 10px ui-monospace, monospace; opacity: .7; }
+
+    .p1 { --bg: #0B1118; --surface: #121C26; --row: #0F1820; --line: #22313F; --text: #E6EEF4; --muted: #8A9BAA; --title: #3FD0E8; --pick: #3FD0E8; --pick-bg: #13303A; --off: #3A4A58; --go: #3FD0E8; --go-text: #0B1118; --scrim: rgba(11,17,24,.55); }
+    .p2 { --bg: #0B1118; --surface: #121C26; --row: #0F1820; --line: #22313F; --text: #E6EEF4; --muted: #8A9BAA; --title: #E6EEF4; --pick: var(--c); --pick-bg: color-mix(in srgb, var(--c) 18%, #0F1820); --off: #3A4A58; --go: #3FD0E8; --go-text: #0B1118; --scrim: rgba(11,17,24,.55); }
+    .p3 { --bg: #0B1118; --surface: #141B21; --row: #10161B; --line: #2A3239; --text: #ECE7DC; --muted: #9A958A; --title: #F2C94C; --pick: #F2C94C; --pick-bg: #2E2A17; --off: #3F4448; --go: #F2C94C; --go-text: #14120A; --scrim: rgba(11,17,24,.55); }
+  </style>
+</head>
+<body>
+  <img class="app-logo" src="../../../../assets/logo/senor_claude.png" alt="">
+  <h1>Plan 0002 palettes on Layout A Briefing card. Slot colours stay Field Muted: #8FB8DE, #C9A0DC, #9CCB9A, #E0B27A.</h1>
+  <div class="grid">
+    <section class="opt p1">
+      <h2>1 Command Cyan</h2>
+      <p>The battle HUD palette as is: cyan title, cyan picked item, cyan Launch.</p>
+      <div class="sw">
+        <div><i style="background:#0B1118"></i><b>#0B1118</b>background</div>
+        <div><i style="background:#121C26"></i><b>#121C26</b>card surface</div>
+        <div><i style="background:#0F1820"></i><b>#0F1820</b>row</div>
+        <div><i style="background:#22313F"></i><b>#22313F</b>line</div>
+        <div><i style="background:#E6EEF4"></i><b>#E6EEF4</b>text</div>
+        <div><i style="background:#8A9BAA"></i><b>#8A9BAA</b>muted</div>
+        <div><i style="background:#3FD0E8"></i><b>#3FD0E8</b>accent, picked, Launch</div>
+        <div><i style="background:#3A4A58"></i><b>#3A4A58</b>disabled item</div>
+      </div>
+      <div class="stage"><div class="card">
+        <div class="label">Pre-mission</div><h3>Loadout</h3>
+        <div class="slot" style="--c:var(--slot-1)"><div><span class="nm">Okafor</span> <span class="cls">Ranger</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-2)"><div><span class="nm">Vasquez</span> <span class="cls">Sharpshooter</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-3)"><div><span class="nm">Lindqvist</span> <span class="cls">Grenadier</span></div><div class="item">Frag Grenade</div><div class="item on">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-4)"><div><span class="nm">Mbeki</span> <span class="cls">Specialist</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="foot"><span class="cls">1 Rocket per squad</span><div class="launch">Launch<kbd>Enter</kbd></div></div>
+      </div></div>
+    </section>
+
+    <section class="opt p2">
+      <h2>2 Slot Tinted</h2>
+      <p>Same base; each picked item takes its soldier's slot colour, so the row reads as one unit. Launch stays cyan.</p>
+      <div class="sw">
+        <div><i style="background:#0B1118"></i><b>#0B1118</b>background</div>
+        <div><i style="background:#121C26"></i><b>#121C26</b>card surface</div>
+        <div><i style="background:#0F1820"></i><b>#0F1820</b>row</div>
+        <div><i style="background:#22313F"></i><b>#22313F</b>line</div>
+        <div><i style="background:#E6EEF4"></i><b>#E6EEF4</b>text, title</div>
+        <div><i style="background:#8A9BAA"></i><b>#8A9BAA</b>muted</div>
+        <div><i style="background:linear-gradient(90deg,#8FB8DE 25%,#C9A0DC 25% 50%,#9CCB9A 50% 75%,#E0B27A 75%)"></i><b>--slot-N</b>picked item</div>
+        <div><i style="background:#3FD0E8"></i><b>#3FD0E8</b>Launch</div>
+      </div>
+      <div class="stage"><div class="card">
+        <div class="label">Pre-mission</div><h3>Loadout</h3>
+        <div class="slot" style="--c:var(--slot-1)"><div><span class="nm">Okafor</span> <span class="cls">Ranger</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-2)"><div><span class="nm">Vasquez</span> <span class="cls">Sharpshooter</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-3)"><div><span class="nm">Lindqvist</span> <span class="cls">Grenadier</span></div><div class="item">Frag Grenade</div><div class="item on">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-4)"><div><span class="nm">Mbeki</span> <span class="cls">Specialist</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="foot"><span class="cls">1 Rocket per squad</span><div class="launch">Launch<kbd>Enter</kbd></div></div>
+      </div></div>
+    </section>
+
+    <section class="opt p3">
+      <h2>3 Briefing Amber</h2>
+      <p>Warmer surfaces and the move-yellow #F2C94C as accent, so the screen reads as a separate pre-mission step.</p>
+      <div class="sw">
+        <div><i style="background:#0B1118"></i><b>#0B1118</b>background</div>
+        <div><i style="background:#141B21"></i><b>#141B21</b>card surface</div>
+        <div><i style="background:#10161B"></i><b>#10161B</b>row</div>
+        <div><i style="background:#2A3239"></i><b>#2A3239</b>line</div>
+        <div><i style="background:#ECE7DC"></i><b>#ECE7DC</b>text</div>
+        <div><i style="background:#9A958A"></i><b>#9A958A</b>muted</div>
+        <div><i style="background:#F2C94C"></i><b>#F2C94C</b>accent, picked, Launch</div>
+        <div><i style="background:#3F4448"></i><b>#3F4448</b>disabled item</div>
+      </div>
+      <div class="stage"><div class="card">
+        <div class="label">Pre-mission</div><h3>Loadout</h3>
+        <div class="slot" style="--c:var(--slot-1)"><div><span class="nm">Okafor</span> <span class="cls">Ranger</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-2)"><div><span class="nm">Vasquez</span> <span class="cls">Sharpshooter</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-3)"><div><span class="nm">Lindqvist</span> <span class="cls">Grenadier</span></div><div class="item">Frag Grenade</div><div class="item on">Rocket</div></div>
+        <div class="slot" style="--c:var(--slot-4)"><div><span class="nm">Mbeki</span> <span class="cls">Specialist</span></div><div class="item on">Frag Grenade</div><div class="item off">Rocket</div></div>
+        <div class="foot"><span class="cls">1 Rocket per squad</span><div class="launch">Launch<kbd>Enter</kbd></div></div>
+      </div></div>
+    </section>
+  </div>
+</body>
+</html>
