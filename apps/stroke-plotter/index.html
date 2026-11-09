@@ -28,7 +28,53 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { background: var(--background); color: var(--text); font: 14px/1.45 var(--font-ui); }
-.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
+/* Layout B for the Write tab: top tab bar, text and page cards left, page centre, dials right. */
+.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 10px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
+.topbar { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 10px; padding: 6px 8px; }
+.topbar .title { font-weight: 500; padding: 0 4px; }
+.tabs { display: flex; gap: 2px; background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 2px; }
+.tabs button { border: 0; background: transparent; padding: 4px 14px; }
+.tabs button[aria-selected=true] { background: var(--text); color: var(--background); }
+.topbar .end { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.view { display: grid; gap: 12px; min-height: 0; }
+.view[hidden], [hidden] { display: none !important; }
+.draw-view { grid-template-columns: minmax(0, 1fr) 300px; }
+.write-view { grid-template-columns: 380px minmax(0, 1fr) 290px; }
+#wcv { position: absolute; inset: 0; width: 100%; height: 100%; }
+.write-view .rail { padding-bottom: 12px; }
+.write-view .rail.right { padding-bottom: 110px; }
+.text-card { flex: 1; min-height: 0; }
+textarea#wText { flex: 1; min-height: 180px; resize: none; font-family: var(--font-ui); }
+/* Min/max slider: two range inputs share one track; only their thumbs take the pointer. */
+.mm { position: relative; height: 20px; }
+.mm .track { position: absolute; left: 7px; right: 7px; top: 8px; height: 4px; border-radius: 2px; background: var(--line); }
+.mm .fill { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--stroke); }
+.mm input { position: absolute; inset: 0; margin: 0; width: 100%; height: 20px; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.mm input::-webkit-slider-runnable-track { background: none; }
+.mm input::-moz-range-track { background: none; }
+.mm input::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--stroke); border: 2px solid var(--background); box-shadow: 0 0 0 1px var(--stroke); cursor: pointer; }
+.mm input::-moz-range-thumb { pointer-events: auto; width: 10px; height: 10px; border-radius: 50%; background: var(--stroke); border: 2px solid var(--background); box-shadow: 0 0 0 1px var(--stroke); cursor: pointer; }
+.dial .head { display: flex; justify-content: space-between; align-items: baseline; }
+.dial output, .kern output { font: 12px var(--font-data); color: var(--text); font-variant-numeric: tabular-nums; }
+.kern { display: grid; grid-template-columns: 44px 1fr 40px auto; align-items: center; gap: 6px; }
+.kern input[type=text] { padding: 4px 6px; text-align: center; }
+.kern output { text-align: right; }
+.kern button { padding: 0 6px; line-height: 18px; }
+.pager { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px; font: 12px var(--font-data); }
+.pager button { padding: 0 9px; line-height: 20px; }
+.pager button:disabled { opacity: 0.4; cursor: default; }
+input[type=number], select { font: 13px var(--font-data); color: var(--text); background: var(--background); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 6px; width: 100%; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+label.mini { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+label.mini .seg { align-self: flex-start; }
+.seg button.on { background: var(--text); color: var(--background); }
+.dial { display: flex; flex-direction: column; gap: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.dial:last-child { border-bottom: 0; }
+.dial .name { font-size: 12px; color: var(--text); font-weight: 500; }
+.stats { font-family: var(--font-data); font-size: 11px; color: var(--muted); }
 .stage { position: relative; background: var(--surface); border-radius: 10px; overflow: hidden; min-height: 320px; }
 #cv { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
 .stage-bar { position: absolute; left: 12px; right: 12px; top: 10px; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; font-size: 12px; color: var(--muted); }
@@ -74,8 +120,10 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
 .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--background); padding: 6px 12px; border-radius: var(--radius); font-size: 12px; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.show { opacity: 1; }
 @media (max-width: 760px) {
-    .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .app { height: auto; }
+    .draw-view, .write-view { grid-template-columns: minmax(0, 1fr); }
     .stage { height: 62vh; }
+    .write-view .stage { order: -1; }
     .rail { overflow: visible; }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
@@ -84,6 +132,18 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
 <body>
 <img class="app-logo" src="logo/senor_claude.png" alt="">
 <div class="app">
+<header class="topbar">
+    <span class="title">Stroke Plotter</span>
+    <div class="tabs" role="tablist">
+        <button role="tab" id="tabDraw" aria-selected="true">Draw</button>
+        <button role="tab" id="tabWrite" aria-selected="false">Write</button>
+    </div>
+    <div class="end">
+        <span class="stats" id="wStats" hidden></span>
+        <button class="primary" id="wExport" hidden>Export SVG</button>
+    </div>
+</header>
+<main class="view draw-view" id="drawView">
     <div class="stage" id="stage">
         <canvas id="cv"></canvas>
         <div class="stage-bar"><span>Glyph <b id="glyphLabel">a</b></span><span id="zoomLabel">100%</span></div>
@@ -115,22 +175,14 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
                 <button id="clearGlyph">Clear glyph</button>
             </div>
             <label class="slider">Smoothing<input type="range" id="smooth" min="0" max="1" step="0.05" value="0.5"><output id="smoothOut">0.50</output></label>
-        </section>
-        <section class="card">
-            <h2>Write text</h2>
-            <textarea id="text" rows="2" spellcheck="false">abc</textarea>
-            <label class="slider">Em size<input type="range" id="emMM" min="5" max="100" step="1" value="25"><output id="emOut">25 mm</output></label>
-            <label class="slider">Pen width<input type="range" id="penMM" min="0.1" max="2" step="0.1" value="0.4"><output id="penOut">0.4 mm</output></label>
-            <div class="preview" id="preview"></div>
-            <div class="warn" id="missing"></div>
             <div class="row">
-                <button class="primary" id="exportText">Export text SVG</button>
                 <button id="exportGlyph">Export glyph SVG</button>
             </div>
         </section>
         <section class="card">
             <h2>Single-line font</h2>
             <label class="field">Font name<input type="text" id="exportName" spellcheck="false"></label>
+            <label class="slider" title="Curve refit tolerance in font units (1000 = em). 0 exports the strokes unchanged.">Refit<input type="range" id="fontTol" min="0" max="6" step="0.5" value="2"><output id="fontTolOut">2 u</output></label>
             <div class="row">
                 <button class="primary" id="exportFont">Export font (.otf)</button>
             </div>
@@ -152,6 +204,72 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
             </div>
         </section>
     </aside>
+</main>
+<main class="view write-view" id="writeView" hidden>
+    <aside class="rail">
+        <section class="card text-card">
+            <h2>Text</h2>
+            <textarea id="wText" spellcheck="false"></textarea>
+            <div class="warn" id="wWarn"></div>
+        </section>
+    </aside>
+    <div class="stage" id="wStage">
+        <canvas id="wcv"></canvas>
+        <div class="stage-bar"><span id="wPageLabel"></span><span id="wZoom"></span></div>
+        <div class="pager" id="wPager" hidden><button id="wPrev" aria-label="Previous page">‹</button><span id="wPageNo"></span><button id="wNext" aria-label="Next page">›</button></div>
+        <div class="drop">Drop a single-line .otf to write with it</div>
+    </div>
+    <aside class="rail right">
+        <section class="card">
+            <h2>Letters from</h2>
+            <div class="seg">
+                <button id="srcProject">Project strokes</button>
+                <button id="srcOtf">Loaded OTF</button>
+            </div>
+            <div class="fontname" id="srcLabel"></div>
+            <div class="row">
+                <label class="filebtn">Load single-line OTF<input type="file" id="otfFile" accept=".otf,.ttf,.woff"></label>
+            </div>
+        </section>
+        <section class="card">
+            <h2>Page</h2>
+            <div class="grid2">
+                <label class="mini">Size<select id="wPreset"><option value="letter">Letter</option><option value="a4">A4</option><option value="card">4 × 6 card</option><option value="custom">Custom</option></select></label>
+                <label class="mini">Units<span class="seg"><button id="unitIn">in</button><button id="unitMm">mm</button></span></label>
+                <label class="mini">Width<input type="number" id="wPageW" step="any" min="0.1"></label>
+                <label class="mini">Height<input type="number" id="wPageH" step="any" min="0.1"></label>
+            </div>
+            <div class="grid4">
+                <label class="mini">Top<input type="number" id="wMt" step="any" min="0"></label>
+                <label class="mini">Right<input type="number" id="wMr" step="any" min="0"></label>
+                <label class="mini">Bottom<input type="number" id="wMb" step="any" min="0"></label>
+                <label class="mini">Left<input type="number" id="wMl" step="any" min="0"></label>
+            </div>
+            <div class="grid2">
+                <label class="mini">Letter size (em)<input type="number" id="wEm" step="any" min="0.01"></label>
+                <label class="mini">Pen width<input type="number" id="wPen" step="any" min="0"></label>
+            </div>
+        </section>
+        <section class="card">
+            <h2>Spacing <span>min to max</span></h2>
+            <div id="dials"></div>
+        </section>
+        <section class="card">
+            <h2>Letter shapes</h2>
+            <label class="slider" title="Random change to each stroke's length (up to ±15%) and direction (up to ±8°)">Mutation<input type="range" id="wMut" min="0" max="1" step="0.05"><output id="wMutOut"></output></label>
+            <div class="row">
+                <label class="mini" style="flex:1">Seed<input type="number" id="wSeed" step="1"></label>
+                <button id="wReroll" style="align-self:flex-end" title="New random seed">Re-roll</button>
+            </div>
+        </section>
+        <section class="card">
+            <h2>Kerning <span>font units</span></h2>
+            <div class="strokes" id="wKern"></div>
+            <div class="row"><button id="wKernAdd">Add pair</button></div>
+            <div class="empty">Type two characters (a space counts); negative pulls the second letter closer.</div>
+        </section>
+    </aside>
+</main>
 </div>
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
@@ -162,7 +280,12 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 const C = { guide: css('--guide'), stroke: css('--stroke'), point: css('--point'), text: css('--text'), muted: css('--muted'), line: css('--line'), bg: css('--background') };
 
 // Project state. Points are [x, y, corner] in em units, origin at the glyph's pen position on the baseline, y down.
-const S = { family: 'Georgia', fontLabel: 'Georgia (example)', glyph: 'a', glyphs: {}, active: 0, smooth: 0.5, emMM: 25, penMM: 0.4, text: 'abc', exportName: '' };
+// Write tab settings use page units (W.unit); spacing, kerning and font tolerance use font units (1000 = em).
+const defaultWrite = () => ({
+    text: 'abc cab bac\nacab', unit: 'in', preset: 'letter', pageW: 8.5, pageH: 11, margin: { t: 1, r: 1, b: 1, l: 1 }, emSize: 0.5, pen: 0.02,
+    letter: { min: 0, max: 0 }, word: { min: 0, max: 0 }, line: { min: 1, max: 1 }, mutation: 0, seed: 1, kerning: [], source: 'project'
+});
+const S = { family: 'Georgia', fontLabel: 'Georgia (example)', glyph: 'a', glyphs: {}, active: 0, smooth: 0.5, emMM: 25, penMM: 0.4, exportName: '', fontTol: 2, write: defaultWrite() };
 const view = { s: 1, tx: 0, ty: 0 };
 let undoStack = [];
 const $ = id => document.getElementById(id);
@@ -360,7 +483,7 @@ cv.addEventListener('wheel', e => {
 cv.addEventListener('auxclick', e => e.preventDefault());
 
 document.addEventListener('keydown', e => {
-    if (e.target.matches('textarea, input')) return;
+    if (e.target.matches('textarea, input, select') || S.mode === 'write') return;
     if (e.code === 'Space') { spaceDown = true; cv.style.cursor = 'grab'; e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -530,28 +653,6 @@ function renderStrokes() {
     $('glyphLabel').textContent = S.glyph;
 }
 
-// Lays out the text with the font's advance widths and returns SVG markup in millimetres.
-function textSVG(forPreview) {
-    const lines = S.text.split('\n'), em = S.emMM, lh = em * 1.25, missing = new Set();
-    let paths = [], maxW = 0;
-    lines.forEach((line, li) => {
-        let x = 0;
-        const baseline = em * 0.9 + li * lh;
-        for (const ch of line) {
-            if (ch !== ' ') {
-                if (!hasStrokes(ch)) missing.add(ch);
-                for (const st of S.glyphs[ch] || []) { const d = strokeD(st, em, x, baseline); if (d) paths.push(d); }
-            }
-            x += advance(ch) * em;
-        }
-        maxW = Math.max(maxW, x);
-    });
-    const w = Math.max(1, maxW + em * 0.1), h = em * 0.1 + lines.length * lh;
-    const pathTags = paths.map(d => `<path d="${d}"/>`).join('\n');
-    const color = forPreview ? C.stroke : '#000000';
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${h.toFixed(2)}mm" viewBox="${(-em * 0.05).toFixed(2)} 0 ${w.toFixed(2)} ${h.toFixed(2)}">\n<g fill="none" stroke="${color}" stroke-width="${S.penMM}" stroke-linecap="round" stroke-linejoin="round">\n${pathTags}\n</g>\n</svg>`;
-    return { svg, missing: [...missing] };
-}
 function glyphSVG() {
     const em = S.emMM, adv = advance(S.glyph) * em;
     const pathTags = strokes().map(st => strokeD(st, em, em * 0.1, em * 0.9)).filter(Boolean).map(d => `<path d="${d}"/>`).join('\n');
@@ -575,26 +676,26 @@ function buildFont() {
     for (const ch of GLYPHS) {
         if (!hasStrokes(ch)) { missing.push(ch); continue; }
         const path = new opentype.Path();
+        let xMin = Infinity;
         for (const st of S.glyphs[ch]) {
-            const sg = segments(st);
+            const sg = refitStroke(segments(st), S.fontTol / U);
             if (!sg.length) continue;
+            for (const s of sg) for (const q of s) xMin = Math.min(xMin, P(q)[0]);
             path.moveTo(...P(sg[0][0]));
             for (const [, c1, c2, b] of sg) path.curveTo(...P(c1), ...P(c2), ...P(b));
             for (let i = sg.length - 1; i >= 0; i--) { const [a, c1, c2] = sg[i]; path.curveTo(...P(c2), ...P(c1), ...P(a)); }
             path.close();
         }
         const code = ch.codePointAt(0);
-        glyphs.push(new opentype.Glyph({ name: /[A-Za-z]/.test(ch) ? ch : 'uni' + code.toString(16).toUpperCase().padStart(4, '0'), unicode: code, advanceWidth: Math.round(advance(ch) * U), path }));
+        // Left side bearing = left edge of the outline, so apps that read hmtx space letters consistently.
+        const lsb = isFinite(xMin) ? xMin : 0;
+        const glyph = new opentype.Glyph({ name: /[A-Za-z]/.test(ch) ? ch : 'uni' + code.toString(16).toUpperCase().padStart(4, '0'), unicode: code, advanceWidth: Math.round(advance(ch) * U), leftSideBearing: lsb, path });
+        glyph.leftSideBearing = lsb;
+        glyphs.push(glyph);
     }
     const name = ($('exportName').value.trim() || defaultExportName()).replace(/[^\w ]+/g, '').trim();
     const font = new opentype.Font({ familyName: name, styleName: 'Regular', unitsPerEm: U, ascender, descender, glyphs });
     return { font, name, count: glyphs.length - 2, missing };
-}
-
-function renderPreview() {
-    const { svg, missing } = textSVG(true);
-    $('preview').innerHTML = svg;
-    $('missing').textContent = missing.length ? `No strokes yet for: ${missing.join(' ')}` : '';
 }
 
 function download(name, text, type) {
@@ -612,23 +713,32 @@ const storeKey = () => 'stroke-plotter:' + S.fontLabel;
 let saveTimer;
 function persist() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { try { localStorage.setItem(storeKey(), JSON.stringify({ glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text, exportName: S.exportName })); } catch (e) { } }, 300);
+    saveTimer = setTimeout(() => { try { localStorage.setItem(storeKey(), JSON.stringify(projectData())); } catch (e) { } }, 300);
+}
+const projectData = () => ({ glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, exportName: S.exportName, fontTol: S.fontTol, write: S.write });
+// Fills project fields from saved data; write settings merge onto the defaults so older saves gain new fields.
+function applyProject(p) {
+    for (const k of ['glyphs', 'smooth', 'emMM', 'penMM', 'exportName', 'fontTol']) if (p[k] !== undefined) S[k] = p[k];
+    const d = defaultWrite(), w = p.write || {};
+    // Older saves store dials as { base, range } and kerning as "To -60, AV -80" text.
+    const dial = (v, def) => v && v.base !== undefined ? { min: v.base - v.range, max: v.base + v.range } : { ...def, ...v };
+    const kerning = typeof w.kerning === 'string' ? Object.entries(parseKerning(w.kerning)) : Array.isArray(w.kerning) ? w.kerning : d.kerning;
+    S.write = { ...d, ...w, margin: { ...d.margin, ...w.margin }, letter: dial(w.letter, d.letter), word: dial(w.word, d.word), line: dial(w.line, d.line), kerning };
 }
 function restore() {
-    try { const raw = localStorage.getItem(storeKey()); if (raw) { Object.assign(S, JSON.parse(raw)); return true; } } catch (e) { }
+    try { const raw = localStorage.getItem(storeKey()); if (raw) { applyProject(JSON.parse(raw)); return true; } } catch (e) { }
     return false;
 }
 function syncInputs() {
     $('smooth').value = S.smooth; $('smoothOut').textContent = (+S.smooth).toFixed(2);
-    $('emMM').value = S.emMM; $('emOut').textContent = `${S.emMM} mm`;
-    $('penMM').value = S.penMM; $('penOut').textContent = `${(+S.penMM).toFixed(1)} mm`;
-    $('text').value = S.text;
+    $('fontTol').value = S.fontTol; $('fontTolOut').textContent = `${S.fontTol} u`;
     $('fontName').textContent = S.fontLabel;
     $('exportName').value = S.exportName || defaultExportName();
+    syncWriteInputs();
 }
 
 function changed(save = true) {
-    renderGlyphs(); renderStrokes(); renderPreview(); draw();
+    renderGlyphs(); renderStrokes(); draw();
     if (save) persist();
 }
 function selectGlyph(ch) {
@@ -646,7 +756,7 @@ async function loadFont(file) {
         S.family = family; S.fontLabel = file.name; S.glyphs = {}; S.active = 0; S.exportName = ''; undoStack = [];
         restore();
         syncInputs();
-        changed(false); resetView();
+        changed(false); resetView(); writeChanged(false);
         toast(`Loaded ${file.name}`);
     } catch (err) {
         toast(`Couldn't read ${file.name}. Use an .otf, .ttf or .woff file.`);
@@ -673,10 +783,7 @@ $('autoTrace').onclick = () => {
 };
 $('clearGlyph').onclick = () => { if (!strokes().length) return; pushUndo(); S.glyphs[S.glyph] = []; S.active = 0; changed(); toast('Cleared. Ctrl+Z restores it.'); };
 $('smooth').oninput = e => { S.smooth = +e.target.value; $('smoothOut').textContent = S.smooth.toFixed(2); changed(); };
-$('emMM').oninput = e => { S.emMM = +e.target.value; $('emOut').textContent = `${S.emMM} mm`; changed(); };
-$('penMM').oninput = e => { S.penMM = +e.target.value; $('penOut').textContent = `${S.penMM.toFixed(1)} mm`; changed(); };
-$('text').oninput = e => { S.text = e.target.value; renderPreview(); persist(); };
-$('exportText').onclick = () => download('text.svg', textSVG(false).svg, 'image/svg+xml');
+$('fontTol').oninput = e => { S.fontTol = +e.target.value; $('fontTolOut').textContent = `${S.fontTol} u`; persist(); };
 $('exportGlyph').onclick = () => download(`glyph_${S.glyph.charCodeAt(0).toString(16)}.svg`, glyphSVG(), 'image/svg+xml');
 $('exportName').oninput = e => { S.exportName = e.target.value; persist(); };
 $('exportFont').onclick = () => {
@@ -686,25 +793,532 @@ $('exportFont').onclick = () => {
     download(`${name.replace(/ +/g, '')}.otf`, font.toArrayBuffer(), 'font/otf');
     if (missing.length) toast(`Saved ${count} glyphs. ${missing.length} have no strokes yet and are left out.`);
 };
-$('saveJson').onclick = () => download(`${S.fontLabel.replace(/\.[^.]+$/, '')}-strokes.json`, JSON.stringify({ font: S.fontLabel, glyphs: S.glyphs, smooth: S.smooth, emMM: S.emMM, penMM: S.penMM, text: S.text, exportName: S.exportName }, null, 1), 'application/json');
+$('saveJson').onclick = () => download(`${S.fontLabel.replace(/\.[^.]+$/, '')}-strokes.json`, JSON.stringify({ font: S.fontLabel, ...projectData() }, null, 1), 'application/json');
 async function loadProject(file) {
     try {
         const p = JSON.parse(await file.text());
         if (!p.glyphs) throw new Error('no glyphs');
-        S.glyphs = p.glyphs; S.smooth = p.smooth ?? S.smooth; S.emMM = p.emMM ?? S.emMM; S.penMM = p.penMM ?? S.penMM; S.text = p.text ?? S.text; S.exportName = p.exportName ?? S.exportName; S.active = 0; undoStack = [];
-        syncInputs(); changed(); resetView();
+        applyProject(p); S.active = 0; undoStack = [];
+        syncInputs(); changed(); resetView(); writeChanged(false);
         toast(p.font && p.font !== S.fontLabel ? `Opened project made with ${p.font}. Load that font to match the guides.` : 'Project opened');
     } catch (err) { toast(`Couldn't open ${file.name}. Pick a project .json saved from this page.`); }
 }
 $('loadJson').onchange = e => { if (e.target.files[0]) loadProject(e.target.files[0]); e.target.value = ''; };
 
-new ResizeObserver(() => { const first = !CW; resize(); if (first) resetView(); }).observe(cv);
+// ---------- bezier helpers (Seg = [p0, c1, c2, p3], points [x, y]) ----------
+const vadd = (a, b) => [a[0] + b[0], a[1] + b[1]], vsub = (a, b) => [a[0] - b[0], a[1] - b[1]], vmul = (a, k) => [a[0] * k, a[1] * k];
+const vdot = (a, b) => a[0] * b[0] + a[1] * b[1], vlen = a => Math.hypot(a[0], a[1]), vdist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const vnorm = a => { const l = vlen(a); return l > 1e-12 ? [a[0] / l, a[1] / l] : [0, 0]; };
+function bezAt(s, t) {
+    const u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+    return [a * s[0][0] + b * s[1][0] + c * s[2][0] + d * s[3][0], a * s[0][1] + b * s[1][1] + c * s[2][1] + d * s[3][1]];
+}
+function bezD1(s, t) {
+    const u = 1 - t;
+    return [0, 1].map(k => 3 * u * u * (s[1][k] - s[0][k]) + 6 * u * t * (s[2][k] - s[1][k]) + 3 * t * t * (s[3][k] - s[2][k]));
+}
+function bezD2(s, t) {
+    return [0, 1].map(k => 6 * (1 - t) * (s[2][k] - 2 * s[1][k] + s[0][k]) + 6 * t * (s[3][k] - 2 * s[2][k] + s[1][k]));
+}
+// De Casteljau split at t: [left, right].
+function bezSplit(s, t) {
+    const l = (a, b) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    const ab = l(s[0], s[1]), bc = l(s[1], s[2]), cd = l(s[2], s[3]), abc = l(ab, bc), bcd = l(bc, cd), m = l(abc, bcd);
+    return [[s[0], ab, abc, m], [m, bcd, cd, s[3]]];
+}
+const lineSeg = (a, b) => [a, vadd(a, vmul(vsub(b, a), 1 / 3)), vadd(a, vmul(vsub(b, a), 2 / 3)), b];
+const reverseSegs = segs => segs.slice().reverse().map(s => [s[3], s[2], s[1], s[0]]);
+const isDegenerate = s => vdist(s[0], s[1]) + vdist(s[1], s[2]) + vdist(s[2], s[3]) < 1e-9;
+// Direction a stroke leaves its start point, falling back to later control points when they coincide.
+const startDir = s => { for (const q of [s[1], s[2], s[3]]) if (vdist(q, s[0]) > 1e-9) return vnorm(vsub(q, s[0])); return [0, 0]; };
+const endDir = s => { for (const q of [s[2], s[1], s[0]]) if (vdist(q, s[3]) > 1e-9) return vnorm(vsub(s[3], q)); return [0, 0]; };
+
+// ---------- optimizer: refit strokes to fewer cubics ----------
+// Splits at corners sharper than cornerDeg, samples each run densely and fits it within tolEm (Schneider).
+function refitStroke(segs, tolEm, cornerDeg = 25) {
+    if (!(tolEm > 0) || segs.length < 2) return segs;
+    const cosMax = Math.cos(cornerDeg * Math.PI / 180), runs = [[segs[0]]];
+    for (let i = 1; i < segs.length; i++) {
+        const turn = vdot(endDir(segs[i - 1]), startDir(segs[i]));
+        if (turn < cosMax) runs.push([]);
+        runs[runs.length - 1].push(segs[i]);
+    }
+    const out = [];
+    for (const run of runs) {
+        if (run.length < 2) { out.push(...run); continue; }
+        const pts = [run[0][0]];
+        for (const s of run) for (let k = 1; k <= 12; k++) pts.push(bezAt(s, k / 12));
+        const fit = fitCubics(pts, tolEm, startDir(run[0]), vmul(endDir(run[run.length - 1]), -1));
+        // Keep the original run when the fit does not save segments.
+        out.push(...(fit.length < run.length ? fit : run));
+    }
+    return out;
+}
+// Least-squares cubic fit to pts with fixed end tangents t1 (out of the start) and t2 (back into the end).
+function fitCubics(pts, tolEm, t1, t2, depth = 0) {
+    const n = pts.length;
+    if (n < 2) return [];
+    if (n === 2 || depth > 12) { const d = vdist(pts[0], pts[n - 1]) / 3; return [[pts[0], vadd(pts[0], vmul(t1, d)), vadd(pts[n - 1], vmul(t2, d)), pts[n - 1]]]; }
+    const chord = [0];
+    for (let i = 1; i < n; i++) chord.push(chord[i - 1] + vdist(pts[i], pts[i - 1]));
+    let u = chord.map(c => c / (chord[n - 1] || 1));
+    const generate = () => {
+        const p0 = pts[0], p3 = pts[n - 1];
+        let c00 = 0, c01 = 0, c11 = 0, x0 = 0, x1 = 0;
+        for (let i = 0; i < n; i++) {
+            const t = u[i], m = 1 - t, b0 = m * m * m, b1 = 3 * t * m * m, b2 = 3 * t * t * m, b3 = t * t * t;
+            const a1 = vmul(t1, b1), a2 = vmul(t2, b2);
+            c00 += vdot(a1, a1); c01 += vdot(a1, a2); c11 += vdot(a2, a2);
+            const tmp = vsub(pts[i], vadd(vmul(p0, b0 + b1), vmul(p3, b2 + b3)));
+            x0 += vdot(a1, tmp); x1 += vdot(a2, tmp);
+        }
+        const det = c00 * c11 - c01 * c01, len = vdist(p0, p3);
+        let al = Math.abs(det) > 1e-18 ? (x0 * c11 - x1 * c01) / det : 0, ar = Math.abs(det) > 1e-18 ? (c00 * x1 - c01 * x0) / det : 0;
+        if (al < 1e-6 * len || ar < 1e-6 * len) al = ar = len / 3;
+        return [p0, vadd(p0, vmul(t1, al)), vadd(p3, vmul(t2, ar)), p3];
+    };
+    const maxErr = bez => {
+        let worst = 0, at = Math.floor(n / 2);
+        for (let i = 1; i < n - 1; i++) { const d = vdist(bezAt(bez, u[i]), pts[i]); if (d > worst) { worst = d; at = i; } }
+        return [worst, at];
+    };
+    let bez = generate(), [err, split] = maxErr(bez);
+    if (err <= tolEm) return [bez];
+    if (err <= tolEm * 4) {
+        for (let it = 0; it < 20; it++) {
+            u = u.map((t, i) => {
+                const d = vsub(bezAt(bez, t), pts[i]), q1 = bezD1(bez, t), q2 = bezD2(bez, t), den = vdot(q1, q1) + vdot(d, q2);
+                return den ? Math.min(1, Math.max(0, t - vdot(d, q1) / den)) : t;
+            });
+            bez = generate(); [err, split] = maxErr(bez);
+            if (err <= tolEm) return [bez];
+        }
+    }
+    const tc = vnorm(vsub(pts[split - 1], pts[split + 1]));
+    return [...fitCubics(pts.slice(0, split + 1), tolEm, t1, tc, depth + 1), ...fitCubics(pts.slice(split), tolEm, vmul(tc, -1), t2, depth + 1)];
+}
+
+// ---------- randomness ----------
+// FNV-1a over the parts seeds mulberry32, so each (seed, purpose, index) has its own repeatable stream.
+function rng(seed, purpose, index) {
+    let h = 2166136261;
+    for (const ch of `${seed}|${purpose}|${index}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    let a = h >>> 0;
+    return () => {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+const jitter = (dial, r) => dial.min + r * (dial.max - dial.min);
+
+// ---------- shape mutation ----------
+const MUT_LEN = 0.15, MUT_DEG = 8;
+const segLen = s => { let l = 0, p = s[0]; for (let k = 1; k <= 16; k++) { const q = bezAt(s, k / 16); l += vdist(p, q); p = q; } return l; };
+// Trims (delta < 0) or extends (delta > 0) the start of an open stroke by |delta| em along the path.
+function adjustStart(segs, delta) {
+    if (!segs.length || !delta) return segs;
+    if (delta > 0) {
+        const d = startDir(segs[0]);
+        return [lineSeg(vsub(segs[0][0], vmul(d, delta)), segs[0][0]), ...segs];
+    }
+    let cut = -delta;
+    for (let i = 0; i < segs.length; i++) {
+        const l = segLen(segs[i]);
+        if (cut < l) {
+            // Arc length to t by sampling; good enough for a few percent of a stroke.
+            let acc = 0, p = segs[i][0], t = 1;
+            for (let k = 1; k <= 32; k++) { const q = bezAt(segs[i], k / 32), dl = vdist(p, q); if (acc + dl >= cut) { t = (k - 1 + (cut - acc) / (dl || 1)) / 32; break; } acc += dl; p = q; }
+            return [bezSplit(segs[i], t)[1], ...segs.slice(i + 1)];
+        }
+        cut -= l;
+    }
+    return segs;
+}
+// Each open stroke has both ends trimmed or extended by up to MUT_LEN of its length; every stroke turns up to MUT_DEG about its box centre.
+function mutateStrokes(strokes, amount, rand) {
+    if (!amount) return strokes;
+    return strokes.map(st => {
+        const rs = rand(), re = rand(), ra = rand();
+        let segs = st.segs;
+        if (!st.closed) {
+            const L = segs.reduce((s, g) => s + segLen(g), 0);
+            segs = adjustStart(segs, (2 * rs - 1) * MUT_LEN * amount * L);
+            segs = reverseSegs(adjustStart(reverseSegs(segs), (2 * re - 1) * MUT_LEN * amount * L));
+        }
+        const ang = (2 * ra - 1) * MUT_DEG * Math.PI / 180 * amount, cos = Math.cos(ang), sin = Math.sin(ang);
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const s of segs) for (const q of s) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        const rot = q => [cx + (q[0] - cx) * cos - (q[1] - cy) * sin, cy + (q[0] - cx) * sin + (q[1] - cy) * cos];
+        return { segs: segs.map(s => s.map(rot)), closed: st.closed };
+    });
+}
+
+// ---------- glyph sources: { label, ascender, descender (em, both positive), glyph(ch) -> { adv, strokes } | null } ----------
+function projectSource() {
+    measureCtx.font = `100px "${S.family}"`;
+    const m = measureCtx.measureText('Hg'), cache = new Map();
+    return {
+        label: `Project strokes (${S.fontLabel})`,
+        ascender: (m.fontBoundingBoxAscent || 80) / 100, descender: (m.fontBoundingBoxDescent || 20) / 100,
+        glyph(ch) {
+            if (cache.has(ch)) return cache.get(ch);
+            let g = null;
+            if (ch === ' ') g = { adv: advance(' '), strokes: [] };
+            else if (hasStrokes(ch)) g = { adv: advance(ch), strokes: S.glyphs[ch].map(st => ({ segs: segments(st), closed: !!st.closed && st.pts.length > 2 })).filter(s => s.segs.length) };
+            cache.set(ch, g);
+            return g;
+        }
+    };
+}
+// An exported single-line contour runs forward then back over itself. Returns the forward half as an open stroke,
+// or the contour as a closed stroke when no turnaround matches within tolEm.
+function stripReturnTrace(segs, tolEm) {
+    segs = segs.filter(s => !isDegenerate(s));
+    const n = segs.length;
+    if (n >= 2 && n % 2 === 0) {
+        const h = n / 2;
+        let same = true;
+        for (let i = 0; i < h && same; i++) { const a = segs[i], b = segs[n - 1 - i]; same = vdist(a[0], b[3]) <= tolEm && vdist(a[1], b[2]) <= tolEm && vdist(a[2], b[1]) <= tolEm && vdist(a[3], b[0]) <= tolEm; }
+        if (same) return { segs: segs.slice(0, h), closed: false };
+    }
+    // Fallback for fonts whose return half was refit separately: find the split where the two halves overlay.
+    const sample = part => part.flatMap(s => [0.25, 0.5, 0.75, 1].map(t => bezAt(s, t)));
+    for (let k = 1; k < n; k++) {
+        if (vdist(segs[0][0], segs[n - 1][3]) > tolEm) break;
+        const a = segs.slice(0, k), b = segs.slice(k);
+        const pa = sample(a), pb = sample(b);
+        const near = (ps, qs) => ps.every(p => qs.some(q => vdist(p, q) <= tolEm * 3));
+        if (near(pb, pa) && near(pa, pb)) return { segs: a, closed: false };
+    }
+    return { segs, closed: true };
+}
+async function loadOtfSource(file) {
+    const font = opentype.parse(await file.arrayBuffer());
+    const U = font.unitsPerEm, P = (x, y) => [x / U, -y / U], tol = Math.max(3, S.fontTol) / U;
+    const glyphs = {};
+    let contours = 0, doubled = 0;
+    for (let gi = 0; gi < font.glyphs.length; gi++) {
+        const g = font.glyphs.get(gi);
+        const codes = g.unicodes && g.unicodes.length ? g.unicodes : (g.unicode != null ? [g.unicode] : []);
+        if (!codes.length) continue;
+        const strokes = [];
+        let cur = null, start = null, segs = [];
+        const flush = () => {
+            if (cur && start && vdist(cur, start) > 1e-9) segs.push(lineSeg(cur, start));
+            if (segs.length) {
+                contours++;
+                const st = stripReturnTrace(segs, tol);
+                if (!st.closed) doubled++;
+                strokes.push({ segs: refitStroke(st.segs, S.fontTol / 1000), closed: st.closed });
+            }
+            segs = [];
+        };
+        for (const c of g.path.commands) {
+            if (c.type === 'M') { flush(); cur = start = P(c.x, c.y); }
+            else if (c.type === 'L') { const p = P(c.x, c.y); segs.push(lineSeg(cur, p)); cur = p; }
+            else if (c.type === 'Q') { const q = P(c.x1, c.y1), p = P(c.x, c.y); segs.push([cur, vadd(cur, vmul(vsub(q, cur), 2 / 3)), vadd(p, vmul(vsub(q, p), 2 / 3)), p]); cur = p; }
+            else if (c.type === 'C') { const p = P(c.x, c.y); segs.push([cur, P(c.x1, c.y1), P(c.x2, c.y2), p]); cur = p; }
+            else if (c.type === 'Z') { flush(); cur = start; }
+        }
+        flush();
+        const glyph = { adv: (g.advanceWidth || 0) / U, strokes };
+        for (const u of codes) glyphs[String.fromCodePoint(u)] = glyph;
+    }
+    if (!glyphs[' ']) glyphs[' '] = { adv: 0.25, strokes: [] };
+    return { label: file.name, ascender: font.ascender / U, descender: -font.descender / U, glyph: ch => glyphs[ch] || null, outline: contours > 0 && doubled === 0 };
+}
+
+// ---------- layout ----------
+// Reads the old text form of kerning, kept for loading older saves.
+function parseKerning(str) {
+    const out = {};
+    for (const m of (str || '').matchAll(/(\S{2})\s+(-?\d+(?:\.\d+)?)/g)) out[m[1]] = +m[2];
+    return out;
+}
+const MAX_PAGES = 50;
+// Greedy word wrap inside the margin box; text past the bottom margin flows onto a new page. Spacing jitter is drawn per letter, word gap and line from separate streams.
+function layoutText(W, src) {
+    const em = W.emSize, kern = Object.fromEntries(W.kerning.filter(([pr]) => [...pr].length === 2)), fu = v => v / 1000 * em;
+    const warnings = [];
+    const box = { l: W.margin.l, t: W.margin.t, r: W.pageW - W.margin.r, b: W.pageH - W.margin.b };
+    if (box.r - box.l < em) { box.r = box.l + em; warnings.push('Side margins leave less than one letter size; the text box was widened to fit.'); }
+    const lineH = (src.ascender + src.descender) * em, spaceAdv = (src.glyph(' ') || { adv: 0.25 }).adv * em;
+    const top = box.t + src.ascender * em, pages = [[]], missing = new Set();
+    let placed = pages[0], overflowAt = -1, lineNo = 0, x = box.l, y = top, lineEmpty = true, prevCh = '';
+    const fits = () => y + src.descender * em <= box.b + 1e-9;
+    const newLine = () => { y += lineH * Math.max(0.1, jitter(W.line, rng(W.seed, 'line', lineNo)())); lineNo++; x = box.l; lineEmpty = true; prevCh = ''; };
+    // Letter metrics for one word; spacing after the last letter does not count toward its width.
+    const measure = (word, at) => {
+        const letters = [...word].map((ch, k) => {
+            const gi = at + k, g = src.glyph(ch);
+            if (!g) missing.add(ch);
+            return { ch, gi, g, adv: g ? g.adv * em : spaceAdv, sp: fu(jitter(W.letter, rng(W.seed, 'letter', gi)())) };
+        });
+        letters.forEach((L, k) => { L.kb = k ? fu(kern[letters[k - 1].ch + L.ch] || 0) : 0; });
+        const width = letters.reduce((w, L, k) => w + L.kb + (k < letters.length - 1 ? Math.max(0, L.adv + L.sp) : L.adv), 0);
+        return { letters, width };
+    };
+    const put = L => {
+        x += L.kb;
+        if (L.g && L.g.strokes.length) placed.push({ x, y, strokes: mutateStrokes(L.g.strokes, W.mutation, rng(W.seed, 'shape', L.gi)) });
+        x += Math.max(0, L.adv + L.sp);
+        prevCh = L.ch;
+    };
+    // Starts a new line, moving to a new page when it falls past the bottom margin. Returns false (with overflowAt set)
+    // once the page cap is reached. A fresh page always fits its first line, since the check before the loop passed.
+    const breakLine = at => {
+        newLine();
+        if (fits()) return true;
+        if (pages.length >= MAX_PAGES) { overflowAt = at; return false; }
+        placed = []; pages.push(placed); y = top;
+        return true;
+    };
+    let offset = 0, wordNo = 0;
+    if (!fits()) overflowAt = 0;
+    else outer: for (const [pi, para] of W.text.split('\n').entries()) {
+        if (pi && !breakLine(offset)) break;
+        for (const m of para.matchAll(/\S+/g)) {
+            const at = offset + m.index, { letters, width } = measure(m[0], at);
+            let gap = 0;
+            if (!lineEmpty) gap = Math.max(0, spaceAdv + fu(jitter(W.word, rng(W.seed, 'word', wordNo)()))) + fu((kern[prevCh + ' '] || 0) + (kern[' ' + m[0][0]] || 0));
+            wordNo++;
+            if (!lineEmpty && x + gap + width > box.r) { gap = 0; if (!breakLine(at)) break outer; }
+            x += gap;
+            for (const L of letters) {
+                // A word wider than the whole box breaks between letters.
+                if (!lineEmpty && x + L.kb + L.adv > box.r + 1e-9 && width > box.r - box.l) { if (!breakLine(L.gi)) break outer; }
+                put(L);
+                lineEmpty = false;
+            }
+        }
+        offset += para.length + 1;
+    }
+    // Blank lines at the end can open a page with nothing on it.
+    while (pages.length > 1 && !pages[pages.length - 1].length) pages.pop();
+    return { pages, overflowAt, missing: [...missing], warnings, box };
+}
+// One page of placed letters to SVG.
+function writeSVG(placed, W) {
+    const dp = W.unit === 'in' ? 4 : 2, f = v => +v.toFixed(dp), em = W.emSize, d = [];
+    for (const p of placed) for (const st of p.strokes) {
+        if (!st.segs.length) continue;
+        const X = q => f(p.x + q[0] * em), Y = q => f(p.y + q[1] * em);
+        let s = `M${X(st.segs[0][0])} ${Y(st.segs[0][0])}`;
+        for (const [, c1, c2, b] of st.segs) s += `C${X(c1)} ${Y(c1)} ${X(c2)} ${Y(c2)} ${X(b)} ${Y(b)}`;
+        d.push(st.closed ? s + 'Z' : s);
+    }
+    // One path element so Design Space imports the whole page as a single layer.
+    const path = d.length ? `  <path fill="none" stroke="#000" stroke-width="${f(W.pen)}" stroke-linecap="round" stroke-linejoin="round" d="${d.join(' ')}"/>\n` : '';
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${f(W.pageW)}${W.unit}" height="${f(W.pageH)}${W.unit}" viewBox="0 0 ${f(W.pageW)} ${f(W.pageH)}">\n${path}</svg>\n`;
+}
+
+// ---------- write tab UI ----------
+const wcv = $('wcv'), wctx = wcv.getContext('2d');
+let otfSource = null, lastLayout = null, writeRaf = 0, wPage = 0;
+const PRESETS = { letter: { unit: 'in', w: 8.5, h: 11 }, a4: { unit: 'mm', w: 210, h: 297 }, card: { unit: 'in', w: 4, h: 6 } };
+const DIALS = [
+    { key: 'letter', label: 'Letter spacing', min: -200, max: 400, step: 5, fmt: v => `${Math.round(v)}`, unit: ' u' },
+    { key: 'word', label: 'Word spacing', min: -200, max: 800, step: 10, fmt: v => `${Math.round(v)}`, unit: ' u' },
+    { key: 'line', label: 'Line spacing', min: 0.5, max: 3, step: 0.05, fmt: v => v.toFixed(2), unit: '×' }];
+const KERN_MAX = 200;
+const activeSource = () => S.write.source === 'otf' && otfSource ? otfSource : projectSource();
+
+function setMode(mode) {
+    S.mode = mode;
+    const w = mode === 'write';
+    $('drawView').hidden = w; $('writeView').hidden = !w;
+    $('tabDraw').setAttribute('aria-selected', String(!w)); $('tabWrite').setAttribute('aria-selected', String(w));
+    $('wExport').hidden = !w; $('wStats').hidden = !w;
+    try { localStorage.setItem('stroke-plotter:mode', mode); } catch (e) { }
+    if (w) writeChanged(false);
+}
+function writeChanged(save = true) {
+    if (save) persist();
+    if (writeRaf || S.mode !== 'write') return;
+    writeRaf = requestAnimationFrame(() => { writeRaf = 0; renderWrite(); });
+}
+function renderWrite() {
+    const W = S.write;
+    lastLayout = layoutText(W, activeSource());
+    const n = lastLayout.pages.length;
+    wPage = Math.min(wPage, n - 1);
+    drawWritePreview(lastLayout, W);
+    const warn = [...lastLayout.warnings];
+    if (lastLayout.missing.length) warn.push(`Not in font, left as spaces: ${lastLayout.missing.join(' ')}`);
+    if (lastLayout.overflowAt >= 0) warn.push(`${n >= MAX_PAGES ? `Text past page ${MAX_PAGES}` : 'Text that cannot fit one line on a page'} is cut, starting at "${W.text.slice(lastLayout.overflowAt, lastLayout.overflowAt + 24).trim()}…"`);
+    $('wWarn').textContent = warn.join(' ');
+    const all = lastLayout.pages.flat(), strokes = all.reduce((k, p) => k + p.strokes.length, 0);
+    $('wStats').textContent = `${n} ${n === 1 ? 'page' : 'pages'} · ${all.length} letters · ${strokes} strokes`;
+    $('wPager').hidden = n < 2;
+    $('wPageNo').textContent = `Page ${wPage + 1} of ${n}`;
+    $('wPrev').disabled = wPage === 0; $('wNext').disabled = wPage === n - 1;
+    $('srcProject').classList.toggle('on', W.source !== 'otf' || !otfSource);
+    $('srcOtf').classList.toggle('on', W.source === 'otf' && !!otfSource);
+    $('srcLabel').textContent = activeSource().label;
+}
+function drawWritePreview(layout, W) {
+    const r = wcv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    wcv.width = Math.round(r.width * d); wcv.height = Math.round(r.height * d);
+    const pad = 36, s = Math.min((r.width - pad * 2) / W.pageW, (r.height - pad * 2) / W.pageH);
+    const ox = (r.width - W.pageW * s) / 2, oy = (r.height - W.pageH * s) / 2 + 8;
+    wctx.setTransform(d, 0, 0, d, 0, 0);
+    wctx.clearRect(0, 0, r.width, r.height);
+    wctx.fillStyle = C.bg; wctx.strokeStyle = C.line; wctx.lineWidth = 1;
+    wctx.fillRect(ox, oy, W.pageW * s, W.pageH * s); wctx.strokeRect(ox + 0.5, oy + 0.5, W.pageW * s - 1, W.pageH * s - 1);
+    const b = layout.box;
+    if (layout.overflowAt >= 0 && wPage === layout.pages.length - 1) { wctx.fillStyle = C.stroke; wctx.globalAlpha = 0.1; wctx.fillRect(ox, oy + b.b * s, W.pageW * s, (W.pageH - b.b) * s); wctx.globalAlpha = 1; }
+    wctx.setLineDash([4, 4]); wctx.strokeStyle = C.point; wctx.globalAlpha = 0.6;
+    wctx.strokeRect(ox + b.l * s, oy + b.t * s, (b.r - b.l) * s, (b.b - b.t) * s);
+    wctx.setLineDash([]); wctx.globalAlpha = 1;
+    wctx.strokeStyle = C.stroke; wctx.lineWidth = Math.max(0.75, W.pen * s); wctx.lineCap = 'round'; wctx.lineJoin = 'round';
+    wctx.beginPath();
+    const em = W.emSize;
+    for (const p of layout.pages[wPage]) for (const st of p.strokes) {
+        if (!st.segs.length) continue;
+        const X = q => ox + (p.x + q[0] * em) * s, Y = q => oy + (p.y + q[1] * em) * s;
+        wctx.moveTo(X(st.segs[0][0]), Y(st.segs[0][0]));
+        for (const [, c1, c2, e] of st.segs) wctx.bezierCurveTo(X(c1), Y(c1), X(c2), Y(c2), X(e), Y(e));
+        if (st.closed) wctx.closePath();
+    }
+    wctx.stroke();
+    $('wPageLabel').innerHTML = `Page <b>${+W.pageW.toFixed(2)} × ${+W.pageH.toFixed(2)} ${W.unit}</b>`;
+    $('wZoom').textContent = `${Math.round(s / (W.unit === 'in' ? 96 : 96 / 25.4) * 100)}%`;
+}
+// Rescales every length so the physical page stays the same size.
+function convertUnits(to) {
+    const W = S.write;
+    if (W.unit === to) return;
+    const k = to === 'mm' ? 25.4 : 1 / 25.4, r = v => +(v * k).toFixed(to === 'mm' ? 1 : 3);
+    W.pageW = r(W.pageW); W.pageH = r(W.pageH); W.emSize = r(W.emSize); W.pen = +(W.pen * k).toFixed(to === 'mm' ? 2 : 4);
+    for (const side of 'trbl') W.margin[side] = r(W.margin[side]);
+    W.unit = to;
+}
+function buildDials() {
+    const box = $('dials');
+    for (const dl of DIALS) {
+        const el = document.createElement('div');
+        el.className = 'dial';
+        const range = k => `<input type="range" min="${dl.min}" max="${dl.max}" step="${dl.step}" data-k="${k}" aria-label="${dl.label} ${k}">`;
+        el.innerHTML = `<div class="head"><span class="name">${dl.label}</span><output></output></div>
+            <div class="mm"><div class="track"><div class="fill"></div></div>${range('min')}${range('max')}</div>`;
+        for (const inp of el.querySelectorAll('input')) inp.oninput = () => {
+            const d = S.write[dl.key], k = inp.dataset.k, v = +inp.value;
+            d[k] = v;
+            // Dragging one thumb past the other pushes it along, so min never exceeds max.
+            if (k === 'min' && v > d.max) d.max = v;
+            if (k === 'max' && v < d.min) d.min = v;
+            syncDial(el, dl); writeChanged();
+        };
+        el.dataset.key = dl.key;
+        box.appendChild(el);
+    }
+}
+function syncDial(el, dl) {
+    const d = S.write[dl.key], pct = v => (v - dl.min) / (dl.max - dl.min) * 100;
+    const [lo, hi] = el.querySelectorAll('input');
+    lo.value = d.min; hi.value = d.max;
+    // Keep the min thumb grabbable when both sit at the right end.
+    lo.style.zIndex = pct(d.min) > 90 ? 2 : 1;
+    const fill = el.querySelector('.fill');
+    fill.style.left = `${pct(d.min)}%`; fill.style.width = `${pct(d.max) - pct(d.min)}%`;
+    el.querySelector('output').textContent = d.min === d.max ? dl.fmt(d.min) + dl.unit : `${dl.fmt(d.min)} to ${dl.fmt(d.max)}${dl.unit}`;
+}
+// One row per kerning pair: two characters, a slider in font units, and a remove button.
+function renderKern() {
+    const box = $('wKern');
+    box.innerHTML = S.write.kerning.length ? '' : '<div class="empty">No pairs yet.</div>';
+    S.write.kerning.forEach((kp, i) => {
+        const row = document.createElement('div');
+        row.className = 'kern';
+        row.innerHTML = `<input type="text" maxlength="2" spellcheck="false" aria-label="Pair" placeholder="To">
+            <input type="range" min="${-KERN_MAX}" max="${KERN_MAX}" step="5" aria-label="Adjustment"><output></output><button title="Remove pair">×</button>`;
+        const [txt, sl] = row.querySelectorAll('input'), out = row.querySelector('output');
+        txt.value = kp[0]; sl.value = kp[1]; out.textContent = kp[1];
+        txt.oninput = () => { kp[0] = txt.value; writeChanged(); };
+        sl.oninput = () => { kp[1] = +sl.value; out.textContent = kp[1]; writeChanged(); };
+        row.querySelector('button').onclick = () => { S.write.kerning.splice(i, 1); renderKern(); writeChanged(); };
+        box.appendChild(row);
+    });
+}
+function syncWriteInputs() {
+    const W = S.write;
+    $('wText').value = W.text; $('wPreset').value = W.preset;
+    $('unitIn').classList.toggle('on', W.unit === 'in'); $('unitMm').classList.toggle('on', W.unit === 'mm');
+    $('wPageW').value = W.pageW; $('wPageH').value = W.pageH;
+    $('wMt').value = W.margin.t; $('wMr').value = W.margin.r; $('wMb').value = W.margin.b; $('wMl').value = W.margin.l;
+    $('wEm').value = W.emSize; $('wPen').value = W.pen;
+    $('wMut').value = W.mutation; $('wMutOut').textContent = (+W.mutation).toFixed(2);
+    $('wSeed').value = W.seed;
+    renderKern();
+    for (const el of $('dials').children) syncDial(el, DIALS.find(dl => dl.key === el.dataset.key));
+}
+const numIn = (id, set) => { $(id).oninput = e => { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 0) { set(v); writeChanged(); } }; };
+numIn('wPageW', v => { if (v > 0) { S.write.pageW = v; S.write.preset = 'custom'; $('wPreset').value = 'custom'; } });
+numIn('wPageH', v => { if (v > 0) { S.write.pageH = v; S.write.preset = 'custom'; $('wPreset').value = 'custom'; } });
+numIn('wMt', v => S.write.margin.t = v); numIn('wMr', v => S.write.margin.r = v); numIn('wMb', v => S.write.margin.b = v); numIn('wMl', v => S.write.margin.l = v);
+numIn('wEm', v => { if (v > 0) S.write.emSize = v; }); numIn('wPen', v => S.write.pen = v);
+$('wPreset').onchange = e => {
+    const p = PRESETS[e.target.value];
+    S.write.preset = e.target.value;
+    if (p) { convertUnits(p.unit); S.write.pageW = p.w; S.write.pageH = p.h; }
+    syncWriteInputs(); writeChanged();
+};
+$('unitIn').onclick = () => { convertUnits('in'); syncWriteInputs(); writeChanged(); };
+$('unitMm').onclick = () => { convertUnits('mm'); syncWriteInputs(); writeChanged(); };
+$('wText').oninput = e => { S.write.text = e.target.value; writeChanged(); };
+$('wMut').oninput = e => { S.write.mutation = +e.target.value; $('wMutOut').textContent = S.write.mutation.toFixed(2); writeChanged(); };
+$('wSeed').oninput = e => { const v = parseInt(e.target.value, 10); if (isFinite(v)) { S.write.seed = v; writeChanged(); } };
+$('wReroll').onclick = () => { S.write.seed = Math.floor(Math.random() * 100000); $('wSeed').value = S.write.seed; writeChanged(); };
+$('wKernAdd').onclick = () => { S.write.kerning.push(['', 0]); renderKern(); $('wKern').lastElementChild.querySelector('input').focus(); writeChanged(); };
+$('srcProject').onclick = () => { S.write.source = 'project'; writeChanged(); };
+$('srcOtf').onclick = () => { if (!otfSource) { toast('Load a single-line OTF first.'); return; } S.write.source = 'otf'; writeChanged(); };
+async function useOtf(file) {
+    if (!window.opentype) { toast('Reading fonts needs the opentype.js library. Check your connection and reload.'); return; }
+    try {
+        otfSource = await loadOtfSource(file);
+        S.write.source = 'otf';
+        writeChanged();
+        toast(otfSource.outline ? `${file.name} has outline letters, so the pen will draw both edges.` : `Writing with ${file.name}`);
+    } catch (err) { toast(`Couldn't read ${file.name}. Use an .otf, .ttf or .woff file.`); }
+}
+$('otfFile').onchange = e => { if (e.target.files[0]) useOtf(e.target.files[0]); e.target.value = ''; };
+const wStage = $('wStage');
+wStage.addEventListener('dragover', e => { e.preventDefault(); wStage.classList.add('dragging'); });
+wStage.addEventListener('dragleave', () => wStage.classList.remove('dragging'));
+wStage.addEventListener('drop', e => { e.preventDefault(); wStage.classList.remove('dragging'); if (e.dataTransfer.files[0]) useOtf(e.dataTransfer.files[0]); });
+// File-safe name from the first few words of the text, e.g. "Dear Sam, thanks!" gives "dear-sam-thanks".
+const fileSlug = str => str.toLowerCase().normalize('NFKD').replace(/[^a-z0-9\s_-]/g, '').split(/[\s_]+/).filter(Boolean).slice(0, 4).join('-').slice(0, 40).replace(/^-+|-+$/g, '');
+$('wExport').onclick = () => {
+    const pages = layoutText(S.write, activeSource()).pages;
+    const name = prompt(pages.length > 1 ? `File name (${pages.length} pages save as name-p1.svg, name-p2.svg, …)` : 'File name', fileSlug(S.write.text) || 'write');
+    if (name === null) return;
+    const safe = name.trim().replace(/\.svg$/i, '').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim() || 'write';
+    // Spaced out so the browser does not drop downloads fired in the same tick.
+    pages.forEach((pg, i) => setTimeout(() => download(pages.length > 1 ? `${safe}-p${i + 1}.svg` : `${safe}.svg`, writeSVG(pg, S.write), 'image/svg+xml'), i * 250));
+};
+const turnPage = dir => { if (!lastLayout) return; wPage = Math.max(0, Math.min(lastLayout.pages.length - 1, wPage + dir)); renderWrite(); };
+$('wPrev').onclick = () => turnPage(-1);
+$('wNext').onclick = () => turnPage(1);
+$('tabDraw').onclick = () => setMode('draw');
+$('tabWrite').onclick = () => setMode('write');
+new ResizeObserver(() => { if (lastLayout && S.mode === 'write') drawWritePreview(lastLayout, S.write); }).observe(wcv);
+buildDials();
+
+// Refit whenever the canvas goes from hidden (zero size, e.g. on the Write tab) to visible.
+new ResizeObserver(() => { const wasHidden = !CW; resize(); if (wasHidden && CW) resetView(); }).observe(cv);
 if (!restore()) {
     // Example state: auto-traced strokes for a few glyphs in Georgia until a font is loaded.
     for (const ch of 'abc') S.glyphs[ch] = autoTrace(ch);
 }
 syncInputs();
 changed(false);
+let savedMode = 'draw';
+try { savedMode = localStorage.getItem('stroke-plotter:mode') || 'draw'; } catch (e) { }
+setMode(savedMode === 'write' ? 'write' : 'draw');
 </script>
 </body>
 </html>
