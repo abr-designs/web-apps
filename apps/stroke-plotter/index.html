@@ -255,6 +255,10 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
             <div id="dials"></div>
         </section>
         <section class="card">
+            <h2>Words <span>min to max</span></h2>
+            <div id="wordDials"></div>
+        </section>
+        <section class="card">
             <h2>Letter shapes</h2>
             <label class="slider" title="Random change to each stroke's length (up to ±15%) and direction (up to ±8°)">Mutation<input type="range" id="wMut" min="0" max="1" step="0.05"><output id="wMutOut"></output></label>
             <div class="row">
@@ -267,6 +271,12 @@ textarea { width: 100%; resize: vertical; min-height: 44px; font: 14px var(--fon
             <div class="strokes" id="wKern"></div>
             <div class="row"><button id="wKernAdd">Add pair</button></div>
             <div class="empty">Type two characters (a space counts); negative pulls the second letter closer.</div>
+        </section>
+        <section class="card">
+            <h2>Character height <span>font units</span></h2>
+            <div class="strokes" id="wRise"></div>
+            <div class="row"><button id="wRiseAdd">Add character</button></div>
+            <div class="empty">Type one character; positive raises it, negative lowers it.</div>
         </section>
     </aside>
 </main>
@@ -283,7 +293,7 @@ const C = { guide: css('--guide'), stroke: css('--stroke'), point: css('--point'
 // Write tab settings use page units (W.unit); spacing, kerning and font tolerance use font units (1000 = em).
 const defaultWrite = () => ({
     text: 'abc cab bac\nacab', unit: 'in', preset: 'letter', pageW: 8.5, pageH: 11, margin: { t: 1, r: 1, b: 1, l: 1 }, emSize: 0.5, pen: 0.02,
-    letter: { min: 0, max: 0 }, word: { min: 0, max: 0 }, line: { min: 1, max: 1 }, mutation: 0, seed: 1, kerning: [], source: 'project'
+    letter: { min: 0, max: 0 }, word: { min: 0, max: 0 }, line: { min: 1, max: 1 }, indent: { min: 0, max: 0 }, rise: { min: 0, max: 0 }, tilt: { min: 0, max: 0 }, mutation: 0, seed: 1, kerning: [], charRise: [], source: 'project'
 });
 const S = { family: 'Georgia', fontLabel: 'Georgia (example)', glyph: 'a', glyphs: {}, active: 0, smooth: 0.5, emMM: 25, penMM: 0.4, exportName: '', fontTol: 2, write: defaultWrite() };
 const view = { s: 1, tx: 0, ty: 0 };
@@ -723,7 +733,7 @@ function applyProject(p) {
     // Older saves store dials as { base, range } and kerning as "To -60, AV -80" text.
     const dial = (v, def) => v && v.base !== undefined ? { min: v.base - v.range, max: v.base + v.range } : { ...def, ...v };
     const kerning = typeof w.kerning === 'string' ? Object.entries(parseKerning(w.kerning)) : Array.isArray(w.kerning) ? w.kerning : d.kerning;
-    S.write = { ...d, ...w, margin: { ...d.margin, ...w.margin }, letter: dial(w.letter, d.letter), word: dial(w.word, d.word), line: dial(w.line, d.line), kerning };
+    S.write = { ...d, ...w, margin: { ...d.margin, ...w.margin }, letter: dial(w.letter, d.letter), word: dial(w.word, d.word), line: dial(w.line, d.line), indent: dial(w.indent, d.indent), rise: dial(w.rise, d.rise), tilt: dial(w.tilt, d.tilt), kerning };
 }
 function restore() {
     try { const raw = localStorage.getItem(storeKey()); if (raw) { applyProject(JSON.parse(raw)); return true; } } catch (e) { }
@@ -955,6 +965,15 @@ function mutateStrokes(strokes, amount, rand) {
         return { segs: segs.map(s => s.map(rot)), closed: st.closed };
     });
 }
+// Turns a whole glyph by deg (positive leans clockwise on the page) about the centre of its strokes' box.
+function rotateStrokes(strokes, deg) {
+    if (!deg || !strokes.length) return strokes;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const st of strokes) for (const s of st.segs) for (const q of s) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, a = deg * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+    const rot = q => [cx + (q[0] - cx) * cos - (q[1] - cy) * sin, cy + (q[0] - cx) * sin + (q[1] - cy) * cos];
+    return strokes.map(st => ({ segs: st.segs.map(s => s.map(rot)), closed: st.closed }));
+}
 
 // ---------- glyph sources: { label, ascender, descender (em, both positive), glyph(ch) -> { adv, strokes } | null } ----------
 function projectSource() {
@@ -1042,14 +1061,17 @@ const MAX_PAGES = 50;
 // Greedy word wrap inside the margin box; text past the bottom margin flows onto a new page. Spacing jitter is drawn per letter, word gap and line from separate streams.
 function layoutText(W, src) {
     const em = W.emSize, kern = Object.fromEntries(W.kerning.filter(([pr]) => [...pr].length === 2)), fu = v => v / 1000 * em;
+    const charRise = Object.fromEntries(W.charRise.filter(([c]) => [...c].length === 1));
     const warnings = [];
     const box = { l: W.margin.l, t: W.margin.t, r: W.pageW - W.margin.r, b: W.pageH - W.margin.b };
     if (box.r - box.l < em) { box.r = box.l + em; warnings.push('Side margins leave less than one letter size; the text box was widened to fit.'); }
     const lineH = (src.ascender + src.descender) * em, spaceAdv = (src.glyph(' ') || { adv: 0.25 }).adv * em;
     const top = box.t + src.ascender * em, pages = [[]], missing = new Set();
-    let placed = pages[0], overflowAt = -1, lineNo = 0, x = box.l, y = top, lineEmpty = true, prevCh = '';
+    // Each line starts a random indent in from the left margin, capped so at least one letter still fits.
+    const lineStart = n => box.l + Math.min(Math.max(0, fu(jitter(W.indent, rng(W.seed, 'indent', n)()))), Math.max(0, box.r - box.l - em));
+    let placed = pages[0], overflowAt = -1, lineNo = 0, x = lineStart(0), y = top, lineEmpty = true, prevCh = '', wordRise = 0, wordTilt = 0;
     const fits = () => y + src.descender * em <= box.b + 1e-9;
-    const newLine = () => { y += lineH * Math.max(0.1, jitter(W.line, rng(W.seed, 'line', lineNo)())); lineNo++; x = box.l; lineEmpty = true; prevCh = ''; };
+    const newLine = () => { y += lineH * Math.max(0.1, jitter(W.line, rng(W.seed, 'line', lineNo)())); lineNo++; x = lineStart(lineNo); lineEmpty = true; prevCh = ''; };
     // Letter metrics for one word; spacing after the last letter does not count toward its width.
     const measure = (word, at) => {
         const letters = [...word].map((ch, k) => {
@@ -1063,7 +1085,7 @@ function layoutText(W, src) {
     };
     const put = L => {
         x += L.kb;
-        if (L.g && L.g.strokes.length) placed.push({ x, y, strokes: mutateStrokes(L.g.strokes, W.mutation, rng(W.seed, 'shape', L.gi)) });
+        if (L.g && L.g.strokes.length) placed.push({ x, y: y - wordRise - fu(charRise[L.ch] || 0), strokes: rotateStrokes(mutateStrokes(L.g.strokes, W.mutation, rng(W.seed, 'shape', L.gi)), wordTilt) });
         x += Math.max(0, L.adv + L.sp);
         prevCh = L.ch;
     };
@@ -1084,6 +1106,9 @@ function layoutText(W, src) {
             const at = offset + m.index, { letters, width } = measure(m[0], at);
             let gap = 0;
             if (!lineEmpty) gap = Math.max(0, spaceAdv + fu(jitter(W.word, rng(W.seed, 'word', wordNo)()))) + fu((kern[prevCh + ' '] || 0) + (kern[' ' + m[0][0]] || 0));
+            // Every letter in a word shares one baseline shift and one tilt.
+            wordRise = fu(jitter(W.rise, rng(W.seed, 'rise', wordNo)()));
+            wordTilt = jitter(W.tilt, rng(W.seed, 'tilt', wordNo)());
             wordNo++;
             if (!lineEmpty && x + gap + width > box.r) { gap = 0; if (!breakLine(at)) break outer; }
             x += gap;
@@ -1122,7 +1147,10 @@ const PRESETS = { letter: { unit: 'in', w: 8.5, h: 11 }, a4: { unit: 'mm', w: 21
 const DIALS = [
     { key: 'letter', label: 'Letter spacing', min: -200, max: 400, step: 5, fmt: v => `${Math.round(v)}`, unit: ' u' },
     { key: 'word', label: 'Word spacing', min: -200, max: 800, step: 10, fmt: v => `${Math.round(v)}`, unit: ' u' },
-    { key: 'line', label: 'Line spacing', min: 0.5, max: 3, step: 0.05, fmt: v => v.toFixed(2), unit: '×' }];
+    { key: 'line', label: 'Line spacing', min: 0.5, max: 3, step: 0.05, fmt: v => v.toFixed(2), unit: '×' },
+    { key: 'indent', label: 'Line start offset', min: 0, max: 2000, step: 25, fmt: v => `${Math.round(v)}`, unit: ' u' },
+    { key: 'rise', label: 'Word height offset', min: -400, max: 400, step: 5, fmt: v => `${Math.round(v)}`, unit: ' u', box: 'wordDials' },
+    { key: 'tilt', label: 'Letter rotation', min: -45, max: 45, step: 1, fmt: v => `${Math.round(v)}`, unit: '°', box: 'wordDials' }];
 const KERN_MAX = 200;
 const activeSource = () => S.write.source === 'otf' && otfSource ? otfSource : projectSource();
 
@@ -1198,8 +1226,8 @@ function convertUnits(to) {
     W.unit = to;
 }
 function buildDials() {
-    const box = $('dials');
     for (const dl of DIALS) {
+        const box = $(dl.box || 'dials');
         const el = document.createElement('div');
         el.className = 'dial';
         const range = k => `<input type="range" min="${dl.min}" max="${dl.max}" step="${dl.step}" data-k="${k}" aria-label="${dl.label} ${k}">`;
@@ -1227,23 +1255,28 @@ function syncDial(el, dl) {
     fill.style.left = `${pct(d.min)}%`; fill.style.width = `${pct(d.max) - pct(d.min)}%`;
     el.querySelector('output').textContent = d.min === d.max ? dl.fmt(d.min) + dl.unit : `${dl.fmt(d.min)} to ${dl.fmt(d.max)}${dl.unit}`;
 }
-// One row per kerning pair: two characters, a slider in font units, and a remove button.
-function renderKern() {
-    const box = $('wKern');
-    box.innerHTML = S.write.kerning.length ? '' : '<div class="empty">No pairs yet.</div>';
-    S.write.kerning.forEach((kp, i) => {
+// One row per entry of a [chars, font units] list: a text box, a slider, and a remove button. Used by kerning pairs and character heights.
+const ADJUST_LISTS = {
+    kerning: { box: 'wKern', len: 2, label: 'Pair', hint: 'To', empty: 'No pairs yet.' },
+    charRise: { box: 'wRise', len: 1, label: 'Character', hint: 'g', empty: 'No characters yet.' }
+};
+function renderAdjust(key) {
+    const cfg = ADJUST_LISTS[key], list = S.write[key], box = $(cfg.box);
+    box.innerHTML = list.length ? '' : `<div class="empty">${cfg.empty}</div>`;
+    list.forEach((kp, i) => {
         const row = document.createElement('div');
         row.className = 'kern';
-        row.innerHTML = `<input type="text" maxlength="2" spellcheck="false" aria-label="Pair" placeholder="To">
-            <input type="range" min="${-KERN_MAX}" max="${KERN_MAX}" step="5" aria-label="Adjustment"><output></output><button title="Remove pair">×</button>`;
+        row.innerHTML = `<input type="text" maxlength="${cfg.len}" spellcheck="false" aria-label="${cfg.label}" placeholder="${cfg.hint}">
+            <input type="range" min="${-KERN_MAX}" max="${KERN_MAX}" step="5" aria-label="Adjustment"><output></output><button title="Remove">×</button>`;
         const [txt, sl] = row.querySelectorAll('input'), out = row.querySelector('output');
         txt.value = kp[0]; sl.value = kp[1]; out.textContent = kp[1];
         txt.oninput = () => { kp[0] = txt.value; writeChanged(); };
         sl.oninput = () => { kp[1] = +sl.value; out.textContent = kp[1]; writeChanged(); };
-        row.querySelector('button').onclick = () => { S.write.kerning.splice(i, 1); renderKern(); writeChanged(); };
+        row.querySelector('button').onclick = () => { list.splice(i, 1); renderAdjust(key); writeChanged(); };
         box.appendChild(row);
     });
 }
+const addAdjust = key => { S.write[key].push(['', 0]); renderAdjust(key); $(ADJUST_LISTS[key].box).lastElementChild.querySelector('input').focus(); writeChanged(); };
 function syncWriteInputs() {
     const W = S.write;
     $('wText').value = W.text; $('wPreset').value = W.preset;
@@ -1253,8 +1286,8 @@ function syncWriteInputs() {
     $('wEm').value = W.emSize; $('wPen').value = W.pen;
     $('wMut').value = W.mutation; $('wMutOut').textContent = (+W.mutation).toFixed(2);
     $('wSeed').value = W.seed;
-    renderKern();
-    for (const el of $('dials').children) syncDial(el, DIALS.find(dl => dl.key === el.dataset.key));
+    renderAdjust('kerning'); renderAdjust('charRise');
+    for (const el of document.querySelectorAll('.dial[data-key]')) syncDial(el, DIALS.find(dl => dl.key === el.dataset.key));
 }
 const numIn = (id, set) => { $(id).oninput = e => { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 0) { set(v); writeChanged(); } }; };
 numIn('wPageW', v => { if (v > 0) { S.write.pageW = v; S.write.preset = 'custom'; $('wPreset').value = 'custom'; } });
@@ -1273,7 +1306,8 @@ $('wText').oninput = e => { S.write.text = e.target.value; writeChanged(); };
 $('wMut').oninput = e => { S.write.mutation = +e.target.value; $('wMutOut').textContent = S.write.mutation.toFixed(2); writeChanged(); };
 $('wSeed').oninput = e => { const v = parseInt(e.target.value, 10); if (isFinite(v)) { S.write.seed = v; writeChanged(); } };
 $('wReroll').onclick = () => { S.write.seed = Math.floor(Math.random() * 100000); $('wSeed').value = S.write.seed; writeChanged(); };
-$('wKernAdd').onclick = () => { S.write.kerning.push(['', 0]); renderKern(); $('wKern').lastElementChild.querySelector('input').focus(); writeChanged(); };
+$('wKernAdd').onclick = () => addAdjust('kerning');
+$('wRiseAdd').onclick = () => addAdjust('charRise');
 $('srcProject').onclick = () => { S.write.source = 'project'; writeChanged(); };
 $('srcOtf').onclick = () => { if (!otfSource) { toast('Load a single-line OTF first.'); return; } S.write.source = 'otf'; writeChanged(); };
 async function useOtf(file) {
