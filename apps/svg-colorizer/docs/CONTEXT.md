@@ -34,6 +34,13 @@ An optional solid border added around every sheet so each sheet holds together a
 A piece of a sheet shape that touches neither the frame nor any other part of its sheet. Islands are kept, and the user is warned so they can glue them down.
 _Avoid_: floater, orphan
 
+**Bridge**:
+A thin strip of a sheet's own paper that the user adds to join two pieces of that sheet, usually to hold an island in place. The user places one by clicking the two pieces, and removes one by clicking it. A bridge is visible on the finished art, because the pixels it crosses belong to sheets further back. Every bridge shares the one **Bridge width**. Bridges are cleared when a new photo is loaded or the palette color count changes.
+_Avoid_: tab, connector, tie
+
+**Bridge width**:
+The width of every bridge, in the export unit.
+
 **Min piece size**:
 The smallest region allowed to survive; anything smaller is absorbed into its neighbouring palette color.
 _Avoid_: speck filter, despeckle
@@ -45,3 +52,4 @@ How much region outlines are rounded off before export, trading jagged pixel edg
 
 - Each **Palette color** maps to exactly one **Sheet**
 - **Stack order** decides each **Sheet shape**: sheets further forward have smaller shapes and more holes
+- A **Bridge** belongs to one **Sheet** and is added to its **Sheet shape**, which can turn an **Island** back into part of the main piece

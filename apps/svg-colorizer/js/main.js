@@ -2,8 +2,8 @@
 // Date: 2026-11-13
 // Wires the toolbar, preview and sheets panel to the photo-to-sheets pipeline.
 
-import { imageToLab, kmeans, labelPixels, mergeSmallPieces, modeFilter, rgbToLab } from './quantize.js';
-import { findIslands, sheetMasks } from './sheets.js';
+import { components, imageToLab, kmeans, labelPixels, mergeSmallPieces, modeFilter, rgbToLab } from './quantize.js';
+import { applyBridges, findIslands, segDist2, sheetMasks, snapToMask } from './sheets.js';
 import { maskToPath } from './trace.js';
 
 const MAX_DIM = 600;
@@ -11,23 +11,30 @@ const MM_PER_UNIT = { in: 25.4, cm: 10 };
 const STORE_KEY = 'svg-colorizer:settings';
 const MIN_WIDTH = 1; // matches the width input's min
 const MIN_FRAME = 0.05; // matches the frame width input's min
+const MIN_BRIDGE = 0.01; // matches the bridge width input's min
 const ISLAND_RGBA = [214, 51, 108, 190];
+const BRIDGE_START_RGBA = [46, 140, 140, 200];
+const HOLE_VEIL_RGBA = [43, 42, 40, 140];
 
 const ICONS = {
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/></svg>',
+  bridge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8"/></svg>',
   pipette: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7l6 6M4 20l1-4 9.5-9.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/><path d="M15 5l2-2a2.1 2.1 0 0 1 3 3l-2 2"/></svg>',
 };
 
 const $ = (id) => document.getElementById(id);
 
-const DEFAULTS = { count: 5, minPieceMm: 3, smooth: 2, frameOn: true, frameWidth: 0.5, width: 12, unit: 'in' };
+const DEFAULTS = { count: 5, minPieceMm: 3, smooth: 2, frameOn: true, frameWidth: 0.5, bridgeWidth: 0.08, width: 12, unit: 'in' };
 const settings = sanitizeSettings(loadSettings());
 let photo = null; // { name, w, h, rgba, lab }
 let palette = []; // RGB triples
 let order = []; // palette indices, back to front
 let labels = null;
-let sheets = []; // { color, mask, islandMask, islands, d, empty }, back to front
+let sheets = []; // { color, mask, islandMask, islands, d, empty, bridgeSegs }, back to front
+let bridges = []; // { color, ax, ay, bx, by }: two clicked points in photo pixels
+let bridging = -1; // palette index whose sheet is in bridge mode
+let bridgeStart = null; // { x, y } first click of a bridge in progress
 const hidden = new Set(); // palette indices hidden in the preview
 let highlight = -1; // palette index whose islands are drawn
 let picking = -1; // palette index waiting for an eyedropper click
@@ -48,11 +55,12 @@ function sanitizeSettings(saved) {
   const s = { ...DEFAULTS };
   const inRange = (v, min, max) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
   if (Object.hasOwn(MM_PER_UNIT, saved.unit)) s.unit = saved.unit;
-  if (Number.isInteger(saved.count) && inRange(saved.count, 2, 10)) s.count = saved.count;
+  if (Number.isInteger(saved.count) && inRange(saved.count, 2, 20)) s.count = saved.count;
   if (inRange(saved.minPieceMm, 0, 12)) s.minPieceMm = saved.minPieceMm;
   if (Number.isInteger(saved.smooth) && inRange(saved.smooth, 0, 8)) s.smooth = saved.smooth;
   if (typeof saved.frameOn === 'boolean') s.frameOn = saved.frameOn;
   if (inRange(saved.frameWidth, MIN_FRAME, 1000)) s.frameWidth = saved.frameWidth;
+  if (inRange(saved.bridgeWidth, MIN_BRIDGE, 1000)) s.bridgeWidth = saved.bridgeWidth;
   if (inRange(saved.width, MIN_WIDTH, 10000)) s.width = saved.width;
   return s;
 }
@@ -113,6 +121,10 @@ function quantize() {
   palette = kmeans(photo.lab, photo.rgba, settings.count);
   hidden.clear();
   highlight = -1;
+  bridges = [];
+  bridging = -1;
+  bridgeStart = null;
+  $('stage').classList.remove('bridging');
   if (picking >= 0) {
     // The color being picked may no longer exist in the new palette.
     picking = -1;
@@ -146,7 +158,10 @@ function buildSheets() {
     : 0;
   const used = new Int32Array(palette.length);
   for (let p = 0; p < labels.length; p++) used[labels[p]]++;
+  const bridgePx = settings.bridgeWidth * MM_PER_UNIT[settings.unit] * pxPerMm();
   sheets = sheetMasks(labels, w, h, order, framePx).map((mask, i) => {
+    // The back sheet is uncut, so it never needs bridges.
+    const bridgeSegs = i === 0 ? [] : applyBridges(mask, w, h, bridges.filter((b) => b.color === order[i]), bridgePx);
     const isl = i === 0 ? { islandMask: null, count: 0 } : findIslands(mask, w, h, framePx);
     return {
       color: order[i],
@@ -156,8 +171,15 @@ function buildSheets() {
       d: maskToPath(mask, w, h, settings.smooth),
       // Empty: no pixel of this sheet's own color survived cleanup, so its shape would duplicate the next sheet.
       empty: used[order[i]] === 0,
+      bridgeSegs,
     };
   });
+  if (bridging >= 0 && sheets[0].color === bridging) {
+    // Reordered to the back, which is uncut and takes no bridges.
+    bridging = -1;
+    bridgeStart = null;
+    $('stage').classList.remove('bridging');
+  }
   render();
 }
 
@@ -207,21 +229,88 @@ function render() {
   updateReadouts();
 }
 
-/** Paints the highlighted sheet's islands over the preview. @created Claude (claude-opus-5-5) 2026-11-13 */
+/**
+ * Paints the highlighted sheet's islands over the preview. In bridge mode it paints the bridged sheet
+ * instead: holes veiled, islands marked, and the piece picked by the first click tinted.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
 function renderIslands() {
   const canvas = $('islands-view');
-  const sheet = sheets.find((s) => s.color === highlight);
-  canvas.hidden = view !== 'sheets' || !sheet || !sheet.islands;
+  const sheet = sheets.find((s) => s.color === (bridging >= 0 ? bridging : highlight));
+  canvas.hidden = view !== 'sheets' || !sheet || (bridging < 0 && !sheet.islands);
   if (canvas.hidden) return;
   const { w, h } = photo;
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(w, h);
-  for (let p = 0; p < sheet.islandMask.length; p++) {
-    if (sheet.islandMask[p]) img.data.set(ISLAND_RGBA, p * 4);
+  let startComp = null;
+  if (bridging >= 0 && bridgeStart) {
+    const p = snapToMask(sheet.mask, w, h, bridgeStart.x, bridgeStart.y);
+    if (p >= 0) {
+      const { comp } = components(sheet.mask, w, h);
+      startComp = { comp, id: comp[p] };
+    }
+  }
+  for (let p = 0; p < sheet.mask.length; p++) {
+    if (startComp && startComp.comp[p] === startComp.id) img.data.set(BRIDGE_START_RGBA, p * 4);
+    else if (sheet.islandMask?.[p]) img.data.set(ISLAND_RGBA, p * 4);
+    else if (bridging >= 0 && !sheet.mask[p]) img.data.set(HOLE_VEIL_RGBA, p * 4);
   }
   ctx.putImageData(img, 0, 0);
+}
+
+/** Enters bridge mode for a sheet's palette color, or leaves it with -1. @created Claude (claude-opus-5-5) 2026-11-13 */
+function setBridging(color) {
+  bridging = color;
+  bridgeStart = null;
+  $('stage').classList.toggle('bridging', bridging >= 0);
+  renderIslands();
+  renderLayers();
+  renderStatus();
+}
+
+/**
+ * Handles a preview click in bridge mode: removes a clicked bridge, or records the first piece, or joins
+ * it to the second.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+function bridgeClick(e) {
+  if (bridging < 0) return;
+  const sheet = sheets.find((s) => s.color === bridging);
+  if (!sheet) return;
+  const { w, h } = photo;
+  const rect = $('stage').getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * w;
+  const y = ((e.clientY - rect.top) / rect.height) * h;
+  const own = bridges.filter((b) => b.color === bridging);
+  const reach = Math.max(0.75, (settings.bridgeWidth * MM_PER_UNIT[settings.unit] * pxPerMm()) / 2) + 2;
+  const hit = sheet.bridgeSegs.findIndex((seg) => seg && segDist2(x, y, seg) <= reach * reach);
+  if (hit >= 0) {
+    bridges.splice(bridges.indexOf(own[hit]), 1);
+    bridgeStart = null;
+    buildSheets();
+    return;
+  }
+  const p = snapToMask(sheet.mask, w, h, x, y);
+  if (p < 0) {
+    setStatus('Click on a piece of this sheet. Veiled areas are holes.', true);
+    return;
+  }
+  if (!bridgeStart) {
+    bridgeStart = { x, y };
+    renderIslands();
+    setStatus('Now click the piece to join it to.');
+    return;
+  }
+  const { comp } = components(sheet.mask, w, h);
+  if (comp[snapToMask(sheet.mask, w, h, bridgeStart.x, bridgeStart.y)] === comp[p]) {
+    setStatus('That is the same piece. Click a different one.', true);
+    return;
+  }
+  bridges.push({ color: bridging, ax: bridgeStart.x, ay: bridgeStart.y, bx: x, by: y });
+  bridgeStart = null;
+  buildSheets();
 }
 
 /** Rebuilds the sheets panel, front sheet first. @created Claude (claude-opus-5-5) 2026-11-13 */
@@ -235,6 +324,10 @@ function renderLayers() {
     li.className = `layer${off ? ' layer--hidden' : ''}`;
     li.draggable = true;
     li.dataset.index = String(i);
+    const bridgeCount = bridges.filter((b) => b.color === s.color).length;
+    const bridgeInfo = bridgeCount
+      ? ` · ${bridgeCount} bridge${bridgeCount > 1 ? 's' : ''} <button class="link" type="button" data-action="clear-bridges" aria-label="Clear bridges on sheet ${i + 1}">Clear</button>`
+      : '';
     const islandBadge = s.islands
       ? `<button class="badge" type="button" data-action="islands" aria-pressed="${highlight === s.color}" title="Show islands on the preview">${s.islands} island${s.islands > 1 ? 's' : ''}</button>`
       : '';
@@ -243,9 +336,10 @@ function renderLayers() {
       <label class="swatch" style="background:${hex}" title="Change color"><input type="color" value="${hex}" data-action="color" aria-label="Color of sheet ${i + 1}"></label>
       <span class="layer__text">
         <span class="layer__name">Sheet ${i + 1}${i === 0 ? ' (back)' : ''}</span>
-        <span class="layer__meta">${hex.toUpperCase()}${s.empty ? ' · empty' : ''}</span>
+        <span class="layer__meta">${hex.toUpperCase()}${s.empty ? ' · empty' : ''}${bridgeInfo}</span>
+        ${islandBadge}
       </span>
-      ${islandBadge}
+      <button class="icon" type="button" data-action="bridge" aria-pressed="${bridging === s.color}" aria-label="Bridge pieces on sheet ${i + 1}" title="${i === 0 ? 'The back sheet is uncut and needs no bridges' : 'Bridge pieces: click two pieces on the preview'}" ${i === 0 ? 'disabled' : ''}>${ICONS.bridge}</button>
       <button class="icon" type="button" data-action="pick" aria-label="Pick color for sheet ${i + 1} from the photo" title="Pick color from photo">${ICONS.pipette}</button>
       <span class="layer__move">
         <button class="icon" type="button" data-action="forward" aria-label="Move sheet ${i + 1} forward" ${i === sheets.length - 1 ? 'disabled' : ''}>&#9650;</button>
@@ -260,6 +354,13 @@ function renderLayers() {
 function renderStatus() {
   if (picking >= 0) {
     setStatus('Click the photo to pick this sheet\'s color.');
+    return;
+  }
+  if (bridging >= 0) {
+    const n = sheets.findIndex((s) => s.color === bridging) + 1;
+    setStatus(bridgeStart
+      ? 'Now click the piece to join it to.'
+      : `Bridging sheet ${n}: click two pieces to join them, or click a bridge to remove it. Press Esc when done.`);
     return;
   }
   const total = sheets.reduce((sum, s) => sum + s.islands, 0);
@@ -283,7 +384,7 @@ function updateReadouts() {
   $('count-out').textContent = settings.count;
   $('min-out').textContent = `${round(settings.minPieceMm / MM_PER_UNIT[unit])} ${unit}`;
   $('smooth-out').textContent = settings.smooth;
-  document.querySelector('.unit-label').textContent = unit;
+  document.querySelectorAll('.unit-label').forEach((el) => { el.textContent = unit; });
   $('height-out').textContent = photo ? `× ${round((settings.width * photo.h) / photo.w)} ${unit}` : '';
 }
 
@@ -354,6 +455,7 @@ function bind() {
   $('smooth').value = settings.smooth;
   $('frame-on').checked = settings.frameOn;
   $('frame-width').value = settings.frameWidth;
+  $('bridge-width').value = settings.bridgeWidth;
   $('width').value = settings.width;
   $('unit').value = settings.unit;
   updateReadouts();
@@ -370,6 +472,10 @@ function bind() {
     const v = Number(e.target.value);
     if (v >= MIN_FRAME) { settings.frameWidth = v; schedule(1); }
   });
+  $('bridge-width').addEventListener('input', (e) => {
+    const v = Number(e.target.value);
+    if (v >= MIN_BRIDGE) { settings.bridgeWidth = v; schedule(1); }
+  });
   $('width').addEventListener('input', (e) => {
     const v = Number(e.target.value);
     if (v >= MIN_WIDTH) { settings.width = v; schedule(2); }
@@ -379,15 +485,24 @@ function bind() {
     settings.unit = e.target.value;
     settings.width = round(settings.width * factor);
     settings.frameWidth = round(settings.frameWidth * factor);
+    settings.bridgeWidth = Math.max(MIN_BRIDGE, round(settings.bridgeWidth * factor, 3));
     $('width').value = settings.width;
     $('frame-width').value = settings.frameWidth;
+    $('bridge-width').value = settings.bridgeWidth;
     saveSettings();
     if (photo) render();
     else updateReadouts();
   });
   $('export').addEventListener('click', exportSvg);
   $('view-sheets').addEventListener('click', () => { picking = -1; setView('sheets'); if (photo) renderStatus(); });
-  $('view-photo').addEventListener('click', () => setView('photo'));
+  $('view-photo').addEventListener('click', () => {
+    if (bridging >= 0) setBridging(-1);
+    setView('photo');
+  });
+  $('sheets-view').addEventListener('click', bridgeClick);
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && bridging >= 0) setBridging(-1);
+  });
 
   $('photo-view').addEventListener('click', (e) => {
     if (picking < 0 || picking >= palette.length) return;
@@ -427,7 +542,16 @@ function bind() {
         renderIslands();
         renderLayers();
         break;
+      case 'bridge':
+        setBridging(bridging === c ? -1 : c);
+        break;
+      case 'clear-bridges':
+        bridges = bridges.filter((b) => b.color !== c);
+        bridgeStart = null;
+        buildSheets();
+        break;
       case 'pick':
+        if (bridging >= 0) setBridging(-1);
         picking = c;
         setView('photo');
         renderStatus();

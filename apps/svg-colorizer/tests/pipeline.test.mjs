@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { components, mergeSmallPieces, modeFilter } from '../js/quantize.js';
-import { sheetMasks, findIslands } from '../js/sheets.js';
+import { applyBridges, sheetMasks, findIslands } from '../js/sheets.js';
 import { traceMask, maskToPath } from '../js/trace.js';
 
 const grid = (rows) => Uint8Array.from(rows.join('').split('').map(Number));
@@ -72,4 +72,21 @@ test('maskToPath emits closed subpaths', () => {
   const d = maskToPath(grid(['111', '101', '111']), 3, 3, 2);
   assert.equal((d.match(/Z/g) || []).length, 2);
   assert.ok(d.startsWith('M'));
+});
+
+test('a bridge joins two pieces into one', () => {
+  const mask = grid(['11000', '11000', '00000', '00011', '00011']);
+  const segs = applyBridges(mask, 5, 5, [{ ax: 0.5, ay: 0.5, bx: 4.5, by: 4.5 }], 1);
+  assert.ok(segs[0]);
+  const { comp } = components(mask, 5, 5);
+  assert.equal(comp[0], comp[24]);
+});
+
+test('a bridge within one piece or off the sheet is skipped', () => {
+  const mask = grid(['11100', '00000', '00000']);
+  const before = mask.slice();
+  const segs = applyBridges(mask, 5, 3, [{ ax: 0.5, ay: 0.5, bx: 2.5, by: 0.5 }], 1);
+  assert.equal(segs[0], null);
+  assert.deepEqual(mask, before);
+  assert.equal(applyBridges(new Uint8Array(400), 20, 20, [{ ax: 1, ay: 1, bx: 18, by: 18 }], 1)[0], null);
 });
