@@ -433,3 +433,10 @@ document.addEventListener("keydown", (e) => {
     spin();
   }
 });
+
+// The sticky controls bar acts as the window's bottom edge, so the shared logo rests on top of it.
+// Added by Claude (claude-opus-5-5) 2026-11-13
+const controls = document.querySelector(".controls");
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty("--logo-floor", `${controls.offsetHeight}px`);
+}).observe(controls);
