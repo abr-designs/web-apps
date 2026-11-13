@@ -63,17 +63,31 @@ function nearest(lab, i, centers, k) {
   return best;
 }
 
+const FOCUS_SHARE = 0.3; // focus pixels count for at least this share of the photo when the palette is chosen
+
 /**
  * Picks k palette colors with k-means++ in Lab space on a pixel sample.
  * Returns RGB triples, each the mean RGB of the sampled pixels in that cluster.
+ * Pixels set in the optional focus mask are added to the sample with extra weight, so small focus areas
+ * still pull palette colors toward them.
  * @created Claude (claude-opus-5-5) 2026-11-13
  */
-export function kmeans(lab, rgba, k, seed = 1) {
+export function kmeans(lab, rgba, k, seed = 1, focus = null) {
   const n = lab.length / 3;
   const rand = mulberry32(seed);
-  const m = Math.min(n, 20000);
+  const base = Math.min(n, 20000);
+  const focused = [];
+  if (focus) for (let p = 0; p < n; p++) if (focus[p]) focused.push(p);
+  const extra = Math.min(focused.length, 20000);
+  const m = base + extra;
   const sample = new Int32Array(m);
-  for (let i = 0; i < m; i++) sample[i] = m === n ? i : Math.floor(rand() * n);
+  const wt = new Float32Array(m).fill(1);
+  for (let i = 0; i < base; i++) sample[i] = base === n ? i : Math.floor(rand() * n);
+  const focusWeight = extra ? Math.max(1, (FOCUS_SHARE * base) / extra) : 1;
+  for (let i = 0; i < extra; i++) {
+    sample[base + i] = extra === focused.length ? focused[i] : focused[Math.floor(rand() * focused.length)];
+    wt[base + i] = focusWeight;
+  }
 
   const centers = new Float32Array(k * 3);
   const setCenter = (c, px) => centers.set(lab.subarray(px * 3, px * 3 + 3), c * 3);
@@ -82,7 +96,7 @@ export function kmeans(lab, rgba, k, seed = 1) {
   for (let c = 1; c < k; c++) {
     let total = 0;
     for (let s = 0; s < m; s++) {
-      d2[s] = Math.min(d2[s], dist2(lab, sample[s], centers, c - 1));
+      d2[s] = Math.min(d2[s], wt[s] * dist2(lab, sample[s], centers, c - 1));
       total += d2[s];
     }
     let r = rand() * total;
@@ -99,7 +113,7 @@ export function kmeans(lab, rgba, k, seed = 1) {
 
   const assign = new Uint8Array(m);
   const sums = new Float64Array(k * 3);
-  const counts = new Int32Array(k);
+  const counts = new Float64Array(k);
   for (let iter = 0; iter < 25; iter++) {
     let changed = iter === 0;
     for (let s = 0; s < m; s++) {
@@ -112,8 +126,8 @@ export function kmeans(lab, rgba, k, seed = 1) {
     counts.fill(0);
     for (let s = 0; s < m; s++) {
       const c = assign[s];
-      counts[c]++;
-      for (let j = 0; j < 3; j++) sums[c * 3 + j] += lab[sample[s] * 3 + j];
+      counts[c] += wt[s];
+      for (let j = 0; j < 3; j++) sums[c * 3 + j] += wt[s] * lab[sample[s] * 3 + j];
     }
     for (let c = 0; c < k; c++) {
       if (counts[c] > 0) {
@@ -138,8 +152,8 @@ export function kmeans(lab, rgba, k, seed = 1) {
   counts.fill(0);
   for (let s = 0; s < m; s++) {
     const c = nearest(lab, sample[s], centers, k);
-    counts[c]++;
-    for (let j = 0; j < 3; j++) rgb[c * 3 + j] += rgba[sample[s] * 4 + j];
+    counts[c] += wt[s];
+    for (let j = 0; j < 3; j++) rgb[c * 3 + j] += wt[s] * rgba[sample[s] * 4 + j];
   }
   // Clusters left empty (more colors asked for than the photo has) are dropped instead of becoming black.
   const palette = [];
@@ -161,10 +175,11 @@ export function labelPixels(lab, paletteLab) {
 
 /**
  * Majority filter: each pixel takes the most common label in its (2r+1)^2 window, keeping its own on ties.
+ * Pixels set in the optional keep mask always keep their own label.
  * Uses one integral image per label, so cost does not grow with the radius.
  * @created Claude (claude-opus-5-5) 2026-11-13
  */
-export function modeFilter(labels, w, h, k, radius) {
+export function modeFilter(labels, w, h, k, radius, keep = null) {
   if (radius <= 0) return labels;
   const W1 = w + 1;
   const size = W1 * (h + 1);
@@ -187,6 +202,10 @@ export function modeFilter(labels, w, h, k, radius) {
       const x0 = Math.max(0, x - radius);
       const x1 = Math.min(w, x + radius + 1);
       const own = labels[y * w + x];
+      if (keep?.[y * w + x]) {
+        out[y * w + x] = own;
+        continue;
+      }
       let best = own;
       let bestCount = -1;
       for (let c = 0; c < k; c++) {
@@ -240,16 +259,19 @@ export function components(values, w, h) {
 /**
  * Absorbs every region smaller than minArea pixels into the neighbouring region it shares the most edge with.
  * Smallest regions go first. Merges are tracked with live sizes (union-find), so a region that has already
- * grown past minArea by absorbing others is kept. Mutates and returns labels.
+ * grown past minArea by absorbing others is kept. A region with any pixel in the optional focus mask only
+ * needs focusArea pixels. Mutates and returns labels.
  * @created Claude (claude-opus-5-5) 2026-11-13
  */
-export function mergeSmallPieces(labels, w, h, minArea) {
+export function mergeSmallPieces(labels, w, h, minArea, focus = null, focusArea = minArea) {
   if (minArea <= 1) return labels;
   const n = w * h;
   for (let pass = 0; pass < 2; pass++) {
     const { comp, sizes, first, count } = components(labels, w, h);
+    const need = new Float64Array(count).fill(minArea);
+    if (focus) for (let p = 0; p < n; p++) if (focus[p]) need[comp[p]] = focusArea;
     const small = [];
-    for (let c = 0; c < count; c++) if (sizes[c] < minArea) small.push(c);
+    for (let c = 0; c < count; c++) if (sizes[c] < need[c]) small.push(c);
     if (!small.length) break;
 
     // Pixel lists per region via counting sort.
@@ -272,7 +294,7 @@ export function mergeSmallPieces(labels, w, h, minArea) {
     small.sort((a, b) => sizes[a] - sizes[b]);
     const votes = new Map();
     for (const c of small) {
-      if (live[c] >= minArea) continue;
+      if (live[c] >= need[c]) continue;
       votes.clear();
       for (let i = start[c]; i < start[c + 1]; i++) {
         const p = pixels[i];

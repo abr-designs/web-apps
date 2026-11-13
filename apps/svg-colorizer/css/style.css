@@ -26,7 +26,7 @@ body {
   margin: 0;
   height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   grid-template-rows: auto minmax(0, 1fr);
   background: var(--bg);
 }
@@ -111,6 +111,10 @@ body.dragging .empty, body.dragging .stage { outline: 3px solid var(--accent); o
 .stage__islands { pointer-events: none; image-rendering: pixelated; }
 .stage.picking #photo-view { cursor: crosshair; }
 .stage.bridging #sheets-view { cursor: crosshair; }
+.stage.painting { cursor: none; touch-action: none; }
+.brush-cursor { position: absolute; pointer-events: none; border: 1.5px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(43, 42, 40, 0.8); }
+.brush-ctl input { width: 110px; }
+.brush-ctl:has(:disabled) { opacity: 0.45; }
 
 /* Layers panel */
 .layers {
@@ -121,20 +125,26 @@ body.dragging .empty, body.dragging .stage { outline: 3px solid var(--accent); o
   padding: 14px 12px 150px;
   overflow-y: auto;
 }
-.layers__title { margin: 0 4px 10px; font-size: 15px; font-weight: 600; }
+.layers__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 4px 10px; }
+.layers__title { margin: 0; font-size: 15px; font-weight: 600; }
+.btn--small { font-size: 13px; padding: 5px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+.btn--small:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: default; }
 .layers__title .muted { font-weight: 400; }
 .layers__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .layer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg);
-  cursor: grab;
 }
-.layer.drop-target { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.layers__list.sorting .layer { transition: transform 150ms ease; }
+.layers__list.sorting .layer.dragging { transition: none; position: relative; z-index: 1; box-shadow: 0 6px 16px rgba(43, 42, 40, 0.25); border-color: var(--accent); }
+.handle { cursor: grab; touch-action: none; }
+.layers__list.sorting, .layers__list.sorting .handle { cursor: grabbing; }
 .layer--hidden .swatch, .layer--hidden .layer__text { opacity: 0.45; }
 .swatch {
   position: relative;
@@ -146,10 +156,9 @@ body.dragging .empty, body.dragging .stage { outline: 3px solid var(--accent); o
   cursor: pointer;
 }
 .swatch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
-.layer__text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.layer__text { display: flex; flex-direction: column; min-width: 0; flex: 1; margin: 0 4px; }
 .layer__name { font-size: 14px; font-weight: 600; white-space: nowrap; }
 .layer__meta { font-size: 12px; color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
-.layer__move { display: flex; flex-direction: column; }
 .icon {
   display: inline-flex;
   align-items: center;
@@ -163,11 +172,10 @@ body.dragging .empty, body.dragging .stage { outline: 3px solid var(--accent); o
   color: var(--muted);
   cursor: pointer;
 }
-.layer__move .icon { height: 16px; font-size: 10px; }
 .icon:hover:not(:disabled) { background: var(--border); color: var(--text); }
 .icon:disabled { opacity: 0.3; cursor: default; }
 .icon svg { width: 18px; height: 18px; }
-.icon[data-action="bridge"][aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.icon[data-action="bridge"][aria-pressed="true"], .icon[data-action="erase"][aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .link {
   font: inherit;
   padding: 0;
@@ -189,7 +197,7 @@ body.dragging .empty, body.dragging .stage { outline: 3px solid var(--accent); o
   cursor: pointer;
   white-space: nowrap;
 }
-.layer__text .badge { align-self: flex-start; margin-top: 3px; }
+.layer__islands { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-top: 3px; font-size: 12px; white-space: nowrap; }
 .badge[aria-pressed="true"] { border-color: var(--warn-ink); }
 
 @media (max-width: 800px) {

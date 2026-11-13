@@ -56,6 +56,15 @@
         <button id="view-sheets" type="button" aria-pressed="true">Sheets</button>
         <button id="view-photo" type="button" aria-pressed="false">Photo</button>
       </div>
+      <div class="seg">
+        <button id="focus" type="button" aria-pressed="false" title="Paint areas whose detail must survive, like an eye">Focus</button>
+      </div>
+      <button id="focus-clear" class="link" type="button" hidden>Clear focus</button>
+      <label class="ctl ctl--row brush-ctl">
+        <span>Brush</span>
+        <input id="brush" type="range" min="2" max="40" step="1" disabled>
+        <output id="brush-out" class="muted"></output>
+      </label>
       <p id="status" class="status" role="status"></p>
     </div>
     <div id="area" class="preview__area">
@@ -67,12 +76,17 @@
         <div id="sheets-view" class="stage__layer"></div>
         <canvas id="photo-view" class="stage__layer" hidden></canvas>
         <canvas id="islands-view" class="stage__layer stage__islands"></canvas>
+        <canvas id="paint-view" class="stage__layer stage__islands" hidden></canvas>
+        <div id="brush-cursor" class="brush-cursor" hidden></div>
       </div>
     </div>
   </main>
 
   <aside class="layers">
-    <h2 class="layers__title">Sheets <span class="muted">front to back</span></h2>
+    <div class="layers__head">
+      <h2 class="layers__title">Sheets <span class="muted">front to back</span></h2>
+      <button id="add-color" class="btn btn--small" type="button" disabled title="Pick a new sheet color from the photo">+ Add color</button>
+    </div>
     <ol id="layers" class="layers__list"></ol>
   </aside>
 

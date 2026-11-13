@@ -116,29 +116,97 @@ export function applyBridges(mask, w, h, bridges, widthPx) {
 }
 
 /**
+ * Calls fn(p) for every pixel whose center lies within r of the polyline pts [x0, y0, x1, y1, ...].
+ * A single point stamps a disc.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+export function strokePixels(w, h, pts, r, fn) {
+  const r2 = r * r;
+  for (let i = 0; i < pts.length; i += 2) {
+    const seg = [pts[Math.max(0, i - 2)], pts[Math.max(1, i - 1)], pts[i], pts[i + 1]];
+    const x0 = Math.max(0, Math.floor(Math.min(seg[0], seg[2]) - r));
+    const x1 = Math.min(w - 1, Math.ceil(Math.max(seg[0], seg[2]) + r));
+    const y0 = Math.max(0, Math.floor(Math.min(seg[1], seg[3]) - r));
+    const y1 = Math.min(h - 1, Math.ceil(Math.max(seg[1], seg[3]) + r));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (segDist2(x + 0.5, y + 0.5, seg) <= r2) fn(y * w + x);
+      }
+    }
+  }
+}
+
+/**
+ * Applies brush strokes to a sheet mask in place, in order. A stroke {pts, r} cuts paper away; one with
+ * restore set puts back the paper the sheet had before any stroke.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+export function applyCuts(mask, w, h, cuts) {
+  if (!cuts.length) return;
+  const before = mask.slice();
+  for (const c of cuts) {
+    strokePixels(w, h, c.pts, c.r, c.restore ? (p) => { mask[p] = before[p]; } : (p) => { mask[p] = 0; });
+  }
+}
+
+/**
+ * Index of a sheet's main piece: with a frame, the largest piece touching the sheet's edge, since erasing
+ * can cut the frame anywhere; otherwise, or when nothing touches the edge, the largest piece.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+function mainPiece(mask, w, h, { comp, sizes, first, count }, framePx) {
+  let main = -1;
+  const consider = (p) => {
+    if (mask[p] && (main < 0 || sizes[comp[p]] > sizes[main])) main = comp[p];
+  };
+  if (framePx > 0) {
+    for (let x = 0; x < w; x++) {
+      consider(x);
+      consider((h - 1) * w + x);
+    }
+    for (let y = 0; y < h; y++) {
+      consider(y * w);
+      consider(y * w + w - 1);
+    }
+    if (main >= 0) return main;
+  }
+  for (let c = 0; c < count; c++) consider(first[c]);
+  return main;
+}
+
+/**
+ * Removes the islands under the given pixel indices from a sheet mask in place. A pixel that is a hole or
+ * part of the main piece is skipped. Returns how many islands were removed.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+export function eraseIslands(mask, w, h, pixels, framePx) {
+  if (!pixels.length) return 0;
+  const cc = components(mask, w, h);
+  const main = mainPiece(mask, w, h, cc, framePx);
+  const gone = new Set();
+  for (const p of pixels) if (mask[p] === 1 && cc.comp[p] !== main) gone.add(cc.comp[p]);
+  if (gone.size) for (let p = 0; p < mask.length; p++) if (gone.has(cc.comp[p])) mask[p] = 0;
+  return gone.size;
+}
+
+/**
  * Finds islands: pieces of a sheet that are not part of its main piece (the frame when framePx > 0,
- * otherwise the largest piece). Returns a 0/1 island mask and the island count.
+ * otherwise the largest piece). Returns a 0/1 island mask, the island count, and one pixel per island.
  * @created Claude (claude-opus-5-5) 2026-11-13
  */
 export function findIslands(mask, w, h, framePx) {
-  const { comp, sizes, first, count } = components(mask, w, h);
-  let main = -1;
-  if (framePx > 0) {
-    main = comp[0];
-  } else {
-    for (let c = 0; c < count; c++) {
-      if (mask[first[c]] === 1 && (main < 0 || sizes[c] > sizes[main])) main = c;
-    }
-  }
+  const cc = components(mask, w, h);
+  const { comp, first, count } = cc;
+  const main = mainPiece(mask, w, h, cc, framePx);
   const isIsland = new Uint8Array(count);
-  let islands = 0;
+  const seeds = [];
   for (let c = 0; c < count; c++) {
     if (mask[first[c]] === 1 && c !== main) {
       isIsland[c] = 1;
-      islands++;
+      seeds.push(first[c]);
     }
   }
   const islandMask = new Uint8Array(w * h);
-  if (islands) for (let p = 0; p < islandMask.length; p++) islandMask[p] = isIsland[comp[p]];
-  return { islandMask, count: islands };
+  if (seeds.length) for (let p = 0; p < islandMask.length; p++) islandMask[p] = isIsland[comp[p]];
+  return { islandMask, count: seeds.length, seeds };
 }

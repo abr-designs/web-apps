@@ -3,7 +3,7 @@
 // Wires the toolbar, preview and sheets panel to the photo-to-sheets pipeline.
 
 import { components, imageToLab, kmeans, labelPixels, mergeSmallPieces, modeFilter, rgbToLab } from './quantize.js';
-import { applyBridges, findIslands, segDist2, sheetMasks, snapToMask } from './sheets.js';
+import { applyBridges, applyCuts, eraseIslands, findIslands, segDist2, sheetMasks, snapToMask, strokePixels } from './sheets.js';
 import { maskToPath } from './trace.js';
 
 const MAX_DIM = 600;
@@ -12,32 +12,48 @@ const STORE_KEY = 'svg-colorizer:settings';
 const MIN_WIDTH = 1; // matches the width input's min
 const MIN_FRAME = 0.05; // matches the frame width input's min
 const MIN_BRIDGE = 0.01; // matches the bridge width input's min
+const MAX_COLORS = 20; // automatic plus added colors
+const PICK_NEW = -2; // `picking` value while the eyedropper chooses an added color
+const DRAG_PX = 4; // pointer travel that turns a click into a brush stroke
 const ISLAND_RGBA = [214, 51, 108, 190];
 const BRIDGE_START_RGBA = [46, 140, 140, 200];
 const HOLE_VEIL_RGBA = [43, 42, 40, 140];
+const FOCUS_RGBA = [232, 179, 58, 150];
+const STROKE_STYLE = { cut: 'rgba(43, 42, 40, 0.55)', restore: 'rgba(46, 140, 140, 0.55)', focus: 'rgba(232, 179, 58, 0.6)' };
 
 const ICONS = {
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/></svg>',
   bridge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8"/></svg>',
+  eraser: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H9l-5-5a2 2 0 0 1 0-2.8L12.2 4a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L11 20"/><path d="M8 9l7 7"/></svg>',
+  remove: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  handle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>',
   pipette: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7l6 6M4 20l1-4 9.5-9.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/><path d="M15 5l2-2a2.1 2.1 0 0 1 3 3l-2 2"/></svg>',
 };
 
 const $ = (id) => document.getElementById(id);
 
-const DEFAULTS = { count: 5, minPieceMm: 3, smooth: 2, frameOn: true, frameWidth: 0.5, bridgeWidth: 0.08, width: 12, unit: 'in' };
+const DEFAULTS = { count: 5, minPieceMm: 3, smooth: 2, frameOn: true, frameWidth: 0.5, bridgeWidth: 0.08, brush: 12, width: 12, unit: 'in' };
 const settings = sanitizeSettings(loadSettings());
 let photo = null; // { name, w, h, rgba, lab }
 let palette = []; // RGB triples
+let autoCount = 0; // palette[0, autoCount) were chosen automatically; the rest were added by eyedropper
 let order = []; // palette indices, back to front
 let labels = null;
 let sheets = []; // { color, mask, islandMask, islands, d, empty, bridgeSegs }, back to front
 let bridges = []; // { color, ax, ay, bx, by }: two clicked points in photo pixels
 let bridging = -1; // palette index whose sheet is in bridge mode
 let bridgeStart = null; // { x, y } first click of a bridge in progress
+let cuts = []; // { color, r, pts, restore }: brush strokes in photo pixels
+let erased = []; // { color, p }: one pixel index on each erased island
+let erasing = -1; // palette index whose sheet is in erase mode
+let focus = null; // Uint8Array, 1 on photo pixels inside a focus area
+let focusing = false;
+let focusDirty = false; // the focus area changed since the automatic colors were last picked
+let stroke = null; // brush stroke in progress: { pts, restore, moved, sx, sy, base }
 const hidden = new Set(); // palette indices hidden in the preview
 let highlight = -1; // palette index whose islands are drawn
-let picking = -1; // palette index waiting for an eyedropper click
+let picking = -1; // palette index waiting for an eyedropper click, or PICK_NEW
 let view = 'sheets';
 let loadId = 0; // bumps per photo load so an older, slower decode is discarded
 
@@ -62,6 +78,7 @@ function sanitizeSettings(saved) {
   if (inRange(saved.frameWidth, MIN_FRAME, 1000)) s.frameWidth = saved.frameWidth;
   if (inRange(saved.bridgeWidth, MIN_BRIDGE, 1000)) s.bridgeWidth = saved.bridgeWidth;
   if (inRange(saved.width, MIN_WIDTH, 10000)) s.width = saved.width;
+  if (Number.isInteger(saved.brush) && inRange(saved.brush, 2, 40)) s.brush = saved.brush;
   return s;
 }
 
@@ -111,21 +128,37 @@ async function loadPhoto(file) {
   $('empty').hidden = true;
   $('stage').hidden = false;
   picking = -1;
+  palette = [];
+  autoCount = 0;
+  focus = null;
+  focusDirty = false;
+  sheets = [];
+  highlight = -1;
+  setMode(null);
   setView('sheets');
   fitStage();
   quantize();
 }
 
-/** Picks a fresh palette and stacks sheets by area, largest at the back. @created Claude (claude-opus-5-5) 2026-11-13 */
+/**
+ * Picks fresh automatic colors, keeps added ones, and stacks sheets by area, largest at the back.
+ * Sheet edits are keyed by palette color, so they reset here.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
 function quantize() {
-  palette = kmeans(photo.lab, photo.rgba, settings.count);
+  const added = palette.slice(autoCount);
+  const auto = kmeans(photo.lab, photo.rgba, settings.count, 1, focus);
+  autoCount = auto.length;
+  palette = auto.concat(added);
   hidden.clear();
   highlight = -1;
   bridges = [];
-  bridging = -1;
-  bridgeStart = null;
-  $('stage').classList.remove('bridging');
-  if (picking >= 0) {
+  cuts = [];
+  erased = [];
+  sheets = [];
+  focusDirty = false;
+  setMode(focusing ? 'focus' : null);
+  if (picking !== -1) {
     // The color being picked may no longer exist in the new palette.
     picking = -1;
     setView('sheets');
@@ -139,10 +172,14 @@ function quantize() {
 /** Re-labels pixels to the current palette, then smooths and merges small pieces. @created Claude (claude-opus-5-5) 2026-11-13 */
 function cleanup() {
   const { w, h, lab } = photo;
+  // An erased island is remembered by one pixel, which may sit in another piece once pixels are re-labelled.
+  erased = [];
   labels = labelPixels(lab, palette.map((c) => rgbToLab(...c)));
-  labels = modeFilter(labels, w, h, palette.length, settings.smooth);
+  labels = modeFilter(labels, w, h, palette.length, settings.smooth, focus);
   const d = settings.minPieceMm * pxPerMm();
-  mergeSmallPieces(labels, w, h, Math.round((Math.PI / 4) * d * d));
+  const minArea = Math.round((Math.PI / 4) * d * d);
+  // Inside a focus area a piece only needs a quarter of the Min piece size across (a sixteenth of the area).
+  mergeSmallPieces(labels, w, h, minArea, focus, Math.round(minArea / 16));
   buildSheets();
 }
 
@@ -160,26 +197,30 @@ function buildSheets() {
   for (let p = 0; p < labels.length; p++) used[labels[p]]++;
   const bridgePx = settings.bridgeWidth * MM_PER_UNIT[settings.unit] * pxPerMm();
   sheets = sheetMasks(labels, w, h, order, framePx).map((mask, i) => {
-    // The back sheet is uncut, so it never needs bridges.
-    const bridgeSegs = i === 0 ? [] : applyBridges(mask, w, h, bridges.filter((b) => b.color === order[i]), bridgePx);
-    const isl = i === 0 ? { islandMask: null, count: 0 } : findIslands(mask, w, h, framePx);
+    // The back sheet is uncut, so it takes no bridges or erasing.
+    const mine = (list) => list.filter((e) => e.color === order[i]);
+    let bridgeSegs = [];
+    let isl = { islandMask: null, count: 0, seeds: [] };
+    if (i > 0) {
+      bridgeSegs = applyBridges(mask, w, h, mine(bridges), bridgePx);
+      applyCuts(mask, w, h, mine(cuts));
+      eraseIslands(mask, w, h, mine(erased).map((e) => e.p), framePx);
+      isl = findIslands(mask, w, h, framePx);
+    }
     return {
       color: order[i],
       mask,
       islandMask: isl.islandMask,
       islands: isl.count,
+      seeds: isl.seeds,
       d: maskToPath(mask, w, h, settings.smooth),
       // Empty: no pixel of this sheet's own color survived cleanup, so its shape would duplicate the next sheet.
       empty: used[order[i]] === 0,
       bridgeSegs,
     };
   });
-  if (bridging >= 0 && sheets[0].color === bridging) {
-    // Reordered to the back, which is uncut and takes no bridges.
-    bridging = -1;
-    bridgeStart = null;
-    $('stage').classList.remove('bridging');
-  }
+  // A sheet reordered to the back is uncut, so its edit mode ends.
+  if ((bridging >= 0 && sheets[0].color === bridging) || (erasing >= 0 && sheets[0].color === erasing)) setMode(null);
   render();
 }
 
@@ -224,20 +265,22 @@ function exportSvg() {
 function render() {
   $('sheets-view').innerHTML = buildSvg(true);
   renderIslands();
+  renderPaint();
   renderLayers();
   renderStatus();
   updateReadouts();
 }
 
 /**
- * Paints the highlighted sheet's islands over the preview. In bridge mode it paints the bridged sheet
- * instead: holes veiled, islands marked, and the piece picked by the first click tinted.
+ * Paints the highlighted sheet's islands over the preview. In bridge or erase mode it paints the edited
+ * sheet instead: holes veiled, islands marked, and the piece picked by a first bridge click tinted.
  * @created Claude (claude-opus-5-5) 2026-11-13
  */
 function renderIslands() {
   const canvas = $('islands-view');
-  const sheet = sheets.find((s) => s.color === (bridging >= 0 ? bridging : highlight));
-  canvas.hidden = view !== 'sheets' || !sheet || (bridging < 0 && !sheet.islands);
+  const editing = bridging >= 0 ? bridging : erasing;
+  const sheet = sheets.find((s) => s.color === (editing >= 0 ? editing : highlight));
+  canvas.hidden = view !== 'sheets' || !sheet || (editing < 0 && !sheet.islands);
   if (canvas.hidden) return;
   const { w, h } = photo;
   canvas.width = w;
@@ -255,19 +298,151 @@ function renderIslands() {
   for (let p = 0; p < sheet.mask.length; p++) {
     if (startComp && startComp.comp[p] === startComp.id) img.data.set(BRIDGE_START_RGBA, p * 4);
     else if (sheet.islandMask?.[p]) img.data.set(ISLAND_RGBA, p * 4);
-    else if (bridging >= 0 && !sheet.mask[p]) img.data.set(HOLE_VEIL_RGBA, p * 4);
+    else if (editing >= 0 && !sheet.mask[p]) img.data.set(HOLE_VEIL_RGBA, p * 4);
   }
   ctx.putImageData(img, 0, 0);
 }
 
-/** Enters bridge mode for a sheet's palette color, or leaves it with -1. @created Claude (claude-opus-5-5) 2026-11-13 */
-function setBridging(color) {
-  bridging = color;
+/** Paints the focus area while focus mode is on. @created Claude (claude-opus-5-5) 2026-11-13 */
+function renderPaint() {
+  const canvas = $('paint-view');
+  canvas.hidden = !photo || !(focusing || stroke);
+  if (canvas.hidden) return;
+  const { w, h } = photo;
+  canvas.width = w;
+  canvas.height = h;
+  if (!focusing || !focus) return;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(w, h);
+  for (let p = 0; p < focus.length; p++) if (focus[p]) img.data.set(FOCUS_RGBA, p * 4);
+  ctx.putImageData(img, 0, 0);
+}
+
+/**
+ * Switches the preview's edit mode: 'bridge' or 'erase' for the sheet of palette color `color`, 'focus',
+ * or null for none. Only one mode is on at a time. Leaving focus mode after painting re-picks the
+ * automatic colors.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+function setMode(mode, color = -1) {
+  const applyFocus = focusing && mode !== 'focus' && focusDirty;
+  bridging = mode === 'bridge' ? color : -1;
+  erasing = mode === 'erase' ? color : -1;
+  focusing = mode === 'focus';
   bridgeStart = null;
-  $('stage').classList.toggle('bridging', bridging >= 0);
+  stroke = null;
+  const stage = $('stage');
+  stage.classList.toggle('bridging', bridging >= 0);
+  stage.classList.toggle('painting', erasing >= 0 || focusing);
+  $('focus').setAttribute('aria-pressed', String(focusing));
+  $('brush').disabled = !(erasing >= 0 || focusing);
+  if (!(erasing >= 0 || focusing)) $('brush-cursor').hidden = true;
+  if (applyFocus && photo) {
+    quantize();
+    return;
+  }
+  if (!photo || !sheets.length) return;
   renderIslands();
+  renderPaint();
   renderLayers();
   renderStatus();
+}
+
+/** Converts a pointer event to photo pixel coordinates, plus screen pixels per photo pixel. @created Claude (claude-opus-5-5) 2026-11-13 */
+function stagePoint(e) {
+  const rect = $('stage').getBoundingClientRect();
+  return { x: ((e.clientX - rect.left) / rect.width) * photo.w, y: ((e.clientY - rect.top) / rect.height) * photo.h, scale: rect.width / photo.w };
+}
+
+/** Redraws the brush stroke in progress over the paint canvas. @created Claude (claude-opus-5-5) 2026-11-13 */
+function drawStroke() {
+  const ctx = $('paint-view').getContext('2d');
+  ctx.putImageData(stroke.base, 0, 0);
+  const { pts } = stroke;
+  ctx.save();
+  if (focusing && stroke.restore) ctx.globalCompositeOperation = 'destination-out';
+  ctx.strokeStyle = focusing ? (stroke.restore ? '#000' : STROKE_STYLE.focus) : STROKE_STYLE[stroke.restore ? 'restore' : 'cut'];
+  ctx.lineWidth = settings.brush;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+  // A single point still needs a visible dot.
+  if (pts.length === 2) ctx.lineTo(pts[0] + 0.01, pts[1]);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Commits a finished brush stroke. In erase mode a click on an island removes it, and a drag cuts (or,
+ * with Shift, restores) paper. In focus mode the stroke adds to (or, with Shift, removes from) the focus
+ * area, which is applied when focus mode ends.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+function finishStroke(s) {
+  const { w, h } = photo;
+  const r = settings.brush / 2;
+  if (focusing) {
+    focus ||= new Uint8Array(w * h);
+    strokePixels(w, h, s.pts, r, (p) => { focus[p] = s.restore ? 0 : 1; });
+    if (!focus.some((v) => v)) focus = null;
+    focusDirty = true;
+    renderPaint();
+    updateReadouts();
+    return;
+  }
+  const sheet = sheets.find((sh) => sh.color === erasing);
+  if (!sheet) return;
+  // A plain click only ever removes an island; cutting paper takes a drag, so a mis-click cuts nothing.
+  if (!s.moved) {
+    const p = snapToMask(sheet.mask, w, h, s.pts[0], s.pts[1]);
+    if (!s.restore && p >= 0 && sheet.islandMask?.[p]) {
+      erased.push({ color: erasing, p });
+      buildSheets();
+      return;
+    }
+    renderPaint();
+    setStatus('No island there. Drag to cut paper away.', true);
+    return;
+  }
+  cuts.push({ color: erasing, r, pts: s.pts, restore: s.restore });
+  buildSheets();
+}
+
+/** Adds the picked color as a new front sheet, or replaces the color being picked. @created Claude (claude-opus-5-5) 2026-11-13 */
+function applyPick(rgb) {
+  if (picking === PICK_NEW) {
+    palette.push(rgb);
+    order.push(palette.length - 1);
+  } else {
+    palette[picking] = rgb;
+  }
+  picking = -1;
+  setView('sheets');
+  cleanup();
+}
+
+/** Removes an added color and its sheet, renumbering the palette indices that follow it. @created Claude (claude-opus-5-5) 2026-11-13 */
+function removeColor(c) {
+  const shift = (x) => (x > c ? x - 1 : x);
+  const remap = (list) => list.filter((e) => e.color !== c).map((e) => ({ ...e, color: shift(e.color) }));
+  palette.splice(c, 1);
+  order = order.filter((x) => x !== c).map(shift);
+  bridges = remap(bridges);
+  cuts = remap(cuts);
+  erased = remap(erased);
+  const stillHidden = [...hidden].filter((x) => x !== c).map(shift);
+  hidden.clear();
+  stillHidden.forEach((x) => hidden.add(x));
+  highlight = -1;
+  sheets = [];
+  setMode(null);
+  if (picking !== -1) {
+    picking = -1;
+    setView('sheets');
+  }
+  cleanup();
 }
 
 /**
@@ -280,9 +455,7 @@ function bridgeClick(e) {
   const sheet = sheets.find((s) => s.color === bridging);
   if (!sheet) return;
   const { w, h } = photo;
-  const rect = $('stage').getBoundingClientRect();
-  const x = ((e.clientX - rect.left) / rect.width) * w;
-  const y = ((e.clientY - rect.top) / rect.height) * h;
+  const { x, y } = stagePoint(e);
   const own = bridges.filter((b) => b.color === bridging);
   const reach = Math.max(0.75, (settings.bridgeWidth * MM_PER_UNIT[settings.unit] * pxPerMm()) / 2) + 2;
   const hit = sheet.bridgeSegs.findIndex((seg) => seg && segDist2(x, y, seg) <= reach * reach);
@@ -322,29 +495,35 @@ function renderLayers() {
     const off = hidden.has(s.color);
     const li = document.createElement('li');
     li.className = `layer${off ? ' layer--hidden' : ''}`;
-    li.draggable = true;
     li.dataset.index = String(i);
+    li.dataset.color = String(s.color);
+    const added = s.color >= autoCount;
     const bridgeCount = bridges.filter((b) => b.color === s.color).length;
     const bridgeInfo = bridgeCount
       ? ` · ${bridgeCount} bridge${bridgeCount > 1 ? 's' : ''} <button class="link" type="button" data-action="clear-bridges" aria-label="Clear bridges on sheet ${i + 1}">Clear</button>`
       : '';
+    const eraseInfo = cuts.some((c) => c.color === s.color) || erased.some((e) => e.color === s.color)
+      ? ` · erased <button class="link" type="button" data-action="clear-erase" aria-label="Undo erasing on sheet ${i + 1}">Clear</button>`
+      : '';
     const islandBadge = s.islands
-      ? `<button class="badge" type="button" data-action="islands" aria-pressed="${highlight === s.color}" title="Show islands on the preview">${s.islands} island${s.islands > 1 ? 's' : ''}</button>`
+      ? `<span class="layer__islands"><button class="badge" type="button" data-action="islands" aria-pressed="${highlight === s.color}" title="Show islands on the preview">${s.islands} island${s.islands > 1 ? 's' : ''}</button><button class="link" type="button" data-action="erase-all" aria-label="Erase all islands on sheet ${i + 1}">Erase all</button></span>`
+      : '';
+    const removeBtn = added
+      ? `<button class="icon" type="button" data-action="remove" aria-label="Remove added sheet ${i + 1}" title="Remove this added color">${ICONS.remove}</button>`
       : '';
     li.innerHTML = `
       <button class="icon" type="button" data-action="toggle" aria-pressed="${!off}" aria-label="Show sheet ${i + 1}" title="Show or hide in preview">${off ? ICONS.eyeOff : ICONS.eye}</button>
       <label class="swatch" style="background:${hex}" title="Change color"><input type="color" value="${hex}" data-action="color" aria-label="Color of sheet ${i + 1}"></label>
       <span class="layer__text">
         <span class="layer__name">Sheet ${i + 1}${i === 0 ? ' (back)' : ''}</span>
-        <span class="layer__meta">${hex.toUpperCase()}${s.empty ? ' · empty' : ''}${bridgeInfo}</span>
+        <span class="layer__meta">${hex.toUpperCase()}${added ? ' · added' : ''}${s.empty ? ' · empty' : ''}${bridgeInfo}${eraseInfo}</span>
         ${islandBadge}
       </span>
       <button class="icon" type="button" data-action="bridge" aria-pressed="${bridging === s.color}" aria-label="Bridge pieces on sheet ${i + 1}" title="${i === 0 ? 'The back sheet is uncut and needs no bridges' : 'Bridge pieces: click two pieces on the preview'}" ${i === 0 ? 'disabled' : ''}>${ICONS.bridge}</button>
+      <button class="icon" type="button" data-action="erase" aria-pressed="${erasing === s.color}" aria-label="Erase on sheet ${i + 1}" title="${i === 0 ? 'The back sheet is uncut and has nothing to erase' : 'Erase: click islands or brush paper away on the preview'}" ${i === 0 ? 'disabled' : ''}>${ICONS.eraser}</button>
       <button class="icon" type="button" data-action="pick" aria-label="Pick color for sheet ${i + 1} from the photo" title="Pick color from photo">${ICONS.pipette}</button>
-      <span class="layer__move">
-        <button class="icon" type="button" data-action="forward" aria-label="Move sheet ${i + 1} forward" ${i === sheets.length - 1 ? 'disabled' : ''}>&#9650;</button>
-        <button class="icon" type="button" data-action="back" aria-label="Move sheet ${i + 1} back" ${i === 0 ? 'disabled' : ''}>&#9660;</button>
-      </span>`;
+      ${removeBtn}
+      <button class="icon handle" type="button" aria-label="Reorder sheet ${i + 1}. Drag, or use the up and down arrow keys" title="Drag to reorder">${ICONS.handle}</button>`;
     rows.push(li);
   }
   $('layers').replaceChildren(...rows);
@@ -352,8 +531,17 @@ function renderLayers() {
 
 /** Shows the eyedropper hint or the island summary. @created Claude (claude-opus-5-5) 2026-11-13 */
 function renderStatus() {
-  if (picking >= 0) {
-    setStatus('Click the photo to pick this sheet\'s color.');
+  if (picking !== -1) {
+    setStatus(picking === PICK_NEW ? 'Click the photo to pick the new sheet\'s color. It goes to the front.' : 'Click the photo to pick this sheet\'s color.');
+    return;
+  }
+  if (erasing >= 0) {
+    const n = sheets.findIndex((s) => s.color === erasing) + 1;
+    setStatus(`Erasing sheet ${n}: click an island to remove it, or drag to cut paper away. Shift+drag puts paper back. Esc when done.`);
+    return;
+  }
+  if (focusing) {
+    setStatus('Paint over details to keep, like an eye. Shift+drag removes focus. Press Esc or Focus to apply it.');
     return;
   }
   if (bridging >= 0) {
@@ -386,6 +574,11 @@ function updateReadouts() {
   $('smooth-out').textContent = settings.smooth;
   document.querySelectorAll('.unit-label').forEach((el) => { el.textContent = unit; });
   $('height-out').textContent = photo ? `× ${round((settings.width * photo.h) / photo.w)} ${unit}` : '';
+  $('brush-out').textContent = photo ? `${round(settings.brush / pxPerMm() / MM_PER_UNIT[unit])} ${unit}` : '';
+  const addedCount = palette.length - autoCount;
+  $('count').max = String(MAX_COLORS - addedCount);
+  $('add-color').disabled = !photo || settings.count + addedCount >= MAX_COLORS;
+  $('focus-clear').hidden = !focus;
 }
 
 /** Switches the preview between the sheet stack and the source photo. @created Claude (claude-opus-5-5) 2026-11-13 */
@@ -395,8 +588,11 @@ function setView(next) {
   $('view-photo').setAttribute('aria-pressed', String(view === 'photo'));
   $('sheets-view').hidden = view !== 'sheets';
   $('photo-view').hidden = view !== 'photo';
-  $('stage').classList.toggle('picking', picking >= 0);
-  if (photo && sheets.length) renderIslands();
+  $('stage').classList.toggle('picking', picking !== -1);
+  if (photo && sheets.length) {
+    renderIslands();
+    renderPaint();
+  }
 }
 
 /** Sizes the stage to the largest box with the photo's aspect ratio that fits the preview area. @created Claude (claude-opus-5-5) 2026-11-13 */
@@ -448,6 +644,86 @@ function moveSheet(from, to) {
   buildSheets();
 }
 
+/** Samples the photo color around (x, y), averaging a 3x3 block. @created Claude (claude-opus-5-5) 2026-11-13 */
+function sampleColor(x, y) {
+  const sum = [0, 0, 0];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const px = Math.min(photo.w - 1, Math.max(0, x + dx));
+      const py = Math.min(photo.h - 1, Math.max(0, y + dy));
+      for (let j = 0; j < 3; j++) sum[j] += photo.rgba[(py * photo.w + px) * 4 + j];
+    }
+  }
+  return sum.map((v) => Math.round(v / 9));
+}
+
+/**
+ * Drags a sheet row by its handle. The row follows the pointer while the rows it passes slide aside, and
+ * the stack order changes on release. The panel or page scrolls when the pointer nears its edge.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+function startRowDrag(e, handle) {
+  const list = $('layers');
+  const li = handle.closest('li');
+  const rows = [...list.children];
+  const from = rows.indexOf(li);
+  const centers = rows.map((r) => r.offsetTop + r.offsetHeight / 2);
+  const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+  const size = li.offsetHeight + gap;
+  const panel = list.closest('.layers');
+  const scroller = panel.scrollHeight > panel.clientHeight ? panel : document.scrollingElement;
+  const startScroll = scroller.scrollTop;
+  const startY = e.clientY;
+  let to = from;
+  handle.setPointerCapture(e.pointerId);
+  li.classList.add('dragging');
+  list.classList.add('sorting');
+
+  const move = (ev) => {
+    const box = scroller === panel ? panel.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+    if (ev.clientY < box.top + 40) scroller.scrollTop -= 12;
+    else if (ev.clientY > box.bottom - 40) scroller.scrollTop += 12;
+    const dy = ev.clientY - startY + (scroller.scrollTop - startScroll);
+    li.style.transform = `translateY(${dy}px)`;
+    const c = centers[from] + dy;
+    to = from;
+    for (let k = 0; k < from; k++) {
+      if (c < centers[k]) {
+        to = k;
+        break;
+      }
+    }
+    for (let k = rows.length - 1; to === from && k > from; k--) if (c > centers[k]) to = k;
+    rows.forEach((r, k) => {
+      if (k === from) return;
+      let shift = 0;
+      if (k >= to && k < from) shift = size;
+      else if (k <= to && k > from) shift = -size;
+      r.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+  };
+  const end = (ev) => {
+    handle.removeEventListener('pointermove', move);
+    handle.removeEventListener('pointerup', end);
+    handle.removeEventListener('pointercancel', end);
+    rows.forEach((r) => { r.style.transform = ''; });
+    li.classList.remove('dragging');
+    list.classList.remove('sorting');
+    // Rows are listed front first, so list position k is stack position n - 1 - k.
+    const n = rows.length;
+    // The list was redrawn mid-drag (a slider update, say), so the drag's row positions no longer apply.
+    if (!li.isConnected || sheets.length !== n) return;
+    if (ev.type === 'pointerup' && to !== from) {
+      const color = sheets[n - 1 - from].color;
+      moveSheet(n - 1 - from, n - 1 - to);
+      list.querySelector(`li[data-color="${color}"] .handle`)?.focus();
+    }
+  };
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+
 /** Binds every control. @created Claude (claude-opus-5-5) 2026-11-13 */
 function bind() {
   $('count').value = settings.count;
@@ -456,6 +732,7 @@ function bind() {
   $('frame-on').checked = settings.frameOn;
   $('frame-width').value = settings.frameWidth;
   $('bridge-width').value = settings.bridgeWidth;
+  $('brush').value = settings.brush;
   $('width').value = settings.width;
   $('unit').value = settings.unit;
   updateReadouts();
@@ -475,6 +752,11 @@ function bind() {
   $('bridge-width').addEventListener('input', (e) => {
     const v = Number(e.target.value);
     if (v >= MIN_BRIDGE) { settings.bridgeWidth = v; schedule(1); }
+  });
+  $('brush').addEventListener('input', (e) => {
+    settings.brush = Number(e.target.value);
+    saveSettings();
+    updateReadouts();
   });
   $('width').addEventListener('input', (e) => {
     const v = Number(e.target.value);
@@ -496,41 +778,99 @@ function bind() {
   $('export').addEventListener('click', exportSvg);
   $('view-sheets').addEventListener('click', () => { picking = -1; setView('sheets'); if (photo) renderStatus(); });
   $('view-photo').addEventListener('click', () => {
-    if (bridging >= 0) setBridging(-1);
+    if (bridging >= 0 || erasing >= 0) setMode(null);
     setView('photo');
+  });
+  $('focus').addEventListener('click', () => {
+    if (!photo) {
+      setStatus('Choose a photo first.', true);
+      return;
+    }
+    picking = -1;
+    // The photo shows the details a focus area is meant to keep.
+    if (!focusing) setView('photo');
+    setMode(focusing ? null : 'focus');
+  });
+  $('focus-clear').addEventListener('click', () => {
+    focus = null;
+    focusDirty = false;
+    quantize();
+  });
+  $('add-color').addEventListener('click', () => {
+    setMode(null);
+    picking = PICK_NEW;
+    setView('photo');
+    renderStatus();
   });
   $('sheets-view').addEventListener('click', bridgeClick);
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && bridging >= 0) setBridging(-1);
+    if (e.key !== 'Escape') return;
+    if (bridging >= 0 || erasing >= 0 || focusing) setMode(null);
+    if (picking !== -1) {
+      picking = -1;
+      setView('sheets');
+      renderStatus();
+    }
   });
 
   $('photo-view').addEventListener('click', (e) => {
-    if (picking < 0 || picking >= palette.length) return;
+    if (picking === -1 || focusing) return;
     const canvas = e.currentTarget;
-    const x = Math.floor((e.offsetX / canvas.clientWidth) * photo.w);
-    const y = Math.floor((e.offsetY / canvas.clientHeight) * photo.h);
-    const sum = [0, 0, 0];
-    let n = 0;
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        const px = Math.min(photo.w - 1, Math.max(0, x + dx));
-        const py = Math.min(photo.h - 1, Math.max(0, y + dy));
-        for (let j = 0; j < 3; j++) sum[j] += photo.rgba[(py * photo.w + px) * 4 + j];
-        n++;
-      }
-    }
-    palette[picking] = sum.map((s) => Math.round(s / n));
-    picking = -1;
-    setView('sheets');
-    cleanup();
+    applyPick(sampleColor(Math.floor((e.offsetX / canvas.clientWidth) * photo.w), Math.floor((e.offsetY / canvas.clientHeight) * photo.h)));
   });
+
+  // Brush strokes for erase and focus modes.
+  const stage = $('stage');
+  const cursor = $('brush-cursor');
+  stage.addEventListener('pointerdown', (e) => {
+    if (!(erasing >= 0 || focusing) || e.button !== 0) return;
+    e.preventDefault();
+    stage.setPointerCapture(e.pointerId);
+    const { x, y } = stagePoint(e);
+    stroke = { pts: [x, y], restore: e.shiftKey, moved: false, sx: e.clientX, sy: e.clientY };
+    // Sized to the photo, which also clears anything left from an earlier mode or photo.
+    const canvas = $('paint-view');
+    canvas.hidden = false;
+    canvas.width = photo.w;
+    canvas.height = photo.h;
+    if (focusing) renderPaint();
+    stroke.base = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    drawStroke();
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (!(erasing >= 0 || focusing)) return;
+    const { x, y, scale } = stagePoint(e);
+    const d = settings.brush * scale;
+    cursor.hidden = false;
+    cursor.style.width = `${d}px`;
+    cursor.style.height = `${d}px`;
+    cursor.style.left = `${x * scale - d / 2}px`;
+    cursor.style.top = `${y * scale - d / 2}px`;
+    if (!stroke) return;
+    if (!stroke.moved && Math.hypot(e.clientX - stroke.sx, e.clientY - stroke.sy) < DRAG_PX) return;
+    stroke.moved = true;
+    stroke.pts.push(x, y);
+    drawStroke();
+  });
+  stage.addEventListener('pointerup', () => {
+    if (!stroke) return;
+    const s = stroke;
+    stroke = null;
+    finishStroke(s);
+  });
+  stage.addEventListener('pointercancel', () => {
+    stroke = null;
+    renderPaint();
+  });
+  stage.addEventListener('pointerleave', () => { cursor.hidden = true; });
 
   const list = $('layers');
   list.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     const i = Number(btn.closest('li').dataset.index);
-    const c = sheets[i].color;
+    const s = sheets[i];
+    const c = s.color;
     switch (btn.dataset.action) {
       case 'toggle':
         if (hidden.has(c)) hidden.delete(c);
@@ -542,25 +882,34 @@ function bind() {
         renderIslands();
         renderLayers();
         break;
+      case 'erase-all':
+        erased.push(...s.seeds.map((p) => ({ color: c, p })));
+        buildSheets();
+        break;
       case 'bridge':
-        setBridging(bridging === c ? -1 : c);
+      case 'erase':
+        if (view !== 'sheets') setView('sheets');
+        picking = -1;
+        setMode((btn.dataset.action === 'bridge' ? bridging : erasing) === c ? null : btn.dataset.action, c);
         break;
       case 'clear-bridges':
         bridges = bridges.filter((b) => b.color !== c);
         bridgeStart = null;
         buildSheets();
         break;
+      case 'clear-erase':
+        cuts = cuts.filter((x) => x.color !== c);
+        erased = erased.filter((x) => x.color !== c);
+        buildSheets();
+        break;
       case 'pick':
-        if (bridging >= 0) setBridging(-1);
+        setMode(null);
         picking = c;
         setView('photo');
         renderStatus();
         break;
-      case 'forward':
-        moveSheet(i, i + 1);
-        break;
-      case 'back':
-        moveSheet(i, i - 1);
+      case 'remove':
+        removeColor(c);
         break;
       default:
         break;
@@ -579,32 +928,22 @@ function bind() {
     schedule(2);
   });
 
-  // Drag rows to reorder sheets.
-  let dragFrom = -1;
-  list.addEventListener('dragstart', (e) => {
-    const li = e.target.closest('li');
-    if (!li) return;
-    dragFrom = Number(li.dataset.index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', li.dataset.index);
-  });
-  list.addEventListener('dragover', (e) => {
-    if (dragFrom < 0) return;
+  // Reorder sheets by their handles: drag, or arrow keys while a handle has focus.
+  list.addEventListener('pointerdown', (e) => {
+    const handle = e.target.closest('.handle');
+    if (!handle || e.button !== 0) return;
     e.preventDefault();
-    list.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
-    e.target.closest('li')?.classList.add('drop-target');
+    startRowDrag(e, handle);
   });
-  list.addEventListener('drop', (e) => {
-    if (dragFrom < 0) return;
+  list.addEventListener('keydown', (e) => {
+    const handle = e.target.closest('.handle');
+    if (!handle || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
     e.preventDefault();
-    e.stopPropagation();
-    const li = e.target.closest('li');
-    if (li) moveSheet(dragFrom, Number(li.dataset.index));
-    dragFrom = -1;
-  });
-  list.addEventListener('dragend', () => {
-    dragFrom = -1;
-    list.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+    const i = Number(handle.closest('li').dataset.index);
+    const color = sheets[i].color;
+    // The list shows the front first, so up moves a sheet forward.
+    moveSheet(i, e.key === 'ArrowUp' ? i + 1 : i - 1);
+    list.querySelector(`li[data-color="${color}"] .handle`)?.focus();
   });
 
   // Drop a photo anywhere on the page.
