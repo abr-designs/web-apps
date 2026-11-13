@@ -15,15 +15,57 @@ export function sheetMasks(labels, w, h, order, framePx) {
   return order.map((_, i) => {
     const mask = new Uint8Array(w * h);
     for (let p = 0; p < mask.length; p++) mask[p] = i === 0 || rank[labels[p]] >= i ? 1 : 0;
-    if (i > 0 && framePx > 0) {
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          if (x < framePx || y < framePx || x >= w - framePx || y >= h - framePx) mask[y * w + x] = 1;
-        }
-      }
-    }
+    if (i > 0) addFrame(mask, w, h, framePx);
     return mask;
   });
+}
+
+/** Sets a border of framePx pixels on a mask in place. @created Claude (claude-opus-5-5) 2026-11-13 */
+function addFrame(mask, w, h, framePx) {
+  if (framePx <= 0) return;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (x < framePx || y < framePx || x >= w - framePx || y >= h - framePx) mask[y * w + x] = 1;
+    }
+  }
+}
+
+/**
+ * Orders palette colors 0..k-1 back to front for the fewest islands, ignoring bridges and erasing. Each step
+ * puts at the back the color whose removal leaves the fewest islands on the sheet in front of it, preferring
+ * the color with more pixels on a tie. Returns palette indices, back to front.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+export function fewestIslandsOrder(labels, w, h, k, framePx) {
+  const counts = new Int32Array(k);
+  for (let p = 0; p < labels.length; p++) counts[labels[p]]++;
+  const keep = new Uint8Array(k).fill(1);
+  const left = new Set(Array.from({ length: k }, (_, i) => i));
+  const mask = new Uint8Array(w * h);
+  const result = [];
+  while (left.size > 1) {
+    let best = -1;
+    let bestIslands = Infinity;
+    for (const c of left) {
+      keep[c] = 0;
+      for (let p = 0; p < mask.length; p++) mask[p] = keep[labels[p]];
+      addFrame(mask, w, h, framePx);
+      keep[c] = 1;
+      // Every piece but the main one is an island.
+      const { first, count } = components(mask, w, h);
+      let pieces = 0;
+      for (let i = 0; i < count; i++) pieces += mask[first[i]];
+      const islands = Math.max(0, pieces - 1);
+      if (islands < bestIslands || (islands === bestIslands && counts[c] > counts[best])) {
+        best = c;
+        bestIslands = islands;
+      }
+    }
+    keep[best] = 0;
+    left.delete(best);
+    result.push(best);
+  }
+  return result.concat([...left]);
 }
 
 const SNAP_PX = 8; // how far a click may land from a piece and still pick it
@@ -175,16 +217,40 @@ function mainPiece(mask, w, h, { comp, sizes, first, count }, framePx) {
 }
 
 /**
- * Removes the islands under the given pixel indices from a sheet mask in place. A pixel that is a hole or
- * part of the main piece is skipped. Returns how many islands were removed.
+ * Returns, for each seed pixel, the ascending pixel indices of the mask piece containing it.
  * @created Claude (claude-opus-5-5) 2026-11-13
  */
-export function eraseIslands(mask, w, h, pixels, framePx) {
-  if (!pixels.length) return 0;
+export function piecePixels(mask, w, h, seeds) {
+  const { comp } = components(mask, w, h);
+  const slot = new Map(seeds.map((p, k) => [comp[p], k]));
+  const lists = seeds.map(() => []);
+  for (let p = 0; p < comp.length; p++) {
+    const k = slot.get(comp[p]);
+    if (k !== undefined) lists[k].push(p);
+  }
+  return seeds.map((p) => lists[slot.get(comp[p])]);
+}
+
+/**
+ * Removes erased islands from a sheet mask in place. Each entry is the pixel list an island had when it was
+ * erased. A piece other than the main one is removed when at least half of it lies in a list, or when it
+ * covers at least half of a list, so an erase still holds after pixels are re-labelled and the island has
+ * shrunk, split or grown. Returns how many pieces were removed.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+export function eraseIslands(mask, w, h, islands, framePx) {
+  if (!islands.length) return 0;
   const cc = components(mask, w, h);
   const main = mainPiece(mask, w, h, cc, framePx);
   const gone = new Set();
-  for (const p of pixels) if (mask[p] === 1 && cc.comp[p] !== main) gone.add(cc.comp[p]);
+  for (const pix of islands) {
+    const overlap = new Map();
+    for (const p of pix) {
+      const c = cc.comp[p];
+      if (mask[p] === 1 && c !== main) overlap.set(c, (overlap.get(c) || 0) + 1);
+    }
+    for (const [c, n] of overlap) if (2 * n >= cc.sizes[c] || 2 * n >= pix.length) gone.add(c);
+  }
   if (gone.size) for (let p = 0; p < mask.length; p++) if (gone.has(cc.comp[p])) mask[p] = 0;
   return gone.size;
 }

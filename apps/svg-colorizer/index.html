@@ -16,6 +16,10 @@
   <header class="toolbar">
     <h1 class="brand">SVG Colorizer</h1>
     <label class="btn btn--accent">Choose photo<input id="file" class="visually-hidden" type="file" accept="image/*"></label>
+    <div class="toolbar__group">
+      <label class="btn btn--small" title="Open a project saved as JSON">Open project<input id="project-file" class="visually-hidden" type="file" accept=".json,application/json"></label>
+      <button id="save-project" class="btn btn--small" type="button" disabled title="Save the photo and every edit as a JSON file">Save project</button>
+    </div>
     <label class="ctl">
       <span>Colors <output id="count-out"></output></span>
       <input id="count" type="range" min="2" max="20" step="1">
@@ -70,7 +74,7 @@
     <div id="area" class="preview__area">
       <label id="empty" class="empty" for="file">
         <span class="empty__title">Start with a photo</span>
-        <span class="muted">Drop an image here or choose one. It stays on your device.</span>
+        <span class="muted">Drop an image or a saved project here, or choose a photo. It stays on your device.</span>
       </label>
       <div id="stage" class="stage" hidden>
         <div id="sheets-view" class="stage__layer"></div>
@@ -85,7 +89,10 @@
   <aside class="layers">
     <div class="layers__head">
       <h2 class="layers__title">Sheets <span class="muted">front to back</span></h2>
-      <button id="add-color" class="btn btn--small" type="button" disabled title="Pick a new sheet color from the photo">+ Add color</button>
+      <div class="toolbar__group">
+        <button id="auto-order" class="btn btn--small" type="button" disabled title="Restack the sheets for the fewest islands">Auto-order</button>
+        <button id="add-color" class="btn btn--small" type="button" disabled title="Pick a new sheet color from the photo">+ Add color</button>
+      </div>
     </div>
     <ol id="layers" class="layers__list"></ol>
   </aside>

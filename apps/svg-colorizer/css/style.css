@@ -44,6 +44,7 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
+.toolbar__group { display: flex; align-items: center; gap: 6px; }
 .brand { margin: 0; font-size: 17px; font-weight: 600; }
 .ctl { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 130px; }
 .ctl output { font-weight: 600; }

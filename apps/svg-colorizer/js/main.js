@@ -3,12 +3,15 @@
 // Wires the toolbar, preview and sheets panel to the photo-to-sheets pipeline.
 
 import { components, imageToLab, kmeans, labelPixels, mergeSmallPieces, modeFilter, rgbToLab } from './quantize.js';
-import { applyBridges, applyCuts, eraseIslands, findIslands, segDist2, sheetMasks, snapToMask, strokePixels } from './sheets.js';
+import { applyBridges, applyCuts, eraseIslands, fewestIslandsOrder, findIslands, piecePixels, segDist2, sheetMasks, snapToMask, strokePixels } from './sheets.js';
 import { maskToPath } from './trace.js';
 
 const MAX_DIM = 600;
 const MM_PER_UNIT = { in: 25.4, cm: 10 };
 const STORE_KEY = 'svg-colorizer:settings';
+const DB_NAME = 'svg-colorizer'; // IndexedDB holding the autosaved project
+const DB_STORE = 'project';
+const PROJECT_VERSION = 1;
 const MIN_WIDTH = 1; // matches the width input's min
 const MIN_FRAME = 0.05; // matches the frame width input's min
 const MIN_BRIDGE = 0.01; // matches the bridge width input's min
@@ -45,7 +48,7 @@ let bridges = []; // { color, ax, ay, bx, by }: two clicked points in photo pixe
 let bridging = -1; // palette index whose sheet is in bridge mode
 let bridgeStart = null; // { x, y } first click of a bridge in progress
 let cuts = []; // { color, r, pts, restore }: brush strokes in photo pixels
-let erased = []; // { color, p }: one pixel index on each erased island
+let erased = []; // { color, pix }: the ascending pixel indices each erased island had when erased
 let erasing = -1; // palette index whose sheet is in erase mode
 let focus = null; // Uint8Array, 1 on photo pixels inside a focus area
 let focusing = false;
@@ -124,12 +127,15 @@ async function loadPhoto(file) {
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bitmap, 0, 0, w, h);
   const rgba = ctx.getImageData(0, 0, w, h).data;
-  photo = { name: file.name.replace(/\.[^.]+$/, '') || 'photo', w, h, rgba, lab: imageToLab(rgba) };
+  photo = { name: file.name.replace(/\.[^.]+$/, '') || 'photo', w, h, rgba, lab: imageToLab(rgba), url: canvas.toDataURL('image/png') };
   $('empty').hidden = true;
   $('stage').hidden = false;
   picking = -1;
   palette = [];
   autoCount = 0;
+  bridges = [];
+  cuts = [];
+  erased = [];
   focus = null;
   focusDirty = false;
   sheets = [];
@@ -141,20 +147,37 @@ async function loadPhoto(file) {
 }
 
 /**
- * Picks fresh automatic colors, keeps added ones, and stacks sheets by area, largest at the back.
- * Sheet edits are keyed by palette color, so they reset here.
+ * Picks fresh automatic colors, keeps added ones, and stacks sheets by area, largest at the back. Bridges
+ * and erasing on an automatic color move to the new automatic color nearest it.
  * @created Claude (claude-opus-5-5) 2026-11-13
  */
 function quantize() {
+  const oldAuto = palette.slice(0, autoCount).map((c) => rgbToLab(...c));
+  const oldCount = autoCount;
   const added = palette.slice(autoCount);
   const auto = kmeans(photo.lab, photo.rgba, settings.count, 1, focus);
   autoCount = auto.length;
   palette = auto.concat(added);
+  const newAuto = auto.map((c) => rgbToLab(...c));
+  const nearest = (lab) => {
+    let best = 0;
+    let bestD = Infinity;
+    newAuto.forEach((n, j) => {
+      const d = (n[0] - lab[0]) ** 2 + (n[1] - lab[1]) ** 2 + (n[2] - lab[2]) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = j;
+      }
+    });
+    return best;
+  };
+  const toNew = (c) => (c < oldCount ? nearest(oldAuto[c]) : c - oldCount + autoCount);
+  const carry = (list) => list.map((e) => ({ ...e, color: toNew(e.color) }));
+  bridges = carry(bridges);
+  cuts = carry(cuts);
+  erased = carry(erased);
   hidden.clear();
   highlight = -1;
-  bridges = [];
-  cuts = [];
-  erased = [];
   sheets = [];
   focusDirty = false;
   setMode(focusing ? 'focus' : null);
@@ -172,8 +195,6 @@ function quantize() {
 /** Re-labels pixels to the current palette, then smooths and merges small pieces. @created Claude (claude-opus-5-5) 2026-11-13 */
 function cleanup() {
   const { w, h, lab } = photo;
-  // An erased island is remembered by one pixel, which may sit in another piece once pixels are re-labelled.
-  erased = [];
   labels = labelPixels(lab, palette.map((c) => rgbToLab(...c)));
   labels = modeFilter(labels, w, h, palette.length, settings.smooth, focus);
   const d = settings.minPieceMm * pxPerMm();
@@ -183,16 +204,21 @@ function cleanup() {
   buildSheets();
 }
 
+/** Frame width in photo pixels, or 0 with the frame off. @created Claude (claude-opus-5-5) 2026-11-13 */
+function framePixels() {
+  if (!settings.frameOn) return 0;
+  const { w, h } = photo;
+  // A frame is capped at a quarter of the short side so every sheet keeps an opening.
+  return Math.min(
+    Math.max(1, Math.round(settings.frameWidth * MM_PER_UNIT[settings.unit] * pxPerMm())),
+    Math.max(1, Math.floor(Math.min(w, h) / 4)),
+  );
+}
+
 /** Builds every sheet's shape, islands and path from the label map. @created Claude (claude-opus-5-5) 2026-11-13 */
 function buildSheets() {
   const { w, h } = photo;
-  // A frame is capped at a quarter of the short side so every sheet keeps an opening.
-  const framePx = settings.frameOn
-    ? Math.min(
-      Math.max(1, Math.round(settings.frameWidth * MM_PER_UNIT[settings.unit] * pxPerMm())),
-      Math.max(1, Math.floor(Math.min(w, h) / 4)),
-    )
-    : 0;
+  const framePx = framePixels();
   const used = new Int32Array(palette.length);
   for (let p = 0; p < labels.length; p++) used[labels[p]]++;
   const bridgePx = settings.bridgeWidth * MM_PER_UNIT[settings.unit] * pxPerMm();
@@ -204,7 +230,7 @@ function buildSheets() {
     if (i > 0) {
       bridgeSegs = applyBridges(mask, w, h, mine(bridges), bridgePx);
       applyCuts(mask, w, h, mine(cuts));
-      eraseIslands(mask, w, h, mine(erased).map((e) => e.p), framePx);
+      eraseIslands(mask, w, h, mine(erased).map((e) => e.pix), framePx);
       isl = findIslands(mask, w, h, framePx);
     }
     return {
@@ -269,6 +295,7 @@ function render() {
   renderLayers();
   renderStatus();
   updateReadouts();
+  scheduleSave();
 }
 
 /**
@@ -390,6 +417,7 @@ function finishStroke(s) {
     focusDirty = true;
     renderPaint();
     updateReadouts();
+    scheduleSave();
     return;
   }
   const sheet = sheets.find((sh) => sh.color === erasing);
@@ -398,7 +426,7 @@ function finishStroke(s) {
   if (!s.moved) {
     const p = snapToMask(sheet.mask, w, h, s.pts[0], s.pts[1]);
     if (!s.restore && p >= 0 && sheet.islandMask?.[p]) {
-      erased.push({ color: erasing, p });
+      erased.push({ color: erasing, pix: piecePixels(sheet.mask, w, h, [p])[0] });
       buildSheets();
       return;
     }
@@ -578,6 +606,8 @@ function updateReadouts() {
   const addedCount = palette.length - autoCount;
   $('count').max = String(MAX_COLORS - addedCount);
   $('add-color').disabled = !photo || settings.count + addedCount >= MAX_COLORS;
+  $('auto-order').disabled = !photo || palette.length < 2;
+  $('save-project').disabled = !photo;
   $('focus-clear').hidden = !focus;
 }
 
@@ -632,6 +662,229 @@ function schedule(level) {
     else if (l === 2) cleanup();
     else buildSheets();
   }, 120);
+}
+
+// ---------- Auto-order ----------
+
+/**
+ * Restacks the sheets for the fewest islands. Bridges and erasing are left out of the search but count in
+ * the result, so the current order stays when the new one would leave more islands.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+function autoOrder() {
+  const islandTotal = () => sheets.reduce((n, s) => n + s.islands, 0);
+  const before = islandTotal();
+  const previous = order;
+  order = fewestIslandsOrder(labels, photo.w, photo.h, palette.length, framePixels());
+  buildSheets();
+  const after = islandTotal();
+  if (after > before) {
+    order = previous;
+    buildSheets();
+    setStatus(`Kept the current order: it already has the fewest islands found (${before}).`, before > 0);
+    return;
+  }
+  setStatus(`Auto-order: ${after} island${after === 1 ? '' : 's'}, down from ${before}.`, after > 0);
+}
+
+// ---------- Projects ----------
+
+/** Encodes ascending pixel indices as flat [start, length, ...] runs. @created Claude (claude-opus-5-5) 2026-11-13 */
+function toRuns(indices) {
+  const runs = [];
+  for (const p of indices) {
+    if (runs.length && runs[runs.length - 2] + runs[runs.length - 1] === p) runs[runs.length - 1]++;
+    else runs.push(p, 1);
+  }
+  return runs;
+}
+
+/** Decodes [start, length, ...] runs to pixel indices below n, or null when malformed. @created Claude (claude-opus-5-5) 2026-11-13 */
+function fromRuns(runs, n) {
+  if (!Array.isArray(runs) || runs.length % 2 || !runs.every(Number.isInteger)) return null;
+  const out = [];
+  for (let i = 0; i < runs.length; i += 2) {
+    for (let p = Math.max(0, runs[i]); p < Math.min(n, runs[i] + runs[i + 1]); p++) out.push(p);
+  }
+  return out;
+}
+
+/** The current project as JSON-ready data, photo included. @created Claude (claude-opus-5-5) 2026-11-13 */
+function projectData() {
+  const focusPixels = [];
+  if (focus) for (let p = 0; p < focus.length; p++) if (focus[p]) focusPixels.push(p);
+  return {
+    app: 'svg-colorizer',
+    version: PROJECT_VERSION,
+    name: photo.name,
+    w: photo.w,
+    h: photo.h,
+    photo: photo.url,
+    settings: { ...settings },
+    palette,
+    autoCount,
+    order,
+    hidden: [...hidden],
+    bridges,
+    cuts,
+    erased: erased.map((e) => ({ color: e.color, runs: toRuns(e.pix) })),
+    focus: focus ? toRuns(focusPixels) : null,
+  };
+}
+
+/**
+ * Checks saved project data and returns the state it describes, or null when it isn't a usable project.
+ * Malformed edits are dropped and settings fall back to their defaults.
+ * @created Claude (claude-opus-5-5) 2026-11-13
+ */
+function parseProject(d) {
+  if (!d || d.app !== 'svg-colorizer' || d.version !== PROJECT_VERSION) return null;
+  const { w, h } = d;
+  if (![w, h].every((v) => Number.isInteger(v) && v >= 1 && v <= MAX_DIM)) return null;
+  if (typeof d.photo !== 'string' || !d.photo.startsWith('data:image/')) return null;
+  const byte = (v) => Number.isInteger(v) && v >= 0 && v <= 255;
+  if (!Array.isArray(d.palette) || !d.palette.length || d.palette.length > MAX_COLORS) return null;
+  if (!d.palette.every((c) => Array.isArray(c) && c.length === 3 && c.every(byte))) return null;
+  const k = d.palette.length;
+  const isColor = (c) => Number.isInteger(c) && c >= 0 && c < k;
+  if (!Number.isInteger(d.autoCount) || d.autoCount < 1 || d.autoCount > k) return null;
+  if (!Array.isArray(d.order) || d.order.length !== k || !d.order.every(isColor) || new Set(d.order).size !== k) return null;
+  const list = (v) => (Array.isArray(v) ? v.filter((e) => e && isColor(e.color)) : []);
+  const num = (v) => typeof v === 'number' && Number.isFinite(v);
+  const pts = (v) => Array.isArray(v) && v.length >= 2 && v.length % 2 === 0 && v.every(num);
+  const n = w * h;
+  const focusPixels = d.focus ? fromRuns(d.focus, n) : null;
+  let focusMask = null;
+  if (focusPixels?.length) {
+    focusMask = new Uint8Array(n);
+    for (const p of focusPixels) focusMask[p] = 1;
+  }
+  return {
+    name: typeof d.name === 'string' && d.name ? d.name : 'photo',
+    w,
+    h,
+    url: d.photo,
+    settings: sanitizeSettings(d.settings && typeof d.settings === 'object' ? d.settings : {}),
+    palette: d.palette.map((c) => [...c]),
+    autoCount: d.autoCount,
+    order: [...d.order],
+    hidden: Array.isArray(d.hidden) ? d.hidden.filter(isColor) : [],
+    bridges: list(d.bridges).filter((b) => [b.ax, b.ay, b.bx, b.by].every(num))
+      .map(({ color, ax, ay, bx, by }) => ({ color, ax, ay, bx, by })),
+    cuts: list(d.cuts).filter((c) => num(c.r) && c.r > 0 && pts(c.pts))
+      .map((c) => ({ color: c.color, r: c.r, pts: [...c.pts], restore: c.restore === true })),
+    erased: list(d.erased).map((e) => ({ color: e.color, pix: fromRuns(e.runs, n) })).filter((e) => e.pix?.length),
+    focus: focusMask,
+  };
+}
+
+/** Opens saved project data, replacing the current project. Returns false when the data is unusable. @created Claude (claude-opus-5-5) 2026-11-13 */
+async function openProject(data, message) {
+  const p = parseProject(data);
+  if (!p) return false;
+  const id = ++loadId;
+  const img = new Image();
+  img.src = p.url;
+  try {
+    await img.decode();
+  } catch {
+    return false;
+  }
+  if (id !== loadId) return true; // a newer photo or project was chosen meanwhile
+  clearTimeout(timer);
+  pending = 0;
+  const canvas = $('photo-view');
+  canvas.width = p.w;
+  canvas.height = p.h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, p.w, p.h);
+  ctx.drawImage(img, 0, 0, p.w, p.h);
+  const rgba = ctx.getImageData(0, 0, p.w, p.h).data;
+  photo = { name: p.name, w: p.w, h: p.h, rgba, lab: imageToLab(rgba), url: p.url };
+  Object.assign(settings, p.settings);
+  saveSettings();
+  syncInputs();
+  ({ palette, autoCount, order, bridges, cuts, erased, focus } = p);
+  hidden.clear();
+  p.hidden.forEach((c) => hidden.add(c));
+  focusDirty = false;
+  picking = -1;
+  sheets = [];
+  highlight = -1;
+  $('empty').hidden = true;
+  $('stage').hidden = false;
+  setMode(null);
+  setView('sheets');
+  fitStage();
+  cleanup();
+  setStatus(message);
+  return true;
+}
+
+/** Opens a project JSON file. @created Claude (claude-opus-5-5) 2026-11-13 */
+async function openProjectFile(file) {
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {
+    data = null;
+  }
+  if (!(await openProject(data, `Opened ${file.name}.`))) setStatus("That file isn't an SVG Colorizer project.", true);
+}
+
+/** Downloads the current project as JSON. @created Claude (claude-opus-5-5) 2026-11-13 */
+function saveProjectFile() {
+  if (!photo) return;
+  const blob = new Blob([JSON.stringify(projectData())], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${photo.name}-project.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/** Runs fn on the project store in one transaction, resolving with its request's result. @created Claude (claude-opus-5-5) 2026-11-13 */
+function withStore(mode, fn) {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open(DB_NAME, 1);
+    open.onupgradeneeded = () => open.result.createObjectStore(DB_STORE);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction(DB_STORE, mode);
+      const req = fn(tx.objectStore(DB_STORE));
+      tx.oncomplete = () => {
+        db.close();
+        resolve(req.result);
+      };
+      tx.onerror = tx.onabort = () => {
+        db.close();
+        reject(tx.error);
+      };
+    };
+  });
+}
+
+let saveTimer = 0;
+
+/** Autosaves the project in the browser shortly after the last change, ignoring storage errors. @created Claude (claude-opus-5-5) 2026-11-13 */
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (photo) withStore('readwrite', (store) => store.put(projectData(), 'current')).catch(() => {});
+  }, 400);
+}
+
+/** Reopens the autosaved project, if any, when the page loads. @created Claude (claude-opus-5-5) 2026-11-13 */
+async function restoreSaved() {
+  let data;
+  try {
+    data = await withStore('readonly', (store) => store.get('current'));
+  } catch {
+    return;
+  }
+  if (data && !photo) await openProject(data, 'Reopened your last project.');
 }
 
 // ---------- Events ----------
@@ -724,8 +977,8 @@ function startRowDrag(e, handle) {
   handle.addEventListener('pointercancel', end);
 }
 
-/** Binds every control. @created Claude (claude-opus-5-5) 2026-11-13 */
-function bind() {
+/** Sets every toolbar input from the settings. @created Claude (claude-opus-5-5) 2026-11-13 */
+function syncInputs() {
   $('count').value = settings.count;
   $('min-piece').value = settings.minPieceMm;
   $('smooth').value = settings.smooth;
@@ -736,6 +989,11 @@ function bind() {
   $('width').value = settings.width;
   $('unit').value = settings.unit;
   updateReadouts();
+}
+
+/** Binds every control. @created Claude (claude-opus-5-5) 2026-11-13 */
+function bind() {
+  syncInputs();
 
   $('file').addEventListener('change', (e) => {
     loadPhoto(e.target.files[0]);
@@ -776,6 +1034,17 @@ function bind() {
     else updateReadouts();
   });
   $('export').addEventListener('click', exportSvg);
+  $('save-project').addEventListener('click', saveProjectFile);
+  $('project-file').addEventListener('change', (e) => {
+    if (e.target.files[0]) openProjectFile(e.target.files[0]);
+    e.target.value = '';
+  });
+  $('auto-order').addEventListener('click', () => {
+    if (!photo || !sheets.length) return;
+    setStatus('Finding the order with the fewest islands...');
+    // Lets the status paint before the search blocks the page.
+    setTimeout(autoOrder, 30);
+  });
   $('view-sheets').addEventListener('click', () => { picking = -1; setView('sheets'); if (photo) renderStatus(); });
   $('view-photo').addEventListener('click', () => {
     if (bridging >= 0 || erasing >= 0) setMode(null);
@@ -883,7 +1152,7 @@ function bind() {
         renderLayers();
         break;
       case 'erase-all':
-        erased.push(...s.seeds.map((p) => ({ color: c, p })));
+        erased.push(...piecePixels(s.mask, photo.w, photo.h, s.seeds).map((pix) => ({ color: c, pix })));
         buildSheets();
         break;
       case 'bridge':
@@ -960,10 +1229,13 @@ function bind() {
     document.body.classList.remove('dragging');
     if (!hasFiles(e)) return;
     e.preventDefault();
-    loadPhoto(e.dataTransfer.files[0]);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.type === 'application/json' || file.name.endsWith('.json'))) openProjectFile(file);
+    else loadPhoto(file);
   });
 
   new ResizeObserver(fitStage).observe($('area'));
 }
 
 bind();
+restoreSaved();

@@ -41,19 +41,25 @@ A piece of a sheet shape that touches neither the frame nor any other part of it
 _Avoid_: floater, orphan
 
 **Bridge**:
-A thin strip of a sheet's own paper that the user adds to join two pieces of that sheet, usually to hold an island in place. The user places one by clicking the two pieces, and removes one by clicking it. A bridge is visible on the finished art, because the pixels it crosses belong to sheets further back. Every bridge shares the one **Bridge width**. Bridges are cleared whenever the automatic colors are re-picked.
+A thin strip of a sheet's own paper that the user adds to join two pieces of that sheet, usually to hold an island in place. The user places one by clicking the two pieces, and removes one by clicking it. A bridge is visible on the finished art, because the pixels it crosses belong to sheets further back. Every bridge shares the one **Bridge width**. When the automatic colors are re-picked, a bridge moves to the new automatic color nearest its old one.
 _Avoid_: tab, connector, tie
 
 **Bridge width**:
 The width of every bridge, in the export unit.
 
 **Erase**:
-Removing paper from one sheet: clicking an **Island** removes the whole island, and dragging the **Brush** cuts any area away. Shift+drag puts erased paper back. Erased areas become holes that show the sheets behind. Erasing is cleared whenever the automatic colors are re-picked, and erased islands are also forgotten whenever pixels are re-labelled (Min piece size, Smoothness, Width or a color change), because the island may no longer exist.
+Removing paper from one sheet: clicking an **Island** removes the whole island, and dragging the **Brush** cuts any area away. Shift+drag puts erased paper back. Erased areas become holes that show the sheets behind. Erasing lasts through every slider change: when the automatic colors are re-picked it moves to the new automatic color nearest its old one, and an erased island stays erased when re-labelling shrinks, splits or grows it.
 _Avoid_: delete, mask
 
 **Focus area**:
 Parts of the photo the user paints whose detail must survive, like an eye. Inside it, **Smoothness** is skipped, a piece only needs a quarter of the **Min piece size** across, and its pixels weigh more when the automatic colors are picked. Leaving focus mode after painting re-picks the automatic colors.
 _Avoid_: priority, protect
+
+**Auto-order**:
+Restacking the sheets so the fewest islands remain. Each step puts at the back the color whose removal leaves the fewest islands on the sheet in front of it. Bridges and erasing are left out of the search; when the result has more islands than the current stack order, the current order stays. It runs only when the user asks; new photos and re-picks stack by area.
+
+**Project**:
+The photo plus everything done to it: settings, palette colors, stack order, hidden sheets, bridges, erasing and the focus area. The current project saves itself in the browser and reopens on the next visit, and it can be saved to and opened from a JSON file.
 
 **Brush**:
 The round tool, with one shared size, used to **Erase** and to paint the **Focus area**.

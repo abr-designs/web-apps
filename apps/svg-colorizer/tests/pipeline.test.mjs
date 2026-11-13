@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { components, imageToLab, kmeans, mergeSmallPieces, modeFilter } from '../js/quantize.js';
-import { applyBridges, applyCuts, eraseIslands, sheetMasks, findIslands } from '../js/sheets.js';
+import { applyBridges, applyCuts, eraseIslands, fewestIslandsOrder, piecePixels, sheetMasks, findIslands } from '../js/sheets.js';
 import { traceMask, maskToPath } from '../js/trace.js';
 
 const grid = (rows) => Uint8Array.from(rows.join('').split('').map(Number));
@@ -104,8 +104,8 @@ test('erasing removes the clicked island and leaves the main piece', () => {
   const mask = grid(['11111', '10001', '10101', '10001', '11111']);
   const { seeds } = findIslands(mask, 5, 5, 1);
   assert.deepEqual(seeds, [12]);
-  assert.equal(eraseIslands(mask, 5, 5, [0], 1), 0);
-  assert.equal(eraseIslands(mask, 5, 5, seeds, 1), 1);
+  assert.equal(eraseIslands(mask, 5, 5, [[0]], 1), 0);
+  assert.equal(eraseIslands(mask, 5, 5, piecePixels(mask, 5, 5, seeds), 1), 1);
   assert.equal(findIslands(mask, 5, 5, 1).count, 0);
   assert.equal(mask[0], 1);
 });
@@ -140,4 +140,25 @@ test('a frame cut at its corner still counts as the main piece', () => {
   const { count, seeds } = findIslands(mask, 5, 5, 1);
   assert.equal(count, 1);
   assert.deepEqual(seeds, [12]);
+});
+
+test('an erased island stays erased after it shrinks or grows', () => {
+  const before = grid(['1111111', '1000001', '1011101', '1011101', '1000001', '1000001', '1111111']);
+  const pix = piecePixels(before, 7, 7, [16]);
+  assert.equal(pix[0].length, 6);
+  const shrunk = grid(['1111111', '1000001', '1001101', '1000001', '1000001', '1000001', '1111111']);
+  assert.equal(eraseIslands(shrunk, 7, 7, pix, 1), 1);
+  const grown = grid(['1111111', '1000001', '1011101', '1011101', '1011101', '1000001', '1111111']);
+  assert.equal(eraseIslands(grown, 7, 7, pix, 1), 1);
+  assert.equal(findIslands(grown, 7, 7, 1).count, 0);
+});
+
+test('auto-order finds a stacking with no islands', () => {
+  // A ring of color 1 around a dot of color 2, on a color 0 field.
+  const rows = ['000000000', '000000000', '001111100', '001121100', '001111100', '000000000', '000000000'];
+  const labels = Uint8Array.from(rows.join('').split('').map(Number));
+  const order = fewestIslandsOrder(labels, 9, 7, 3, 1);
+  assert.deepEqual(order, [2, 1, 0]);
+  const islands = sheetMasks(labels, 9, 7, order, 1).slice(1).reduce((n, m) => n + findIslands(m, 9, 7, 1).count, 0);
+  assert.equal(islands, 0);
 });
